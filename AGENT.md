@@ -17,6 +17,7 @@
 - `electron/native/`：macOS 原生能力，目前包含 Swift 音频采集代码。
 - `shared/`：前端和 Electron 共用的类型及快捷键定义。
 - `assets/`：运行时静态资源和图标。
+- `assets/branding/`：Aivora Logo 母版、应用图标、小尺寸图标和单色图标资源。
 - `docs/`：架构设计和开发计划。
 - `dist/`、`dist-electron/`：构建产物，不进入 Git。
 
