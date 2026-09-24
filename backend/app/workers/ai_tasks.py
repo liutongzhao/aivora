@@ -11,6 +11,7 @@ from app.infrastructure.database import session_factory
 from app.infrastructure.events import event_bus
 from app.infrastructure.storage import storage
 from app.modules.tasks.models import AITask, Answer
+from app.modules.tasks.parser import parse_answer
 from app.providers.openai_compatible import OpenAICompatibleProvider
 from app.workers.celery_app import celery_app
 
@@ -74,6 +75,7 @@ async def _run_task(task_id: UUID) -> None:
                         progress=min(95, 20 + len("".join(chunks)) // 20),
                     )
             content = "".join(chunks)
+            parsed_answer = parse_answer(content, task.mode)
             task.status = "completed"
             task.stage = "completed"
             task.progress = 100
@@ -84,7 +86,9 @@ async def _run_task(task_id: UUID) -> None:
                     question_type=task.mode,
                     content=content,
                     raw_content=content,
-                    parsed={},
+                    parsed=parsed_answer.parsed,
+                    parse_warning=parsed_answer.warning,
+                    parse_status="fallback" if parsed_answer.warning else "structured",
                 )
             )
             await db.commit()
@@ -95,7 +99,8 @@ async def _run_task(task_id: UUID) -> None:
                     "questionType": task.mode,
                     "content": content,
                     "rawContent": content,
-                    "parsed": {},
+                    "parsed": parsed_answer.parsed,
+                    "parseWarning": parsed_answer.warning,
                 },
                 stage="completed",
                 progress=100,

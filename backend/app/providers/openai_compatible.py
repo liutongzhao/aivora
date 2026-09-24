@@ -5,6 +5,7 @@ import httpx
 
 from app.config import get_settings
 from app.providers.base import ProviderChunk
+from app.prompts.registry import PromptRegistry
 
 
 class OpenAICompatibleProvider:
@@ -23,16 +24,17 @@ class OpenAICompatibleProvider:
     ) -> AsyncIterator[ProviderChunk]:
         if not self.api_key:
             raise RuntimeError("AI_API_KEY 未配置")
-        prompt = (
-            f"请分析截图中的题目。题型：{mode}。"
-            f"编程语言：{language or '未指定'}。请给出清晰、可读、可复核的答案。"
-        )
+        definition = PromptRegistry.get(mode, language)
+        prompt = definition.user_prompt(len(images), language)
         content: list[dict] = [{"type": "text", "text": prompt}]
         content.extend({"type": "image_url", "image_url": {"url": image}} for image in images)
         payload = {
             "model": model,
             "stream": True,
-            "messages": [{"role": "user", "content": content}],
+            "messages": [
+                {"role": "system", "content": definition.system_prompt},
+                {"role": "user", "content": content},
+            ],
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         endpoint = (

@@ -56,6 +56,8 @@ class Answer(Base):
     raw_content: Mapped[str | None] = mapped_column(Text)
     parsed: Mapped[dict] = mapped_column(JSON)
     parse_warning: Mapped[str | None] = mapped_column(Text)
+    parser_version: Mapped[str] = mapped_column(String(40), default="v1")
+    parse_status: Mapped[str] = mapped_column(String(24), default="structured")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
