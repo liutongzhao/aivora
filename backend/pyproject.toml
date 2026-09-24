@@ -11,6 +11,11 @@ dependencies = [
   "asyncpg>=0.30,<1.0",
   "argon2-cffi>=23.1,<26.0",
   "email-validator>=2.2,<3.0",
+  "httpx>=0.28,<1.0",
+  "redis>=5.2,<8.0",
+  "celery>=5.4,<6.0",
+  "minio>=7.2,<8.0",
+  "python-multipart>=0.0.20,<1.0",
 ]
 
 [project.optional-dependencies]
