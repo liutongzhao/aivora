@@ -67,6 +67,7 @@ async def list_tasks(
         "tasks": [
             {
                 "id": str(task.id),
+                "user_id": str(task.user_id),
                 "mode": task.mode,
                 "status": task.status,
                 "stage": task.stage,
