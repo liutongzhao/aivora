@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database import get_db_session
@@ -48,6 +49,36 @@ async def process_screenshot(
     if not stream_token:
         raise HTTPException(status_code=409, detail="重复任务已存在，请重新提交新的请求标识")
     return TaskCreatedResponse(task_id=task.id, stream_token=stream_token)
+
+
+@router.get("/tasks")
+async def list_tasks(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = 50,
+) -> dict:
+    result = await db.execute(
+        select(AITask)
+        .where(AITask.user_id == user.id)
+        .order_by(AITask.created_at.desc())
+        .limit(min(max(limit, 1), 100))
+    )
+    return {
+        "tasks": [
+            {
+                "id": str(task.id),
+                "mode": task.mode,
+                "status": task.status,
+                "stage": task.stage,
+                "progress": task.progress,
+                "error_code": task.error_code,
+                "error_message": task.error_message,
+                "created_at": task.created_at,
+                "completed_at": task.completed_at,
+            }
+            for task in result.scalars().all()
+        ]
+    }
 
 
 @router.get("/stream/{task_id}")
