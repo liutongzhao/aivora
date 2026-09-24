@@ -106,6 +106,15 @@ git diff
 - 启动前先检查本项目是否已有对应 `screen` 会话，避免重复启动。
 - 向用户报告服务状态时，提供 `screen` 会话名称、运行命令和端口。
 
+### 当前项目服务会话
+
+- `screen` 会话名称：`aivora-dev`
+- 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件" && npm run dev`
+- Renderer 地址：`http://127.0.0.1:54321`
+- 查看会话：`screen -r aivora-dev`
+- 分离会话：按 `Ctrl-A`，再按 `D`
+- 停止本项目服务：`screen -S aivora-dev -X quit`
+
 ## 当前工程状态
 
 - 当前源码已经可以从源码开发启动。
