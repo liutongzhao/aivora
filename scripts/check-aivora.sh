@@ -3,7 +3,7 @@ set -u
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "== Aivora screen =="
 for name in aivora-dev aivora-web aivora-backend aivora-worker; do
-  if screen -list | grep -q "[.]${name}[[:space:]]"; then echo "${name}: running"; else echo "${name}: stopped"; fi
+  if printf "%s\n" "$(screen -list 2>/dev/null)" | grep -q "[.]${name}[[:space:]]"; then echo "${name}: running"; else echo "${name}: stopped"; fi
 done
 echo "== Ports =="
 for item in "54321 127.0.0.1:54321" "3000 127.0.0.1:3000" "18000 127.0.0.1:18000" "15439 PostgreSQL" "16379 Redis" "19000 MinIO"; do

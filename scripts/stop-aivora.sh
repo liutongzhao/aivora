@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 for name in aivora-dev aivora-web aivora-backend aivora-worker; do
-  if screen -list | grep -q "[.]${name}[[:space:]]"; then
+  if printf "%s\n" "$(screen -list 2>/dev/null)" | grep -q "[.]${name}[[:space:]]"; then
     screen -S "$name" -X quit
     echo "已停止 screen: ${name}"
   else
