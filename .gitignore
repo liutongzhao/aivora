@@ -12,6 +12,7 @@ AGENT.md
 !.env.example
 backend/.conda/
 backend/.venv/
+backend/*.egg-info/
 web/.next/
 web/node_modules/
 minio-data/

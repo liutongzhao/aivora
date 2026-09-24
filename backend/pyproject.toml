@@ -1,0 +1,19 @@
+[project]
+name = "aivora-backend"
+version = "0.1.0"
+description = "Aivora modular backend API and worker"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn[standard]>=0.34,<1.0",
+  "pydantic-settings>=2.7,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.9,<1.0",
+]
+
+[tool.ruff]
+line-length = 100
+

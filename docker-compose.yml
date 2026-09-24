@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aivora-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aivora
+      POSTGRES_USER: aivora
+      POSTGRES_PASSWORD: aivora
+    ports:
+      - "15439:5432"
+    volumes:
+      - aivora_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aivora -d aivora"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: aivora-redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    volumes:
+      - aivora_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    container_name: aivora-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: aivora
+      MINIO_ROOT_PASSWORD: change-me
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - aivora_minio_data:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  aivora_postgres_data:
+  aivora_redis_data:
+  aivora_minio_data:
+
