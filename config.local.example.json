@@ -9,7 +9,7 @@
   },
   "web": {
     "baseUrl": "http://127.0.0.1:3000",
-    "logoutPath": "/logout",
+    "logoutPath": "/login",
     "dashboardPath": "/dashboard"
   },
   "environment": "development"

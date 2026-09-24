@@ -10,7 +10,8 @@
     "build:renderer": "vite build",
     "build:electron": "tsc -p electron/tsconfig.json",
     "build": "npm run build:renderer && npm run build:electron",
-    "start": "cross-env NODE_ENV=production electron ."
+    "start": "cross-env NODE_ENV=production electron .",
+    "test": "vitest run"
   },
   "author": "Aivora Contributors",
   "license": "AGPL-3.0-or-later",
@@ -48,12 +49,16 @@
     "uuid": "^11.0.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^37.2.1",
+    "jsdom": "^28.1.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
+    "vitest": "^5.0.1",
     "wait-on": "^8.0.2"
   },
   "browserslist": {
