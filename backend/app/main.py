@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.modules.identity.router import router as identity_router
 from app.modules.identity.router import session_router as identity_session_router
+from app.modules.models.router import router as models_router
+from app.modules.settings.router import router as settings_router
 
 
 def create_app() -> FastAPI:
@@ -23,6 +25,8 @@ def create_app() -> FastAPI:
     )
     application.include_router(identity_router)
     application.include_router(identity_session_router)
+    application.include_router(settings_router)
+    application.include_router(models_router)
 
     @application.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
