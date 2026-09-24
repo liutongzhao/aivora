@@ -97,6 +97,7 @@ h2 { letter-spacing: -.03em; margin: 0 0 14px; }
 .ui-empty p, .ui-error p { max-width: 420px; margin: 0; }
 .ui-empty-icon { display: grid; width: 44px; height: 44px; place-items: center; color: var(--primary); background: var(--primary-soft); border-radius: 14px; font-size: 26px; }
 .ui-error { color: var(--danger); background: #fffafa; border: 1px solid #f6d9dc; border-radius: 16px; }
+.admin-health { margin: 0 42px 42px; }.service-health-grid { min-height: 160px; }.health-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }.health-item { display: flex; align-items: center; justify-content: space-between; padding: 13px; border-radius: 12px; background: var(--surface-subtle); font-size: 13px; }.dialog-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .42); backdrop-filter: blur(5px); }.dialog-card { width: min(420px, 100%); padding: 26px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-md); }.dialog-card h2 { margin: 8px 0; }.dialog-card p { color: var(--muted); line-height: 1.7; }.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }.admin-table-wrap { overflow-x: auto; }
 .motion-fade-in { animation: fade-in .35s ease both; }
 .motion-slide-up { animation: slide-up .4s cubic-bezier(.22, 1, .36, 1) both; }
 .motion-scale-in { animation: scale-in .28s ease both; }
@@ -112,7 +113,7 @@ h2 { letter-spacing: -.03em; margin: 0 0 14px; }
   .topbar { padding: 0 18px; }
   .nav { gap: 10px; font-size: 12px; }
   .container { width: min(100% - 28px, 680px); padding-top: 24px; }
-  .app-page-heading { display: block; margin: 22px 20px; }.app-page-heading .button { margin-top: 18px; }.metric-grid, .dashboard-columns { grid-template-columns: 1fr; margin-left: 20px; margin-right: 20px; }.task-detail { margin-left: 20px; margin-right: 20px; }.task-row { align-items: flex-start; }.task-row-progress { min-width: 0; }.task-row-progress .ui-progress { display: none; }
+  .app-page-heading { display: block; margin: 22px 20px; }.app-page-heading .button { margin-top: 18px; }.metric-grid, .dashboard-columns { grid-template-columns: 1fr; margin-left: 20px; margin-right: 20px; }.task-detail, .admin-health { margin-left: 20px; margin-right: 20px; }.task-row { align-items: flex-start; }.task-row-progress { min-width: 0; }.task-row-progress .ui-progress { display: none; }.health-items { grid-template-columns: 1fr; }
   .hero { display: block; }
   .grid { grid-template-columns: 1fr; }
   .remote-grid { grid-template-columns: 1fr; }
