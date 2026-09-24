@@ -7,6 +7,8 @@ dependencies = [
   "fastapi>=0.115,<1.0",
   "uvicorn[standard]>=0.34,<1.0",
   "pydantic-settings>=2.7,<3.0",
+  "sqlalchemy[asyncio]>=2.0,<3.0",
+  "asyncpg>=0.30,<1.0",
 ]
 
 [project.optional-dependencies]
@@ -14,6 +16,12 @@ dev = [
   "ruff>=0.9,<1.0",
 ]
 
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [tool.ruff]
 line-length = 100
-

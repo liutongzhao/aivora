@@ -46,8 +46,22 @@ services:
       - aivora_minio_data:/data
     command: server /data --console-address ":9001"
 
+  flyway:
+    image: flyway/flyway:latest
+    container_name: aivora-flyway
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/aivora
+      FLYWAY_USER: aivora
+      FLYWAY_PASSWORD: aivora
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    command: migrate
+    volumes:
+      - ./backend/db/migrations:/flyway/sql:ro
+
 volumes:
   aivora_postgres_data:
   aivora_redis_data:
   aivora_minio_data:
-
