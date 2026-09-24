@@ -16,10 +16,11 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await apiFetch("/api/auth/login", {
+      const result = await apiFetch<{ session_id: string }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password, device_type: "web", device_name: "Aivora Web" }),
       });
+      window.localStorage.setItem("aivora_session_id", result.session_id);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
