@@ -14,5 +14,5 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     task_time_limit=180,
     task_soft_time_limit=150,
+    imports=("app.workers.ai_tasks",),
 )
-
