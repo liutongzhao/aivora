@@ -68,12 +68,12 @@ npm run start
 
 - 默认分支：`main`。
 - 每次完成一个可独立说明的修改后创建清晰的提交。
-- 提交信息使用简短、明确的英文动词短语，例如：
+- 提交信息必须使用中文，简短、明确地描述本次修改，例如：
 
 ```text
-fix: correct Electron production asset paths
-feat: add remote pairing status panel
-chore: update development documentation
+修复 Electron 生产环境资源路径
+新增远程配对状态面板
+更新开发文档
 ```
 
 - 提交前检查：
