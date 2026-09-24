@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-electron/
+recovered-build/
+.superpowers/
+.DS_Store
+*.log
+*.tsbuildinfo

@@ -1,0 +1,16 @@
+{
+  "api": {
+    "baseUrl": "https://quiz.playoffer.cn",
+    "aiEndpoint": "/api/ai",
+    "webEndpoint": "/api"
+  },
+  "websocket": {
+    "url": "https://quiz.playoffer.cn"
+  },
+  "web": {
+    "baseUrl": "https://quiz.playoffer.cn",
+    "logoutPath": "/logout",
+    "dashboardPath": "/dashboard"
+  },
+  "environment": "production"
+}

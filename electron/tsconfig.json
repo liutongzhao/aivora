@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "baseUrl": "..",
+    "outDir": "../dist-electron",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "types": [
+      "node",
+      "electron"
+    ]
+  },
+  "include": [
+    "./**/*.ts",
+    "../shared/**/*.ts",
+    "../src/vite-env.d.ts"
+  ]
+}

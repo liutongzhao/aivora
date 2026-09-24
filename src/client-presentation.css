@@ -1,0 +1,3 @@
+/* Recovered presentation layer compatibility styles. The bundled stylesheet is
+ * loaded from src/index.css; this file remains as a separate import because
+ * the original renderer referenced it independently. */

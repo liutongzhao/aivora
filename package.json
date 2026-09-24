@@ -1,0 +1,71 @@
+{
+  "name": "quizcoze-2026.9.19",
+  "version": "2026.9.19",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -s first \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --host 127.0.0.1",
+    "dev:electron": "wait-on http://127.0.0.1:54321 && tsc -p electron/tsconfig.json && cross-env NODE_ENV=development ELECTRON_RENDERER_URL=http://127.0.0.1:54321 electron .",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p electron/tsconfig.json --noEmit",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "start": "cross-env NODE_ENV=production electron ."
+  },
+  "author": "Interview Coder Contributors",
+  "license": "AGPL-3.0-or-later",
+  "description": "An invisible desktop application to help you pass your technical interviews.",
+  "dependencies": {
+    "@electron/notarize": "^2.3.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-toast": "^1.2.2",
+    "@supabase/supabase-js": "^2.49.4",
+    "@tanstack/react-query": "^5.64.0",
+    "axios": "^1.10.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "diff": "^7.0.0",
+    "dotenv": "^16.4.7",
+    "electron-log": "^5.2.4",
+    "electron-store": "^10.0.0",
+    "electron-updater": "^6.3.9",
+    "form-data": "^4.0.1",
+    "lucide-react": "^0.460.0",
+    "react": "^18.2.0",
+    "react-code-blocks": "^0.1.6",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.28.1",
+    "react-syntax-highlighter": "^15.6.1",
+    "remark-gfm": "^4.0.1",
+    "screenshot-desktop": "^1.15.0",
+    "socket.io-client": "^4.7.5",
+    "tailwind-merge": "^2.5.5",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^37.2.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "wait-on": "^8.0.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
