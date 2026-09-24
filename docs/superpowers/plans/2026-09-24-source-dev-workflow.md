@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 让恢复出的 QuizCoze 源码支持本地开发启动、类型检查、生产构建和构建产物启动。
+**Goal:** 让恢复出的 Aivora 源码支持本地开发启动、类型检查、生产构建和构建产物启动。
 
 **Architecture:** Vite 提供 React 前端开发服务器和生产构建；TypeScript 将 Electron 主进程编译到 `dist-electron`；Electron 在开发模式读取 `ELECTRON_RENDERER_URL`，生产模式读取 `dist/index.html`。`concurrently` 和 `wait-on` 负责组合开发进程。
 

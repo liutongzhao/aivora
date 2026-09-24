@@ -62,7 +62,7 @@ export class ScreenshotHelper {
       app.getPath("userData"),
       "extra_screenshots"
     )
-    this.tempDir = path.join(app.getPath("temp"), "QuizCoze-screenshots")
+    this.tempDir = path.join(app.getPath("temp"), "Aivora-screenshots")
 
     // Create directories if they don't exist
     this.ensureDirectoriesExist();

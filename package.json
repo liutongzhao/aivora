@@ -1,5 +1,5 @@
 {
-  "name": "quizcoze-2026.9.19",
+  "name": "aivora-2026.9.19",
   "version": "2026.9.19",
   "main": "dist-electron/electron/main.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "build": "npm run build:renderer && npm run build:electron",
     "start": "cross-env NODE_ENV=production electron ."
   },
-  "author": "Interview Coder Contributors",
+  "author": "Aivora Contributors",
   "license": "AGPL-3.0-or-later",
   "description": "An invisible desktop application to help you pass your technical interviews.",
   "dependencies": {

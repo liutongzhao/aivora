@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, RefreshCw, Smartphone, Minus, Square, X, Play, LogOut, BookOpen } from 'lucide-react'
-import appIcon from '../../assets/icons/win/logo_qz.ico'
+import appIcon from '../../assets/icons/win/aivora.ico'
 import {
   ShortcutAction,
   shortcutDefinitions,
@@ -510,7 +510,7 @@ export function ConfigPage() {
       className="client-titlebar fixed inset-x-0 top-0 z-10 flex h-12 items-center justify-between px-4"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      <div className="client-brand"><img src={appIcon} alt="" width={22} height={22} />QuizCoze</div>
+      <div className="client-brand"><img src={appIcon} alt="" width={22} height={22} />Aivora</div>
       <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button
           className="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100"

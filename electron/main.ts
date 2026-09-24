@@ -190,7 +190,7 @@ function getAssetPath(...segments: string[]) {
 }
 
 function getAppIconPath() {
-  const iconPath = getAssetPath("assets", "icons", "win", "logo_qz.ico")
+  const iconPath = getAssetPath("assets", "icons", "win", "aivora.ico")
   if (fs.existsSync(iconPath)) {
     return iconPath
   }
@@ -404,7 +404,7 @@ function initializeHelpers() {
 
 // Auth callback handler
 
-// Register the interview-coder protocol for authentication callbacks
+// 注册认证回调协议；协议字符串保持兼容远程服务
 if (process.platform === "darwin") {
   app.setAsDefaultProtocolClient("interview-coder")
 } else {

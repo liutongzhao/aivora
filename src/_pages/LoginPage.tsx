@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react'
 import { Minus, Square, X, LogIn } from 'lucide-react'
-import appIcon from '../../assets/icons/win/logo_qz.ico'
+import appIcon from '../../assets/icons/win/aivora.ico'
 
 interface LoginResult {
   success: boolean
@@ -50,7 +50,7 @@ export function LoginPage() {
       className="client-titlebar fixed inset-x-0 top-0 flex h-12 items-center justify-between px-4"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      <div className="client-brand"><img src={appIcon} alt="" width={22} height={22} />QuizCoze</div>
+      <div className="client-brand"><img src={appIcon} alt="" width={22} height={22} />Aivora</div>
       <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button
           className="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100"
@@ -82,7 +82,7 @@ export function LoginPage() {
       <WindowHeader />
       <div className="client-login-form w-full max-w-xl mx-auto mt-12 rounded-[32px] bg-white shadow-[0_25px_80px_rgba(15,23,42,0.1)] border border-gray-100 p-12 space-y-8">
         <div className="space-y-3 text-center">
-          <div className="client-login-brand"><img src={appIcon} alt="" width={40} height={40} /><span>QuizCoze</span></div>
+          <div className="client-login-brand"><img src={appIcon} alt="" width={40} height={40} /><span>Aivora</span></div>
           <h1 className="text-2xl font-semibold text-slate-900">登录考试客户端</h1>
           <p className="text-sm text-slate-500">如果未注册账号，请前往网页 <a className="text-blue-600 underline" href="https://quiz.playoffer.cn/" onClick={(event) => { event.preventDefault(); window.electronAPI.openLink?.('https://quiz.playoffer.cn/') }}>https://quiz.playoffer.cn/</a> 进行注册</p>
         </div>
