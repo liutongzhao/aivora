@@ -6,3 +6,12 @@ recovered-build/
 .DS_Store
 *.log
 *.tsbuildinfo
+AGENT.md
+.env
+.env.*
+!.env.example
+backend/.conda/
+backend/.venv/
+web/.next/
+web/node_modules/
+minio-data/
