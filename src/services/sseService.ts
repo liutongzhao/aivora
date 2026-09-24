@@ -131,7 +131,7 @@ export class SSEService {
   /**
    * 建立SSE连接来接收实时更新
    */
-  async connectToStream(taskId: string): Promise<{
+  async connectToStream(taskId: string, streamToken?: string): Promise<{
     success: boolean
     error?: string
   }> {
@@ -147,7 +147,8 @@ export class SSEService {
       this.currentTaskId = taskId
 
       // 创建EventSource连接
-      const streamUrl = `${this.baseURL}/api/ai/stream/${taskId}`
+      const tokenQuery = streamToken ? `?token=${encodeURIComponent(streamToken)}` : ''
+      const streamUrl = `${this.baseURL}/api/ai/stream/${taskId}${tokenQuery}`
       console.log(`🌊 [SSE] 连接URL: ${streamUrl}`)
 
       this.eventSource = new EventSource(streamUrl)

@@ -9,6 +9,8 @@ import waiting = Simulate.waiting;
 const packageJson = require('../../package.json');
 // 🆕 导入配置信息
 const configData = require('../../config.json');
+const configuredApiBaseUrl = configData.api?.baseUrl || 'http://127.0.0.1:18000'
+const configuredWebBaseUrl = configData.web?.baseUrl || configuredApiBaseUrl
 
 // Set UTF-8 encoding for console output in this module
 if (process.stdout.setEncoding) {
@@ -73,7 +75,7 @@ export class SimpleAuthManager extends EventEmitter {
 
     super()
     // 🆕 优先使用配置文件中的API URL
-    this.apiBaseUrl = apiBaseUrl || configData.api?.baseUrl || 'https://quiz.playoffer.cn'
+    this.apiBaseUrl = apiBaseUrl || configuredApiBaseUrl
     console.log('🌐 [SimpleAuthManager] 使用API地址:', this.apiBaseUrl)
 
     // 创建API客户端
@@ -1169,7 +1171,7 @@ export class SimpleAuthManager extends EventEmitter {
         url.includes('?auth=success') ||
         url.includes('#auth-success') ||
         url.includes('/auth-success') ||
-        (url.includes('quiz.playoffer.cn') && !url.includes('/login') && !url.includes('/register'))
+        (url.startsWith(configuredWebBaseUrl) && !url.includes('/login') && !url.includes('/register'))
     );
 
     const isBackendRedirect = url.includes('/api/auth/callback');

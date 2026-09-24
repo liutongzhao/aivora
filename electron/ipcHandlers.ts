@@ -10,6 +10,8 @@ import { CompatibilityChecker, CompatibilityResult, CompatibilityReport } from '
 // 使用 Electron 内置的 fetch API
 // 🆕 导入版本信息
 const packageJson = require('../../package.json');
+const configData = require('../../config.json');
+const API_BASE_URL = configData.api?.baseUrl || 'http://127.0.0.1:18000';
 
 // 🆕 创建带版本信息的fetch函数
 const fetchWithVersion = (url: string, options: RequestInit = {}) => {
@@ -83,7 +85,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
         return { success: false, error: '无session信息' }
       }
 
-      const response = await fetchWithVersion('https://quiz.playoffer.cn/api/client/credits', {
+      const response = await fetchWithVersion(`${API_BASE_URL}/api/client/credits`, {
 
         method: 'GET',
         headers: {
@@ -117,7 +119,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
       }
 
 
-      const response = await fetchWithVersion('https://quiz.playoffer.cn/api/client/credits/check', {
+      const response = await fetchWithVersion(`${API_BASE_URL}/api/client/credits/check`, {
 
         method: 'POST',
         headers: {
@@ -153,7 +155,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
       }
 
 
-      const response = await fetchWithVersion('https://quiz.playoffer.cn/api/client/credits/deduct', {
+      const response = await fetchWithVersion(`${API_BASE_URL}/api/client/credits/deduct`, {
 
         method: 'POST',
         headers: {
@@ -194,7 +196,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
       }
 
 
-      const response = await fetchWithVersion('https://quiz.playoffer.cn/api/client/credits/refund', {
+      const response = await fetchWithVersion(`${API_BASE_URL}/api/client/credits/refund`, {
 
         method: 'POST',
         headers: {
@@ -544,9 +546,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
         return { success: false, error: "用户未登录", models: [] }
       }
 
-      const BASE_URL = 'https://quiz.playoffer.cn'
-
-      const response = await fetchWithVersion(`${BASE_URL}/api/client/credits/models`, {
+      const response = await fetchWithVersion(`${API_BASE_URL}/api/client/credits/models`, {
 
         method: 'GET',
         headers: {
@@ -864,15 +864,13 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
 // 积分管理 (独立导出，在main.ts中单独注册)
 export function registerCreditsHandlers(deps: IIpcHandlerDeps) {
   console.log('Initializing credits IPC handlers')
-  const BASE_URL = 'https://quiz.playoffer.cn'
-
   const makeAuthenticatedRequest = async (endpoint: string, options: any = {}) => {
     const token = simpleAuthManager.getToken()
     if (!token) {
       return { success: false, error: 'User not authenticated' }
     }
     try {
-      const response = await fetchWithVersion(`${BASE_URL}${endpoint}`, {
+      const response = await fetchWithVersion(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',

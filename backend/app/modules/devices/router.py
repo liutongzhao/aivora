@@ -27,6 +27,10 @@ class PairingVerifyRequest(BaseModel):
     code: str = Field(min_length=8, max_length=8)
 
 
+class PairingCreateRequest(BaseModel):
+    deviceId: str = Field(min_length=1, max_length=160)
+
+
 @router.post("/devices/register")
 async def register_device(
     request: DeviceRegisterRequest,
@@ -56,18 +60,26 @@ async def register_device(
 
 @router.post("/pairing/create")
 async def create_pairing(
-    device_id: str,
+    request: PairingCreateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     result = await db.execute(
         select(DesktopDevice).where(
-            DesktopDevice.user_id == user.id, DesktopDevice.device_id == device_id
+            DesktopDevice.user_id == user.id, DesktopDevice.device_id == request.deviceId
         )
     )
     device = result.scalar_one_or_none()
     if not device:
-        raise HTTPException(status_code=404, detail="桌面设备未注册")
+        device = DesktopDevice(
+            user_id=user.id,
+            device_id=request.deviceId,
+            name="Aivora Desktop",
+            platform="desktop",
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.add(device)
+        await db.flush()
     code = secrets.token_hex(4).upper()
     pairing = PairingCode(
         user_id=user.id,

@@ -8,6 +8,7 @@ import {
   ShortcutDefinition
 } from '../../shared/shortcuts'
 import { formatShortcut } from '../utils/shortcutFormat'
+import { config } from '../utils/config'
 
 type ShortcutMap = Record<ShortcutAction, string>
 
@@ -132,7 +133,7 @@ export function ConfigPage() {
         setPairing((current) => ({
           code: state.code!,
           expiresAt: state.expiresAt!,
-          remoteUrl: state.remoteUrl || current?.remoteUrl || 'https://quiz.playoffer.cn/remote'
+          remoteUrl: state.remoteUrl || current?.remoteUrl || `${config.web.baseUrl}/remote`
         }))
       }
       if (state.error) {

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { Minus, Square, X, LogIn } from 'lucide-react'
 import appIcon from '../../assets/icons/win/aivora.ico'
+import { config } from '../utils/config'
 
 interface LoginResult {
   success: boolean
@@ -84,7 +85,7 @@ export function LoginPage() {
         <div className="space-y-3 text-center">
           <div className="client-login-brand"><img src={appIcon} alt="" width={40} height={40} /><span>Aivora</span></div>
           <h1 className="text-2xl font-semibold text-slate-900">登录考试客户端</h1>
-          <p className="text-sm text-slate-500">如果未注册账号，请前往网页 <a className="text-blue-600 underline" href="https://quiz.playoffer.cn/" onClick={(event) => { event.preventDefault(); window.electronAPI.openLink?.('https://quiz.playoffer.cn/') }}>https://quiz.playoffer.cn/</a> 进行注册</p>
+          <p className="text-sm text-slate-500">如果未注册账号，请前往网页 <a className="text-blue-600 underline" href={config.web.baseUrl} onClick={(event) => { event.preventDefault(); window.electronAPI.openLink?.(config.web.baseUrl) }}>{config.web.baseUrl}</a> 进行注册</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

@@ -8,6 +8,9 @@ import {
   ShortcutAction
 } from "../shared/shortcuts"
 
+const configData = require('../config.json')
+const API_BASE_URL = configData.api?.baseUrl || 'http://127.0.0.1:18000'
+
 const mouseButtonHookScript = String.raw`
 $code = @"
 using System;
@@ -487,7 +490,7 @@ export class ShortcutsHelper {
         }
 
         // 发送清空信号（fire and forget）
-        fetch('https://quiz.playoffer.cn/api/ai/history', {
+        fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/ai/history`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',

@@ -460,7 +460,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         // 🆕 建立SSE连接来接收实时更新
         try {
           console.log('🌊 [SSE] 建立流式连接...')
-          const sseResult = await sseService.connectToStream(response.task_id!)
+          const sseResult = await sseService.connectToStream(response.task_id!, response.stream_token)
           
           if (sseResult.success) {
             console.log('✅ [SSE] 流式连接建立成功，等待实时更新')
@@ -573,7 +573,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         // 🆕 建立SSE连接来接收实时更新  
         try {
           console.log('🌊 [SSE] 建立调试流式连接...')
-          const sseResult = await sseService.connectToStream(response.task_id!)
+          const sseResult = await sseService.connectToStream(response.task_id!, response.stream_token)
           
           if (sseResult.success) {
             console.log('✅ [SSE] 调试流式连接建立成功，等待实时更新')

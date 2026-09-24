@@ -12,6 +12,8 @@ type RemoteClientDeps = {
 }
 
 const configData = require('../../config.json')
+const configuredApiBaseUrl = configData.api?.baseUrl || 'http://127.0.0.1:18000'
+const configuredWebBaseUrl = configData.web?.baseUrl || configuredApiBaseUrl
 
 export class RemoteControlClient {
   private socket: Socket | null = null
@@ -27,7 +29,7 @@ export class RemoteControlClient {
   private static readonly PARTIAL_SCREENSHOT_TIMEOUT_MS = 70_000
 
   constructor(private readonly deps: RemoteClientDeps) {
-    this.apiBase = process.env.REMOTE_CONTROL_BASE_URL || configData.api?.baseUrl || 'https://quiz.playoffer.cn'
+    this.apiBase = process.env.REMOTE_CONTROL_BASE_URL || configuredApiBaseUrl
     const settings = configHelper.getClientSettings() || {}
     this.deviceId = settings.remoteDeviceId || randomUUID()
     if (!settings.remoteDeviceId) configHelper.updateClientSettings({ remoteDeviceId: this.deviceId })
@@ -86,7 +88,7 @@ export class RemoteControlClient {
       throw error
     }
 
-    const remoteUrl = `${configData.web?.baseUrl || 'https://quiz.playoffer.cn'}/remote`
+    const remoteUrl = `${configuredWebBaseUrl}/remote`
     this.pairing = { code: data.code, expiresAt: data.expiresAt, remoteUrl }
     this.deps.onState?.({ connected: false, code: data.code, expiresAt: data.expiresAt, remoteUrl })
     return { code: data.code, expiresAt: data.expiresAt, remoteUrl }

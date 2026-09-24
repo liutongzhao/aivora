@@ -353,7 +353,7 @@ export class AIService {
   async processScreenshotSSE(
     image: string | string[], 
     mode: 'programming' | 'debug' | 'single_choice' | 'multiple_choice' | 'universal' = 'programming'
-  ): Promise<{ success: boolean; task_id?: string; error?: any }> {
+  ): Promise<{ success: boolean; task_id?: string; stream_token?: string; error?: any }> {
     try {
       console.log('🌊 [AI服务] 发送SSE处理请求...')
       
@@ -420,7 +420,8 @@ export class AIService {
       
       return {
         success: response.data.success,
-        task_id: response.data.task_id
+        task_id: response.data.task_id,
+        stream_token: response.data.stream_token
       }
       
     } catch (error: any) {

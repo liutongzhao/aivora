@@ -48,8 +48,12 @@ class TaskService:
                 )
             )
             existing = existing_result.scalar_one_or_none()
-            if existing and existing.stream_token_hash:
-                return existing, ""
+            if existing:
+                stream_token = secrets.token_urlsafe(32)
+                existing.stream_token_hash = hash_stream_token(stream_token)
+                existing.stream_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+                await self.db.commit()
+                return existing, stream_token
 
         images = [request.image] if request.image else request.images or []
         task = AITask(
