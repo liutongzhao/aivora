@@ -6,6 +6,8 @@ recovered-build/
 .DS_Store
 *.log
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
 AGENT.md
 .env
 .env.*
