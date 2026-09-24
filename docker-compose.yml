@@ -61,6 +61,66 @@ services:
     volumes:
       - ./backend/db/migrations:/flyway/sql:ro
 
+  api:
+    image: python:3.12-slim
+    container_name: aivora-api
+    working_dir: /workspace/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    env_file:
+      - backend/.env.local
+    environment:
+      PYTHONPATH: /workspace/backend
+      DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+    volumes:
+      - .:/workspace
+    command: bash -lc "pip install -e . >/tmp/aivora-api-install.log && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "18000:8000"
+
+  worker:
+    image: python:3.12-slim
+    container_name: aivora-worker
+    working_dir: /workspace/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    env_file:
+      - backend/.env.local
+    environment:
+      PYTHONPATH: /workspace/backend
+      DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+    volumes:
+      - .:/workspace
+    command: bash -lc "pip install -e . >/tmp/aivora-worker-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO"
+
+  web:
+    image: node:22-alpine
+    container_name: aivora-web
+    working_dir: /workspace/web
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:18000
+    volumes:
+      - .:/workspace
+    command: sh -lc "npm install && npm run dev -- --hostname 0.0.0.0"
+    ports:
+      - "13000:3000"
+
 volumes:
   aivora_postgres_data:
   aivora_redis_data:

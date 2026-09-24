@@ -88,7 +88,7 @@ class TaskService:
             ex=3600,
         )
         await event_bus.append(task.id, "progress", {}, stage="queued", progress=0)
-        celery_app.send_task("aivora.run_ai_task", args=[str(task.id)])
+        celery_app.send_task("aivora.run_ai_task", args=[str(task.id)], queue="aivora")
         return task, stream_token
 
     async def get_task(self, user_id: UUID, task_id: UUID) -> tuple[AITask, Answer | None]:

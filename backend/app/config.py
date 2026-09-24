@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     ai_base_url: str = "https://ai-pixel.online"
     ai_model: str = "gpt-6-sol"
     ai_api_key: str = ""
+    initial_admin_email: str = ""
+    initial_admin_password: str = ""
 
     model_config = SettingsConfigDict(
         env_file=(".env", ".env.local"),
@@ -40,4 +42,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

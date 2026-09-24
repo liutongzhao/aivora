@@ -1,0 +1,123 @@
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.infrastructure.database import get_db_session
+from app.modules.devices.models import DesktopDevice, PairingCode
+from app.modules.identity.dependencies import get_current_user
+from app.modules.identity.models import User
+
+router = APIRouter(prefix="/api/remote", tags=["remote"])
+
+
+class DeviceRegisterRequest(BaseModel):
+    device_id: str = Field(min_length=1, max_length=160)
+    name: str | None = Field(default=None, max_length=160)
+    platform: str | None = Field(default=None, max_length=40)
+    client_version: str | None = Field(default=None, max_length=80)
+
+
+class PairingVerifyRequest(BaseModel):
+    code: str = Field(min_length=8, max_length=8)
+
+
+@router.post("/devices/register")
+async def register_device(
+    request: DeviceRegisterRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    result = await db.execute(
+        select(DesktopDevice).where(
+            DesktopDevice.user_id == user.id, DesktopDevice.device_id == request.device_id
+        )
+    )
+    device = result.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if not device:
+        device = DesktopDevice(user_id=user.id, **request.model_dump())
+        db.add(device)
+    else:
+        device.name = request.name
+        device.platform = request.platform
+        device.client_version = request.client_version
+        device.last_seen_at = now
+        device.revoked_at = None
+    await db.commit()
+    await db.refresh(device)
+    return {"success": True, "device_id": str(device.id)}
+
+
+@router.post("/pairing/create")
+async def create_pairing(
+    device_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    result = await db.execute(
+        select(DesktopDevice).where(
+            DesktopDevice.user_id == user.id, DesktopDevice.device_id == device_id
+        )
+    )
+    device = result.scalar_one_or_none()
+    if not device:
+        raise HTTPException(status_code=404, detail="桌面设备未注册")
+    code = secrets.token_hex(4).upper()
+    pairing = PairingCode(
+        user_id=user.id,
+        device_id=device.id,
+        code_hash=hashlib.sha256(code.encode()).hexdigest(),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
+    db.add(pairing)
+    await db.commit()
+    return {"success": True, "code": code, "expiresAt": int(pairing.expires_at.timestamp() * 1000)}
+
+
+@router.post("/pairing/verify")
+async def verify_pairing(
+    request: PairingVerifyRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    code_hash = hashlib.sha256(request.code.upper().encode()).hexdigest()
+    result = await db.execute(
+        select(PairingCode).where(
+            PairingCode.code_hash == code_hash,
+            PairingCode.user_id == user.id,
+            PairingCode.used_at.is_(None),
+            PairingCode.revoked_at.is_(None),
+            PairingCode.expires_at > datetime.now(timezone.utc),
+        )
+    )
+    pairing = result.scalar_one_or_none()
+    if not pairing:
+        raise HTTPException(status_code=400, detail="连接码无效或已过期")
+    pairing.used_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"success": True, "device_id": str(pairing.device_id)}
+
+
+@router.get("/devices")
+async def list_devices(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    result = await db.execute(select(DesktopDevice).where(DesktopDevice.user_id == user.id))
+    return [
+        {
+            "id": str(device.id),
+            "deviceId": device.device_id,
+            "name": device.name,
+            "platform": device.platform,
+            "clientVersion": device.client_version,
+            "lastSeenAt": device.last_seen_at,
+        }
+        for device in result.scalars().all()
+    ]

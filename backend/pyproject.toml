@@ -16,6 +16,7 @@ dependencies = [
   "celery>=5.4,<6.0",
   "minio>=7.2,<8.0",
   "python-multipart>=0.0.20,<1.0",
+  "python-socketio>=5.12,<6.0",
 ]
 
 [project.optional-dependencies]
