@@ -23,6 +23,8 @@ class FileService:
         task_id: UUID | None = None,
         prefix: str = "task-images",
         expires_hours: int | None = 24,
+        commit: bool = True,
+        uploaded_keys: list[str] | None = None,
     ) -> StoredFile:
         if not data:
             raise HTTPException(status_code=400, detail="文件不能为空")
@@ -30,6 +32,8 @@ class FileService:
             raise HTTPException(status_code=413, detail="文件不能超过 20MB")
         digest = hashlib.sha256(data).hexdigest()
         object_key = f"{prefix}/{user_id}/{task_id or uuid4()}/{uuid4()}"
+        if uploaded_keys is not None:
+            uploaded_keys.append(object_key)
         stored = storage.put_bytes(object_key, data, content_type)
         expires_at = (
             datetime.now(timezone.utc) + timedelta(hours=expires_hours)
@@ -47,8 +51,11 @@ class FileService:
             expires_at=expires_at,
         )
         self.db.add(file)
-        await self.db.commit()
-        await self.db.refresh(file)
+        if commit:
+            await self.db.commit()
+            await self.db.refresh(file)
+        else:
+            await self.db.flush()
         return file
 
     async def get_owned(self, user_id: UUID, file_id: UUID) -> StoredFile:

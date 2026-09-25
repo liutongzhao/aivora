@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Integer, JSON, SmallInteger, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, JSON, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,10 @@ class AITask(Base):
     stage: Mapped[str] = mapped_column(String(80), default="created")
     progress: Mapped[int] = mapped_column(SmallInteger, default=0)
     input_image_count: Mapped[int] = mapped_column(Integer, default=0)
+    dispatch_generation: Mapped[int] = mapped_column(Integer, default=0)
+    lease_state: Mapped[str | None] = mapped_column(String(16))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stream_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     stream_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(80))
@@ -29,6 +33,19 @@ class AITask(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class TaskImage(Base):
+    __tablename__ = "task_images"
+    __table_args__ = (CheckConstraint("ordinal >= 0"),)
+
+    task_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ai_tasks.id", ondelete="CASCADE"), primary_key=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stored_file_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("stored_files.id")
     )
 
 
