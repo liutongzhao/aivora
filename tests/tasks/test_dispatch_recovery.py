@@ -5,6 +5,8 @@ from sqlalchemy import select
 from app.modules.tasks.dispatch import Claim, claim_next, mark_published, reconcile, start_claim
 from app.modules.tasks.models import AITask, TaskStreamToken
 from app.workers import dispatcher
+from app.workers.celery_app import celery_app
+from app.config import Settings
 
 
 NOW = datetime.now(timezone.utc)
@@ -83,6 +85,32 @@ async def test_running_and_legacy_uncertain_tasks_fail_without_requeue(task_db, 
             assert task.status == "failed"
             assert task.error_code == "WORKER_LOST_UNCERTAIN"
     assert await claim(task_db) is None
+
+
+@pytest.mark.asyncio
+async def test_legacy_worker_waits_beyond_hard_limit_before_uncertain_failure(task_db, dispatch_users):
+    async with task_db() as db:
+        task = AITask(user_id=dispatch_users[0], mode="programming", status="processing",
+                      stage="loading_images", started_at=NOW - timedelta(seconds=180))
+        db.add(task)
+        await db.commit()
+        task_id = task.id
+    async with task_db() as db:
+        await reconcile(db, NOW)
+        await db.commit()
+        assert (await db.get(AITask, task_id)).status == "processing"
+    async with task_db() as db:
+        await reconcile(db, NOW + timedelta(minutes=2))
+        await db.commit()
+        assert (await db.get(AITask, task_id)).error_code == "WORKER_LOST_UNCERTAIN"
+
+
+def test_dispatch_defaults_off_and_periodic_entry_is_registered(monkeypatch):
+    monkeypatch.delenv("TASK_DISPATCH_ENABLED", raising=False)
+    assert Settings(_env_file=None).task_dispatch_enabled is False
+    assert celery_app.tasks["aivora.dispatch_queued"].name == "aivora.dispatch_queued"
+    assert any(entry["task"] == "aivora.dispatch_queued"
+               for entry in celery_app.conf.beat_schedule.values())
 
 
 @pytest.mark.asyncio

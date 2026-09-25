@@ -32,3 +32,15 @@
 - `running` 租约为四分钟，覆盖当前 180 秒 Worker 硬时限。超时标记 `WORKER_LOST_UNCERTAIN`，不会重调上游；Task 3 的 Worker 完成写入须校验租约/终态，避免对账失败后迟到写覆盖失败状态。
 - 调度扫描当前所有 queued 行，队列极大时可能需要 SQL 侧限量/索引优化；本阶段以正确的串行化公平领取为先。
 - Beat 部署归 Task 5，本阶段仅注册周期任务；未触碰共享生产数据。
+
+## Review 修复第 1 轮（2026-09-25）
+
+**RED。** 先补失败测试并运行：
+`PYTHONPATH=backend .venv/bin/pytest -q tests/tasks/test_task_input_persistence.py::test_created_cleanup_is_bounded_persistent_and_preserves_failure tests/tasks/test_dispatch_recovery.py::test_legacy_worker_waits_beyond_hard_limit_before_uncertain_failure tests/tasks/test_dispatch_fairness.py::test_two_sessions_at_global_and_user_boundary tests/tasks/test_dispatch_fairness.py::test_two_sessions_cannot_both_take_last_user_slot tests/tasks/test_dispatch_recovery.py::test_dispatch_defaults_off_and_periodic_entry_is_registered`
+得到 `2 failed, 3 passed`：旧清理一次扫描全部 12 条，旧 Worker 正好 180 秒即失败。另增存储卡住测试，单跑为 `1 failed`（缺持久完成字段，耗时约 3 秒）；中间一次聚焦运行 `1 failed, 24 passed` 是新测试误遍历字典键，修正测试后复跑。
+
+**GREEN。** 最终 `PYTHONPATH=backend .venv/bin/pytest -q tests/tasks/test_dispatch_fairness.py tests/tasks/test_dispatch_recovery.py tests/tasks/test_task_input_persistence.py` 为 `25 passed in 8.04s`；`PYTHONPATH=backend .venv/bin/pytest -q tests` 为 `52 passed in 10.02s`；`git diff --check` 通过。测试通过随机隔离数据库的 Flyway 迁移，未迁移/清理共享 aivora 数据。
+
+**修改。** `backend/db/migrations/V013__task_input_cleanup.sql` 与 `backend/app/modules/tasks/models.py` 增加持久的清理尝试/完成时间及待清理部分索引；`backend/app/modules/tasks/service.py` 每轮最多领取 10 条，尝试时间先提交、失败退避 5 分钟，单条同步 MinIO 操作转线程并限时 2 秒，成功才持久标记，失败仍保留原 `failed`/`TASK_INPUT_INTERRUPTED`；`backend/app/modules/tasks/dispatch.py` 将旧 Worker 截止改为 240 秒，严格晚于 180 秒硬时限。`tests/tasks/test_task_input_persistence.py`、`tests/tasks/test_dispatch_fairness.py`、`tests/tasks/test_dispatch_recovery.py` 覆盖持久标记、重试/超时、真实对象删除、显式非空槽位、双 Session 额度边界、默认禁用和周期任务注册。
+
+**剩余风险。** 超时的同步 MinIO 调用在线程中不能被强制中止，可能稍后返回；已持久化尝试时间与幂等删除可避免立即反复尝试，单轮调度等待最多约 20 秒。新迁移必须先于新版服务部署；Task 3 原子切换之前派发开关继续关闭，实际 Worker 重复执行验证仍归 Task 3。

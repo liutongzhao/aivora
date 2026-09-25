@@ -13,7 +13,7 @@ _LOCK_KEY = 0x4149564F5241
 RESERVATION_TIME = timedelta(minutes=5)
 RUNNING_TIME = timedelta(minutes=4)
 REPUBLISH_AFTER = timedelta(seconds=30)
-LEGACY_WORKER_LIMIT = timedelta(seconds=180)
+LEGACY_WORKER_LIMIT = timedelta(minutes=4)
 
 
 @dataclass(frozen=True)

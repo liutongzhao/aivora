@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID
@@ -89,7 +90,10 @@ async def test_reconcile_stale_created_placeholder_removes_orphan(task_db, dispa
         storage.put_bytes(key, b"orphan", "image/png")
     async with task_db() as db:
         assert await reconcile_created_tasks(db, older_than=timedelta(minutes=5)) == 1
-        assert (await db.get(AITask, task.id)).status == "failed"
+        persisted = await db.get(AITask, task.id)
+        assert persisted.status == "failed"
+        assert persisted.error_code == "TASK_INPUT_INTERRUPTED"
+        assert persisted.input_cleanup_completed_at is not None
     assert not storage.exists(key)
     async with task_db() as db:
         assert await reconcile_created_tasks(db, older_than=timedelta(minutes=5)) == 0
@@ -143,6 +147,88 @@ async def test_cleanup_failure_preserves_upload_error_and_reconciles_remaining_o
         assert await reconcile_created_tasks(db) == 0
         assert await reconcile_created_tasks(db) == 0
     assert not storage.exists(deleted[0])
+
+
+@pytest.mark.asyncio
+async def test_created_cleanup_is_bounded_persistent_and_preserves_failure(
+    task_db, dispatch_users, monkeypatch,
+):
+    from app.modules.tasks import service
+
+    calls = []
+    oldest = datetime.now(timezone.utc) - timedelta(hours=1)
+    async with task_db() as db:
+        rows = [
+            AITask(user_id=dispatch_users[0], mode="programming", status="created",
+                   stage="created", created_at=oldest + timedelta(seconds=index))
+            for index in range(12)
+        ]
+        db.add_all(rows)
+        await db.commit()
+        ids = [row.id for row in rows]
+
+    def cleanup(task):
+        calls.append(task.id)
+        return task.id != ids[0]
+
+    monkeypatch.setattr(service, "_remove_task_objects", cleanup)
+    async with task_db() as db:
+        assert await service.reconcile_created_tasks(db) == 12
+        await db.commit()
+        tasks = {task.id: task for task in
+                 (await db.scalars(select(AITask).where(AITask.id.in_(ids)))).all()}
+        assert all(task.status == "failed" and task.error_code == "TASK_INPUT_INTERRUPTED"
+                   for task in tasks.values())
+        assert len(calls) <= 10
+        assert tasks[ids[0]].input_cleanup_completed_at is None
+        assert sum(task.input_cleanup_completed_at is not None for task in tasks.values()) == len(calls) - 1
+        first_calls = len(calls)
+        assert await service.reconcile_created_tasks(db) == 0
+        assert len(calls) > first_calls
+        assert calls.count(ids[0]) == 1
+        assert len(calls) <= 12
+
+    async with task_db() as db:
+        task = await db.get(AITask, ids[0])
+        task.input_cleanup_attempted_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+        await db.commit()
+    monkeypatch.setattr(service, "_remove_task_objects", lambda task: calls.append(task.id) or True)
+    async with task_db() as db:
+        await service.reconcile_created_tasks(db)
+        assert (await db.get(AITask, ids[0])).input_cleanup_completed_at is not None
+    assert calls.count(ids[0]) == 2
+
+
+@pytest.mark.asyncio
+async def test_stalled_storage_cleanup_does_not_block_following_task(
+    task_db, dispatch_users, monkeypatch,
+):
+    from app.modules.tasks import service
+
+    ids = []
+    async with task_db() as db:
+        for index, user in enumerate(dispatch_users[:2]):
+            task = AITask(user_id=user, mode="programming", status="created",
+                          stage="created",
+                          created_at=datetime.now(timezone.utc) - timedelta(hours=2-index))
+            db.add(task)
+            await db.flush()
+            ids.append(task.id)
+        await db.commit()
+
+    def slow_first(task):
+        if task.id == ids[0]:
+            time.sleep(3)
+        return True
+
+    monkeypatch.setattr(service, "_remove_task_objects", slow_first)
+    started = time.monotonic()
+    async with task_db() as db:
+        await service.reconcile_created_tasks(db)
+        await db.commit()
+        assert (await db.get(AITask, ids[0])).input_cleanup_completed_at is None
+        assert (await db.get(AITask, ids[1])).input_cleanup_completed_at is not None
+    assert time.monotonic() - started < 3
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from redis.asyncio import Redis
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,9 @@ from app.modules.tasks.schemas import ProcessScreenshotRequest
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+CLEANUP_BATCH_SIZE = 10
+CLEANUP_RETRY_DELAY = timedelta(minutes=5)
+CLEANUP_TIMEOUT_SECONDS = 2.0
 
 
 def hash_stream_token(token: str) -> str:
@@ -40,13 +43,15 @@ def decode_image(value: str) -> tuple[bytes, str]:
         raise ValueError("图片不是有效的 Base64 数据") from error
 
 
-def _remove_task_objects(task: AITask, uploaded_keys: list[str] | None = None) -> None:
+def _remove_task_objects(task: AITask, uploaded_keys: list[str] | None = None) -> bool:
     attempted = set()
+    complete = True
     for key in uploaded_keys or []:
         attempted.add(key)
         try:
             storage.delete(key)
         except Exception:
+            complete = False
             logger.exception("Failed to remove task input object %s", key)
     prefix = f"task-images/{task.user_id}/{task.id}/"
     try:
@@ -56,15 +61,19 @@ def _remove_task_objects(task: AITask, uploaded_keys: list[str] | None = None) -
             try:
                 storage.delete(item.object_name)
             except Exception:
+                complete = False
                 logger.exception("Failed to remove task input object %s", item.object_name)
     except Exception:
+        complete = False
         logger.exception("Failed to list task input objects for %s", task.id)
+    return complete
 
 
 async def reconcile_created_tasks(
     db: AsyncSession, older_than: timedelta = timedelta(minutes=15)
 ) -> int:
-    cutoff = datetime.now(timezone.utc) - older_than
+    now = datetime.now(timezone.utc)
+    cutoff = now - older_than
     rows = (await db.scalars(
         select(AITask).where(AITask.status == "created", AITask.created_at < cutoff)
         .order_by(AITask.created_at).limit(100).with_for_update(skip_locked=True)
@@ -75,14 +84,32 @@ async def reconcile_created_tasks(
         task.error_code = "TASK_INPUT_INTERRUPTED"
         task.error_message = "任务输入上传中断"
     await db.commit()
-    # Include previously failed placeholders whose cleanup was interrupted.
+    # Claim a small, retryable cleanup batch before entering blocking object storage.
     failed = (await db.scalars(
         select(AITask).where(
             AITask.status == "failed", AITask.error_code == "TASK_INPUT_INTERRUPTED",
-        ).order_by(AITask.created_at)
+            AITask.input_cleanup_completed_at.is_(None),
+            or_(
+                AITask.input_cleanup_attempted_at.is_(None),
+                AITask.input_cleanup_attempted_at <= now - CLEANUP_RETRY_DELAY,
+            ),
+        ).order_by(AITask.input_cleanup_attempted_at.asc().nullsfirst(), AITask.created_at)
+        .limit(CLEANUP_BATCH_SIZE).with_for_update(skip_locked=True)
     )).all()
     for task in failed:
-        _remove_task_objects(task)
+        task.input_cleanup_attempted_at = now
+    await db.commit()
+    for task in failed:
+        try:
+            complete = await asyncio.wait_for(
+                asyncio.to_thread(_remove_task_objects, task), CLEANUP_TIMEOUT_SECONDS
+            )
+        except Exception:
+            logger.warning("Task input cleanup interrupted for %s", task.id)
+            complete = False
+        if complete:
+            task.input_cleanup_completed_at = datetime.now(timezone.utc)
+            await db.commit()
     return len(rows)
 
 

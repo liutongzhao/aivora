@@ -53,7 +53,9 @@ async def test_cancelled_and_terminal_rows_are_never_claimed(task_db, dispatch_u
 @pytest.mark.asyncio
 async def test_per_user_capacity_is_two(task_db, dispatch_users):
     await seed(task_db, [dispatch_users[0]] * 6)
-    assert [await claim(task_db, 8, 2) for _ in range(2)]
+    claims = [await claim(task_db, 8, 2) for _ in range(2)]
+    assert all(item is not None for item in claims)
+    assert len({item.task_id for item in claims}) == 2
     assert await claim(task_db, 8, 2) is None
 
 
@@ -62,5 +64,28 @@ async def test_two_sessions_cannot_overclaim_one_global_slot(task_db, dispatch_u
     await seed(task_db, dispatch_users[:2])
     first, second = await asyncio.wait_for(
         asyncio.gather(claim(task_db, 1), claim(task_db, 1)), 10
+    )
+    assert sum(item is not None for item in (first, second)) == 1
+
+
+@pytest.mark.asyncio
+async def test_two_sessions_at_global_and_user_boundary(task_db, dispatch_users):
+    await seed(task_db, [dispatch_users[0]] * 3 + [dispatch_users[1]])
+    prior = await claim(task_db, 3, 2)
+    assert prior is not None and prior.user_id == dispatch_users[0]
+    first, second = await asyncio.wait_for(
+        asyncio.gather(claim(task_db, 3, 2), claim(task_db, 3, 2)), 10
+    )
+    assert first is not None and second is not None
+    assert {first.user_id, second.user_id} == set(dispatch_users[:2])
+    assert await claim(task_db, 3, 2) is None
+
+
+@pytest.mark.asyncio
+async def test_two_sessions_cannot_both_take_last_user_slot(task_db, dispatch_users):
+    await seed(task_db, [dispatch_users[0]] * 4)
+    assert await claim(task_db, 4, 2) is not None
+    first, second = await asyncio.wait_for(
+        asyncio.gather(claim(task_db, 4, 2), claim(task_db, 4, 2)), 10
     )
     assert sum(item is not None for item in (first, second)) == 1
