@@ -19,6 +19,7 @@ interface SSEMessage {
   streamingStarted?: boolean
   isComplete?: boolean
   result?: any
+  data?: Record<string, any>
 }
 
 /**
@@ -392,7 +393,12 @@ export class SSEService {
     // 消息处理
     this.eventSource.onmessage = (event) => {
       try {
-        const data: SSEMessage = JSON.parse(event.data)
+        const raw: SSEMessage = JSON.parse(event.data)
+        // The local API wraps event-specific fields in `data`; normalize the
+        // envelope so the renderer can consume both local and legacy payloads.
+        const data: SSEMessage = raw.data
+          ? { ...raw, ...raw.data }
+          : raw
         console.log(`🌊 [SSE] 收到消息:`, data.type, data)
 
         switch (data.type) {

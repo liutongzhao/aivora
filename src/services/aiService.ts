@@ -190,26 +190,30 @@ export class AIService {
     try {
       console.log(`🔍 查询处理状态 - RequestId: ${requestId}`)
       
-      const response = await this.axiosInstance.get(`/process/${requestId}/status`)
+      const response = await this.axiosInstance.get(`/tasks/${requestId}`)
       
-      if (response.data.success) {
+      if (response.data?.id) {
         return {
           success: true,
           status: {
-            requestId: response.data.requestId,
+            requestId: response.data.id,
             status: response.data.status,
             stage: response.data.stage,
             progress: response.data.progress,
-            message: response.data.message,
-            estimatedTime: response.data.estimatedTime,
+            message: response.data.error_message || response.data.stage || '处理中',
             result: response.data.result,
-            error: response.data.error
+            error: response.data.error_message
+              ? {
+                  code: response.data.error_code,
+                  message: response.data.error_message
+                }
+              : undefined
           }
         }
       } else {
         return {
           success: false,
-          error: response.data.error
+          error: response.data
         }
       }
       
@@ -233,7 +237,7 @@ export class AIService {
     try {
       console.log(`🚫 取消处理请求 - RequestId: ${requestId}`)
       
-      const response = await this.axiosInstance.delete(`/process/${requestId}`)
+      const response = await this.axiosInstance.delete(`/tasks/${requestId}`)
       
       return {
         success: response.data.success
@@ -475,7 +479,7 @@ export class AIService {
    * 获取SSE流URL
    */
   getSSEStreamUrl(taskId: string): string {
-    return `${this.baseURL}/stream/${taskId}`
+    return `${this.baseURL}/api/ai/stream/${taskId}`
   }
 
   // ==================== 私有方法 ====================
