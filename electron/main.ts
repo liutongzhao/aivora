@@ -698,7 +698,7 @@ async function createWindow(): Promise<void> {
 
   // Configure window behavior
   state.mainWindow.webContents.setZoomFactor(1)
-  if (isDev) {
+  if (isDev && process.env.AIVORA_OPEN_DEVTOOLS === "1") {
     state.mainWindow.webContents.openDevTools()
   }
   state.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
