@@ -35,7 +35,7 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `backend/db/migrations/V013__user_model_config.sql` | 用户连接及不可变修订版、模型/默认映射、版本化提示词与任务快照；仅增量和复合归属外键 |
+| `backend/db/migrations/V014__user_model_config.sql` | 用户连接及不可变修订版、模型/默认映射、版本化提示词与任务快照；仅增量和复合归属外键 |
 | `backend/app/modules/byok/models.py` | SQLAlchemy 用户归属、FK、版本和唯一约束 |
 | `backend/app/modules/byok/crypto.py` | 加密/解密与主密钥版本选择；主密钥只来自部署环境 |
 | `backend/app/modules/byok/outbound.py` | HTTPS URL/DNS/地址/端口校验、`httpcore` 固定地址后端与禁重定向 |
@@ -51,13 +51,13 @@
 
 ## Task 1: 用户配置迁移与密钥信封
 
-**Files:** Create `backend/db/migrations/V013__user_model_config.sql`, `backend/app/modules/byok/models.py`, `backend/app/modules/byok/crypto.py`; Modify `backend/pyproject.toml`, `tests/conftest.py`; Test `tests/byok/test_encryption.py`, `tests/byok/test_config_constraints.py`.
+**Files:** Create `backend/db/migrations/V014__user_model_config.sql`, `backend/app/modules/byok/models.py`, `backend/app/modules/byok/crypto.py`; Modify `backend/pyproject.toml`, `tests/conftest.py`; Test `tests/byok/test_encryption.py`, `tests/byok/test_config_constraints.py`.
 
 **Interfaces:** `encrypt_secret(plaintext: str, keyring: Keyring) -> EncryptedSecret`、`decrypt_secret(value: EncryptedSecret, keyring: Keyring) -> str`；`provider_connections.user_id`、`user_models.connection_id`、`question_model_defaults(user_id,mode)`、`user_prompt_versions(user_id,mode,version)`。
 
 - [ ] **Step 1: 红灯测试。** 用两个用户创建同名连接/模型，断言复合归属 FK（跨用户关联被数据库拒绝）；同一用户每题型最多一个默认模型，版本号不可重复。密钥加解密往返、将 A 的密文行换给 B 后解密失败、错误主密钥拒绝、主密钥轮换后旧密文可读而新写入使用新版本；空值与短密钥拒绝。测试异常与 `repr()` 不包含密钥。
 - [ ] **Step 2: 验证红灯。** `PYTHONPATH=backend pytest -q tests/byok/test_encryption.py tests/byok/test_config_constraints.py`；预期缺新模块/约束而失败。
-- [ ] **Step 3: 最小实现。** V013 只新增用户配置表、外键与任务快照列；连接和模型的可修改内容以不可变修订版行存储，任务通过 `(user_id, connection_revision_id/model_revision_id/prompt_version_id)` 复合外键固定归属，停用/删除为软删除，历史 FK 永不级联抹去。`pyproject.toml` 加入受支持的 `cryptography` 运行依赖与 pytest/pytest-asyncio dev 依赖；密文为版本化 AEAD 信封，认证关联数据绑定 `user_id + connection_id + revision_id + key_version`，主密钥来自独立环境变量且不入数据库。缺主密钥时服务拒绝启用 BYOK，不降级明文或环境平台密钥。轮换先全实例部署双版本读取、新版本写入，再后台重加密并验证，最后移除旧版本。任务快照存修订版 ID/模型名/提示词版本/语言，不存密文或明文。保留 V003/V004 原有字段和旧数据；把隔离数据库 fixture 放到根 `tests/conftest.py`。
+- [ ] **Step 3: 最小实现。** V014 只新增用户配置表、外键与任务快照列；连接和模型的可修改内容以不可变修订版行存储，任务通过 `(user_id, connection_revision_id/model_revision_id/prompt_version_id)` 复合外键固定归属，停用/删除为软删除，历史 FK 永不级联抹去。`pyproject.toml` 加入受支持的 `cryptography` 运行依赖与 pytest/pytest-asyncio dev 依赖；密文为版本化 AEAD 信封，认证关联数据绑定 `user_id + connection_id + revision_id + key_version`，主密钥来自独立环境变量且不入数据库。缺主密钥时服务拒绝启用 BYOK，不降级明文或环境平台密钥。轮换先全实例部署双版本读取、新版本写入，再后台重加密并验证，最后移除旧版本。任务快照存修订版 ID/模型名/提示词版本/语言，不存密文或明文。保留 V003/V004 原有字段和旧数据；把隔离数据库 fixture 放到根 `tests/conftest.py`。
   ```sql
   CREATE TABLE provider_connections (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

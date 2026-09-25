@@ -44,7 +44,7 @@
 
 事件流近似裁剪 1000 条，故 Worker 同时维护短期聚合字段快照及其最后事件 ID。若重连游标早于现存最老事件，SSE 先发 `field_snapshot` 全量字段和真实 ID，之后仅增量回放；如果快照也不存在，发 `reset_required` 并让客户端等待持久终态或查询已保存结果，**不能静默漏字段**。完成/失败/取消终态由数据库为准；回放边界与心跳后核对数据库，若事件已裁剪则发 `terminal_snapshot` 后结束连接。
 
-授权刷新：登录用户 `POST /api/ai/tasks/{task_id}/stream-token` 只可刷新自己任务 token，单次有效期最多 15 分钟；任务初次创建固定 `stream_access_expires_at = created_at + 2h`（增量迁移 V014，仅新任务），刷新不越过此绝对期限。桌面 fetch/Web 客户端在 401 时经会话刷新，携最后 Redis ID 续连；旧任务沿用原始权限期限，不追溯延长。
+授权刷新：登录用户 `POST /api/ai/tasks/{task_id}/stream-token` 只可刷新自己任务 token，单次有效期最多 15 分钟；任务初次创建固定 `stream_access_expires_at = created_at + 2h`（增量迁移 V015，仅新任务），刷新不越过此绝对期限。桌面 fetch/Web 客户端在 401 时经会话刷新，携最后 Redis ID 续连；旧任务沿用原始权限期限，不追溯延长。
 
 ## Task 1: 字段投影器和最终验证
 
@@ -64,7 +64,7 @@
 
 ## Task 2: Worker 发布、可重放 SSE 与最终结果
 
-**Files:** Create `backend/db/migrations/V014__task_stream_access.sql`; Modify `backend/app/workers/ai_tasks.py`, `backend/app/infrastructure/events.py`, `backend/app/modules/tasks/router.py`, `backend/app/modules/tasks/models.py`, `backend/app/modules/tasks/schemas.py`, `backend/app/modules/tasks/service.py`, `backend/app/providers/openai_compatible.py`; Test `tests/tasks/test_field_events.py`, `tests/api/test_sse_replay.py`.
+**Files:** Create `backend/db/migrations/V015__task_stream_access.sql`; Modify `backend/app/workers/ai_tasks.py`, `backend/app/infrastructure/events.py`, `backend/app/modules/tasks/router.py`, `backend/app/modules/tasks/models.py`, `backend/app/modules/tasks/schemas.py`, `backend/app/modules/tasks/service.py`, `backend/app/providers/openai_compatible.py`; Test `tests/tasks/test_field_events.py`, `tests/api/test_sse_replay.py`.
 
 **Interfaces:** A 的 generation 仍决定唯一可发布者；`EventBus.read_after(task_id,last_id)` 与 `listen(task_id,last_id)` 返回真实 Redis ID；最终数据库答案含 `parse_status`、`parse_warning`、raw 和结构化结果。
 
