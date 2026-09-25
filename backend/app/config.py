@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     minio_secret_key: str = "change-me"
     minio_secure: bool = False
     minio_bucket: str = "aivora-private"
+    task_image_timeout_seconds: float = 20.0
 
     ai_base_url: str = "https://ai-pixel.online"
     ai_model: str = "gpt-6-sol"

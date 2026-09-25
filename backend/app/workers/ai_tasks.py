@@ -24,6 +24,7 @@ async def _run_task(task_id: UUID) -> None:
             return
         task.status = "processing"
         task.stage = "loading_images"
+        task.progress = 10
         task.started_at = datetime.now(timezone.utc)
         await db.commit()
         await event_bus.append(task_id, "progress", {}, stage="loading_images", progress=10)
@@ -42,12 +43,18 @@ async def _run_task(task_id: UUID) -> None:
         task_input = json.loads(raw_input)
         images = []
         for key in task_input["images"]:
-            data = storage.get_bytes(key)
+            # MinIO SDK is synchronous. Run it outside the event loop and cap
+            # the wait so one broken object cannot block the solo Celery worker.
+            data = await asyncio.wait_for(
+                asyncio.to_thread(storage.get_bytes, key),
+                timeout=get_settings().task_image_timeout_seconds,
+            )
             images.append(f"data:image/png;base64,{base64.b64encode(data).decode()}")
 
         provider = OpenAICompatibleProvider()
         task.status = "streaming"
         task.stage = "ai_streaming"
+        task.progress = 20
         await db.commit()
         await event_bus.append(
             task_id,
@@ -92,15 +99,21 @@ async def _run_task(task_id: UUID) -> None:
                 )
             )
             await db.commit()
+            result_payload = {
+                "questionType": task.mode,
+                "content": content,
+                "rawContent": content,
+                "parsed": parsed_answer.parsed,
+                "parseWarning": parsed_answer.warning,
+            }
             await event_bus.append(
                 task_id,
                 "completed",
                 {
-                    "questionType": task.mode,
-                    "content": content,
-                    "rawContent": content,
-                    "parsed": parsed_answer.parsed,
-                    "parseWarning": parsed_answer.warning,
+                    # Keep the established desktop-client contract while also
+                    # retaining the flat fields used by the local web client.
+                    "result": result_payload,
+                    **result_payload,
                 },
                 stage="completed",
                 progress=100,
