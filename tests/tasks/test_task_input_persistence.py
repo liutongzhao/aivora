@@ -232,6 +232,80 @@ async def test_stalled_storage_cleanup_does_not_block_following_task(
 
 
 @pytest.mark.asyncio
+async def test_late_upload_after_empty_scan_is_removed_on_slow_recheck(
+    task_db, dispatch_users,
+):
+    from app.modules.tasks.service import reconcile_created_tasks
+
+    user = dispatch_users[0]
+    async with task_db() as db:
+        task = AITask(user_id=user, mode="programming", status="created", stage="created",
+                      created_at=datetime.now(timezone.utc) - timedelta(hours=2))
+        db.add(task)
+        await db.commit()
+        task_id = task.id
+    async with task_db() as db:
+        assert await reconcile_created_tasks(db) == 1
+        first_scan = (await db.get(AITask, task_id)).input_cleanup_completed_at
+        assert first_scan is not None
+
+    key = f"task-images/{user}/{task_id}/late"
+    storage.put_bytes(key, b"late input", "image/png")
+    async with task_db() as db:
+        assert await reconcile_created_tasks(db) == 0
+    assert storage.exists(key)
+
+    async with task_db() as db:
+        task = await db.get(AITask, task_id)
+        task.input_cleanup_completed_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        task.input_cleanup_attempted_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        await db.commit()
+    async with task_db() as db:
+        assert await reconcile_created_tasks(db) == 0
+        task = await db.get(AITask, task_id)
+        assert task.status == "failed"
+        assert task.error_code == "TASK_INPUT_INTERRUPTED"
+        assert task.input_cleanup_completed_at > first_scan
+    assert not storage.exists(key)
+
+
+@pytest.mark.asyncio
+async def test_old_successful_scans_do_not_starve_failed_cleanup_retry(
+    task_db, dispatch_users, monkeypatch,
+):
+    from app.modules.tasks import service
+
+    now = datetime.now(timezone.utc)
+    async with task_db() as db:
+        historical = [
+            AITask(user_id=dispatch_users[0], mode="programming", status="failed",
+                   stage="error", error_code="TASK_INPUT_INTERRUPTED",
+                   created_at=now - timedelta(hours=4),
+                   input_cleanup_attempted_at=now - timedelta(hours=3),
+                   input_cleanup_completed_at=now - timedelta(hours=3))
+            for _ in range(12)
+        ]
+        retry = AITask(
+            user_id=dispatch_users[1], mode="programming", status="failed", stage="error",
+            error_code="TASK_INPUT_INTERRUPTED", created_at=now - timedelta(hours=2),
+            input_cleanup_attempted_at=now - timedelta(minutes=6),
+        )
+        db.add_all([*historical, retry])
+        await db.commit()
+        retry_id = retry.id
+        old_ids = {task.id for task in historical}
+
+    calls = []
+    monkeypatch.setattr(service, "_remove_task_objects", lambda task: calls.append(task.id) or True)
+    async with task_db() as db:
+        assert await service.reconcile_created_tasks(db) == 0
+        assert (await db.get(AITask, retry_id)).input_cleanup_completed_at is not None
+    assert retry_id in calls
+    assert old_ids.intersection(calls)
+    assert len(calls) <= 10
+
+
+@pytest.mark.asyncio
 async def test_redis_write_failure_marks_task_failed_before_dispatch(task_db, dispatch_boundary, monkeypatch):
     redis, dispatched = dispatch_boundary
 

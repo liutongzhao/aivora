@@ -44,3 +44,13 @@
 **修改。** `backend/db/migrations/V013__task_input_cleanup.sql` 与 `backend/app/modules/tasks/models.py` 增加持久的清理尝试/完成时间及待清理部分索引；`backend/app/modules/tasks/service.py` 每轮最多领取 10 条，尝试时间先提交、失败退避 5 分钟，单条同步 MinIO 操作转线程并限时 2 秒，成功才持久标记，失败仍保留原 `failed`/`TASK_INPUT_INTERRUPTED`；`backend/app/modules/tasks/dispatch.py` 将旧 Worker 截止改为 240 秒，严格晚于 180 秒硬时限。`tests/tasks/test_task_input_persistence.py`、`tests/tasks/test_dispatch_fairness.py`、`tests/tasks/test_dispatch_recovery.py` 覆盖持久标记、重试/超时、真实对象删除、显式非空槽位、双 Session 额度边界、默认禁用和周期任务注册。
 
 **剩余风险。** 超时的同步 MinIO 调用在线程中不能被强制中止，可能稍后返回；已持久化尝试时间与幂等删除可避免立即反复尝试，单轮调度等待最多约 20 秒。新迁移必须先于新版服务部署；Task 3 原子切换之前派发开关继续关闭，实际 Worker 重复执行验证仍归 Task 3。
+
+## Review 修复第 2 轮（2026-09-25）
+
+**RED。** 先写独立维护队列、热派发不进入对象存储，以及“空扫描后迟到上传”的测试。运行三个目标用例时 `test_dispatch_recovery.py` 因缺少 `app.workers.maintenance` 收集失败；单跑迟到上传测试为 `1 failed`，成功清理标记永久排除了后续对象。第一版复查实现的额外竞争用例也先红：`1 failed`，12 条旧成功记录占满 10 个名额，较新的失败重试被饿死。
+
+**GREEN。** 拆分维护批次后，四个目标用例 `4 passed in 2.67s`。最终 `PYTHONPATH=backend .venv/bin/pytest -q tests/tasks/test_dispatch_fairness.py tests/tasks/test_dispatch_recovery.py tests/tasks/test_task_input_persistence.py` 为 `28 passed in 8.40s`；`PYTHONPATH=backend .venv/bin/pytest -q tests` 为 `55 passed in 10.38s`；`git diff --check` 通过。Flyway 仅作用于随机测试库，没有触碰共享 aivora 数据。
+
+**修改与交接。** `backend/app/modules/tasks/dispatch.py` 去掉同步对象清理调用，热路径仅做数据库租约/Token 对账。`backend/app/workers/maintenance.py` 新增独立的 `aivora.maintain_task_inputs`；`backend/app/workers/celery_app.py` 每 60 秒投递至 `aivora-maintenance` 队列。Task 5 必须启动单独消费 `-Q aivora-maintenance` 的维护 Worker 和 Beat；本阶段不启动部署。`backend/app/modules/tasks/service.py` 对已成功扫描且满 1 小时的记录做限量复查，失败重试保持 5 分钟退避；10 个名额优先保证最多 8 个未完成清理，同时为到期复查保留最多 2 个名额，没有复查时释放全部空位。`backend/db/migrations/V014__task_input_cleanup_recheck.sql` 补已完成记录的复查索引，保留 V013 的未完成部分索引。相关隔离测试在 `tests/tasks/test_dispatch_recovery.py` 和 `tests/tasks/test_task_input_persistence.py`。
+
+**风险。** 已完成记录的一小时是最早复查时间，不是清理完成时限；积压时由独立维护 Worker 限量推进。超时 MinIO 线程可能仍在后台结束，但不再拖慢新任务领取；旧创建路径的单用户重复请求仍可能自行调用 `reconcile_created_tasks`，不影响调度器公共热路径。Task 3 切换前派发继续默认关闭。

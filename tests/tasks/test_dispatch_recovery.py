@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.modules.tasks.dispatch import Claim, claim_next, mark_published, reconcile, start_claim
 from app.modules.tasks.models import AITask, TaskStreamToken
 from app.workers import dispatcher
+from app.workers import maintenance
 from app.workers.celery_app import celery_app
 from app.config import Settings
 
@@ -114,24 +115,49 @@ def test_dispatch_defaults_off_and_periodic_entry_is_registered(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_reconcile_purges_expired_tokens_and_created_placeholders(task_db, dispatch_users, monkeypatch):
+async def test_dispatch_reconciles_tokens_without_waiting_for_object_cleanup(
+    task_db, dispatch_users, monkeypatch,
+):
     from app.modules.tasks import service
 
     task_id = await insert_task(task_db, dispatch_users[0])
     async with task_db() as db:
         db.add(TaskStreamToken(task_id=task_id, token_hash="a" * 64,
                                expires_at=NOW - timedelta(seconds=1)))
-        db.add(AITask(user_id=dispatch_users[0], mode="programming", status="created",
-                      stage="created", created_at=NOW - timedelta(hours=1)))
+        placeholder = AITask(user_id=dispatch_users[0], mode="programming", status="created",
+                             stage="created", created_at=NOW - timedelta(hours=1))
+        db.add(placeholder)
         await db.commit()
-    monkeypatch.setattr(service, "_remove_task_objects", lambda task: None)
+        placeholder_id = placeholder.id
+
+    def forbidden_cleanup(task):
+        raise AssertionError("dispatch must not access object storage")
+
+    monkeypatch.setattr(service, "_remove_task_objects", forbidden_cleanup)
     async with task_db() as db:
         await reconcile(db, NOW)
         await db.commit()
         assert (await db.scalars(select(TaskStreamToken).where(
             TaskStreamToken.task_id == task_id
         ))).all() == []
-        assert (await db.scalars(select(AITask).where(AITask.status == "created"))).all() == []
+        assert (await db.get(AITask, placeholder_id)).status == "created"
+    async with task_db() as db:
+        assert await claim_next(db, NOW, 4, 2) is not None
+        await db.commit()
+
+    monkeypatch.setattr(service, "_remove_task_objects", lambda task: True)
+    await maintenance.maintenance_once(task_db)
+    async with task_db() as db:
+        task = await db.get(AITask, placeholder_id)
+        assert task.status == "failed"
+        assert task.error_code == "TASK_INPUT_INTERRUPTED"
+
+
+def test_input_maintenance_runs_on_dedicated_queue():
+    entry = celery_app.conf.beat_schedule["aivora-maintain-task-inputs"]
+    assert entry["task"] == "aivora.maintain_task_inputs"
+    assert entry["options"]["queue"] == "aivora-maintenance"
+    assert celery_app.tasks["aivora.maintain_task_inputs"].name == entry["task"]
 
 
 @pytest.mark.asyncio

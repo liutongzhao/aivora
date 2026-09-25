@@ -6,7 +6,6 @@ from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.tasks.models import AITask, TaskStreamToken
-from app.modules.tasks.service import reconcile_created_tasks
 
 
 _LOCK_KEY = 0x4149564F5241
@@ -92,7 +91,6 @@ async def start_claim(db: AsyncSession, claim: Claim, now: datetime) -> bool:
 
 
 async def reconcile(db: AsyncSession, now: datetime) -> list[UUID]:
-    await reconcile_created_tasks(db)
     await _lock(db)
     await db.execute(delete(TaskStreamToken).where(TaskStreamToken.expires_at <= now))
     await db.execute(

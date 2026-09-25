@@ -23,6 +23,7 @@ from app.workers.celery_app import celery_app
 logger = logging.getLogger(__name__)
 CLEANUP_BATCH_SIZE = 10
 CLEANUP_RETRY_DELAY = timedelta(minutes=5)
+CLEANUP_RECHECK_DELAY = timedelta(hours=1)
 CLEANUP_TIMEOUT_SECONDS = 2.0
 
 
@@ -85,7 +86,7 @@ async def reconcile_created_tasks(
         task.error_message = "任务输入上传中断"
     await db.commit()
     # Claim a small, retryable cleanup batch before entering blocking object storage.
-    failed = (await db.scalars(
+    pending = (await db.scalars(
         select(AITask).where(
             AITask.status == "failed", AITask.error_code == "TASK_INPUT_INTERRUPTED",
             AITask.input_cleanup_completed_at.is_(None),
@@ -96,6 +97,17 @@ async def reconcile_created_tasks(
         ).order_by(AITask.input_cleanup_attempted_at.asc().nullsfirst(), AITask.created_at)
         .limit(CLEANUP_BATCH_SIZE).with_for_update(skip_locked=True)
     )).all()
+    recheck_capacity = CLEANUP_BATCH_SIZE - min(len(pending), CLEANUP_BATCH_SIZE - 2)
+    rechecks = (await db.scalars(
+        select(AITask).where(
+            AITask.status == "failed", AITask.error_code == "TASK_INPUT_INTERRUPTED",
+            AITask.input_cleanup_completed_at <= now - CLEANUP_RECHECK_DELAY,
+            AITask.input_cleanup_attempted_at <= now - CLEANUP_RETRY_DELAY,
+        ).order_by(AITask.input_cleanup_completed_at, AITask.created_at)
+        .limit(recheck_capacity)
+        .with_for_update(skip_locked=True)
+    )).all()
+    failed = [*pending[:CLEANUP_BATCH_SIZE - len(rechecks)], *rechecks]
     for task in failed:
         task.input_cleanup_attempted_at = now
     await db.commit()
