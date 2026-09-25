@@ -36,7 +36,7 @@
 | `backend/db/migrations/V011__task_dispatch_lease.sql` | 持久化任务图片顺序、租约代际、派发/心跳时间与必要索引；保持 V005 状态 CHECK 不变 |
 | `backend/app/modules/tasks/models.py` | 映射新增任务字段与 `TaskImage`；无明文密钥 |
 | `backend/app/modules/tasks/dispatch.py` | `claim_next(db, now, global_limit, user_limit) -> Claim | None`、`mark_published(db, claim) -> None`、`reconcile(db, now) -> list[UUID]`；PostgreSQL 行锁/事务与用户公平 |
-| `backend/app/modules/tasks/service.py` | 用户作用域幂等创建、图片持久化；不直接 `send_task` |
+| `backend/app/modules/tasks/service.py`, `backend/app/modules/files/service.py` | 用户作用域幂等占位、图片持久化与失败补偿；Task 1 保留旧派发直到 Task 3 原子切换 |
 | `backend/app/workers/dispatcher.py` | Beat 周期调度、派发及派发结果确认/重试；共享同一数据库的多调度器安全 |
 | `backend/app/workers/ai_tasks.py` | `run_ai_task(task_id, generation)`；原子领取、短会话、故障分类、取消栅栏 |
 | `backend/app/workers/celery_app.py`, `scripts/start-aivora.sh`, `docker-compose.yml`, `backend/app/config.py` | Beat、4 个可配置 prefork 槽、预取及任务超时 |
@@ -51,14 +51,14 @@
 
 **Files:**
 - Create: `backend/db/migrations/V011__task_dispatch_lease.sql`
-- Modify: `backend/app/modules/tasks/models.py`, `backend/app/modules/tasks/service.py`
+- Modify: `backend/app/modules/tasks/models.py`, `backend/app/modules/tasks/service.py`, `backend/app/modules/files/service.py`
 - Test: `tests/tasks/test_task_create_idempotency.py`, `tests/tasks/test_task_input_persistence.py`
 
 **Interfaces:**
 - Produces: `TaskImage(task_id: UUID, ordinal: int, stored_file_id: UUID)`；任务字段 `dispatch_generation: int`, `lease_state: str | None`, `lease_expires_at: datetime | None`, `published_at: datetime | None`。
 - Produces: `TaskService.create(user_id: UUID, request: ProcessScreenshotRequest) -> tuple[AITask, str]`，重复请求仅刷新**该用户任务**的 stream token。
 
-- [ ] **Step 1: 写失败测试。** 在 Postgres + MinIO 测试 fixture 中并发 `asyncio.gather` 提交同一用户、同一请求 ID 的两次请求，断言同一任务 ID、一组按 ordinal 排列的图片，以及无直接 `celery_app.send_task`；不同用户同键各有一个任务。再测 MinIO 上传失败：不留一个可派发的 `queued` 任务。
+- [ ] **Step 1: 写失败测试。** 在独立 Postgres 测试库 + MinIO 测试桶的 fixture 中并发 `asyncio.gather` 提交同一用户、同一请求 ID 的两次请求，断言同一任务 ID、一组按 ordinal 排列的图片，以及旧派发链路仅执行一次；不同用户同键各有一个任务。重复请求在占位任务仍是 `created` 时等其进入 `queued/failed` 再返回；失败占位同键返回原失败任务，用户要发起新任务须用新键。再测第二张图片上传失败及上传后进程中断：不留一个可派发的 `queued` 任务，对账清理对象。
   ```python
   first, second = await asyncio.gather(create_for(user_a, "same"), create_for(user_a, "same"))
   assert first.id == second.id
@@ -66,7 +66,7 @@
   assert await image_ordinals(first.id) == [0, 1]
   ```
 - [ ] **Step 2: 运行红灯。** `PYTHONPATH=backend pytest -q tests/tasks/test_task_create_idempotency.py tests/tasks/test_task_input_persistence.py`；预期新测试失败。
-- [ ] **Step 3: 实现最小改动。** V011 新增 `task_images`（`task_id` FK、`ordinal`、`stored_file_id` FK、唯一 `(task_id, ordinal)`）、租约四字段及 `status,created_at,user_id` 索引。创建任务先以不可派发状态持久化，再存图片；成功后以唯一 `(user_id,client_request_id)` 收敛冲突，事务内保存有序文件关联并置 `queued`，异常则清理已上传对象并将创建态任务标记失败。重复键返回原任务而不二次上传/派发。保留已创建任务的 Redis 输入读取作为过渡，新增任务读取 DB 关联；迁移不删现有字段。
+- [ ] **Step 3: 实现最小改动。** V011 新增 `task_images`（`task_id` FK、`ordinal`、`stored_file_id` FK、唯一 `(task_id, ordinal)`）、租约四字段及 `status,created_at,user_id` 索引。上传前用唯一 `(user_id,client_request_id)` 原子取得 `created` 占位；冲突请求等待该用户原任务到 `queued/failed` 并只返回其 ID，不轮换仍在使用的 token、不二次上传。`FileService` 给任务上传提供不逐图提交的接口，记录已上传键；事务内将文件记录与图片顺序写入并置 `queued`。异常补偿删除对象并将占位任务标记失败；对账扫描超时 `created` 任务及遗留对象，防进程中断。Task 1 **继续写 Redis 输入并直接派发旧 Worker**，直到 Task 3 调度器与 DB 输入消费就绪后原子切换；迁移不删旧字段。
   ```sql
   CREATE TABLE task_images (
       task_id UUID NOT NULL REFERENCES ai_tasks(id) ON DELETE CASCADE,
@@ -80,8 +80,8 @@
   ALTER TABLE ai_tasks ADD COLUMN published_at TIMESTAMPTZ;
   CREATE INDEX idx_ai_tasks_dispatch ON ai_tasks(status, created_at, user_id);
   ```
-- [ ] **Step 4: 运行绿灯及迁移验证。** 同 Step 2 命令应全绿；`docker compose run --rm flyway` 应成功；旧任务查询与图片顺序回归通过。
-- [ ] **Step 5: 独立提交。** `git add backend/db/migrations/V011__task_dispatch_lease.sql backend/app/modules/tasks/models.py backend/app/modules/tasks/service.py tests/tasks/test_task_create_idempotency.py tests/tasks/test_task_input_persistence.py`，`git commit -m "feat: persist task inputs and dispatch lease state"`；若涉及已有未提交改动，逐块核对后仅暂存本任务改动。
+- [ ] **Step 4: 运行绿灯及迁移验证。** 同 Step 2 命令应全绿；只对独立测试库执行 Flyway 迁移，旧 Worker 经 Redis 输入的单题回归及旧任务查询、图片顺序回归通过；不得在共享开发库盲目运行新迁移。
+- [ ] **Step 5: 独立提交。** `git add backend/db/migrations/V011__task_dispatch_lease.sql backend/app/modules/tasks/models.py backend/app/modules/tasks/service.py backend/app/modules/files/service.py tests/tasks/test_task_create_idempotency.py tests/tasks/test_task_input_persistence.py`，`git commit -m "feat: persist task inputs and dispatch lease state"`；若涉及已有未提交改动，逐块核对后仅暂存本任务改动。
 
 ## Task 2: 事务性公平领取与派发对账
 
@@ -97,7 +97,7 @@
 
 - [ ] **Step 1: 写失败测试。** 用真实 PostgreSQL 两个独立 Session 同时调用 `claim_next`；用户 A 排队 6 个、B/C/D 各 1 个，前 4 个 Claim 用户须各不相同；第五个无槽、取消的任务不领取；另测单用户最多 2 槽与 2 个调度器不会超领。
 - [ ] **Step 2: 运行红灯。** `PYTHONPATH=backend pytest -q tests/tasks/test_dispatch_fairness.py tests/tasks/test_dispatch_recovery.py`；预期缺少调度函数而失败。
-- [ ] **Step 3: 实现调度与对账。** 事务内先获得同一 advisory lock，再计算活跃 `reserved/running` 租约，筛出尚有用户额度的最老 `queued` 任务；优先活跃数为 0 的用户，再按等待时间/用户 ID 稳定排序。Claim 原子递增 generation 并设置 `reserved` 和过期时间，提交后才发 Celery；成功标记 `published_at`，发布异常留待周期对账。过期 `reserved` 重新入队并提升代际；过期 `running` 由 Task 3 的故障策略标记为无法确定是否计费的失败，不凭空并行重调度。`reconcile` 定期处理消息丢失和卡住的租约，并保留取消/终态不重派发。
+- [ ] **Step 3: 实现调度与对账。** 事务内先获得同一 advisory lock，再计算活跃 `reserved/running` 租约，筛出尚有用户额度的最老 `queued` 任务；优先活跃数为 0 的用户，再按等待时间/用户 ID 稳定排序。Claim 原子递增 generation 并设置 `reserved` 和过期时间，提交后才发 Celery；成功标记 `published_at`，发布异常留待周期对账。过期 `reserved` 重新入队并提升代际；过期 `running` 由 Task 3 的故障策略标记为无法确定是否计费的失败，不凭空并行重调度。`reconcile` 定期处理消息丢失和卡住的租约，并保留取消/终态不重派发。Task 2 仅启用可独立测试的调度逻辑，不和 Task 1 的旧直接派发同时消费同一批任务。
   ```python
   @dataclass(frozen=True)
   class Claim:
@@ -120,7 +120,7 @@
 
 - [ ] **Step 1: 写失败测试。** 同一 `(task_id,generation)` 两条消息同时启动，provider 调用计数为 1；取消发生在首个 chunk 后，最终数据库状态为 `cancelled` 且无完成事件或标准答案；图片读取超时写错误码并释放槽位；一个 provider 长时间超时不阻止另一用户。
 - [ ] **Step 2: 运行红灯。** `PYTHONPATH=backend pytest -q tests/tasks/test_worker_lease.py tests/tasks/test_task_cancel_race.py tests/tasks/test_worker_loop.py`；预期新竞态测试失败。
-- [ ] **Step 3: 实现原子执行。** 用 `UPDATE ... WHERE id=:id AND dispatch_generation=:generation AND lease_state='reserved' AND status='queued' RETURNING id` 取得唯一执行权；开始与阶段事件在短会话提交后写入。图片按 `task_images.ordinal` 读取，旧任务仅在没有关联时兼容 Redis 输入；读图与模型请求限时，流中定期检查取消和刷新租约，任何完成/失败写入也以代际 + 未取消条件做 CAS。只在赢得 CAS 后写 `Answer` 和终态事件；上游明确拒绝且确定未计费的限流可有限次退避，发生可能已接单的超时/断线则标记无法确定是否计费，不自动重试。移除 Celery 自身重试和跨整个模型流的 SQLAlchemy session。
+- [ ] **Step 3: 实现原子执行。** 用 `UPDATE ... WHERE id=:id AND dispatch_generation=:generation AND lease_state='reserved' AND status='queued' RETURNING id` 取得唯一执行权；开始与阶段事件在短会话提交后写入。图片按 `task_images.ordinal` 读取，旧任务仅在没有关联时兼容 Redis 输入；读图与模型请求限时，流中定期检查取消和刷新租约，任何完成/失败写入也以代际 + 未取消条件做 CAS。只在赢得 CAS 后写 `Answer` 和终态事件；上游明确拒绝且确定未计费的限流可有限次退避，发生可能已接单的超时/断线则标记无法确定是否计费，不自动重试。移除 Celery 自身重试和跨整个模型流的 SQLAlchemy session。完成新旧 Worker 消息区分和回归后，将 TaskService 直接派发切换为只提交 `queued`，启用唯一调度入口；旧在途消息完成前禁止新调度器领取它们。
   ```sql
   UPDATE ai_tasks SET lease_state = 'running', status = 'processing'
   WHERE id = :task_id AND dispatch_generation = :generation
