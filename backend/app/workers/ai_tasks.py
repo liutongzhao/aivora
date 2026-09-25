@@ -20,6 +20,11 @@ from app.workers.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
+class ClaimUnavailable(RuntimeError):
+    def __init__(self):
+        super().__init__("claim unavailable")
+
+
 async def _fail_task(task_id: UUID, code: str, message: str) -> None:
     async with session_factory() as db:
         failed = await db.scalar(
@@ -133,6 +138,7 @@ async def _run_task(task_id: UUID) -> None:
                 logger.warning("Failed to persist task terminal state for %s", task_id)
         else:
             logger.warning("Legacy worker could not claim task %s", task_id)
+            raise ClaimUnavailable() from None
     finally:
         try:
             await redis.aclose()
@@ -140,9 +146,11 @@ async def _run_task(task_id: UUID) -> None:
             logger.warning("Failed to close task input connection for %s", task_id)
 
 
-@celery_app.task(name="aivora.run_ai_task", bind=True)
+@celery_app.task(name="aivora.run_ai_task", bind=True, max_retries=None)
 def run_ai_task(self, task_id: str) -> None:
     try:
         asyncio.run(_run_task(UUID(task_id)))
+    except ClaimUnavailable:
+        self.retry(countdown=min(2 ** min(self.request.retries, 6), 60), max_retries=None)
     except Exception:
         logger.warning("Legacy worker stopped without retry for %s", task_id)
