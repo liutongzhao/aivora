@@ -19,6 +19,10 @@ interface SSEMessage {
   streamingStarted?: boolean
   isComplete?: boolean
   result?: any
+  questionType?: string
+  rawContent?: string
+  parsed?: Record<string, any>
+  parseWarning?: string | null
   data?: Record<string, any>
 }
 
@@ -456,23 +460,42 @@ export class SSEService {
           case 'completed':
             // 处理完成
             console.log('🎉 [SSE] 处理完成，准备发送最终结果')
+            // 本地 API 将完成结果直接放在事件 envelope 的 data 中，
+            // 旧版接口则可能使用 data.result；统一成桌面端结果协议。
+            const result = data.result || (
+              data.questionType || data.content || data.parsed
+                ? {
+                    questionType: data.questionType,
+                    content: data.content,
+                    rawContent: data.rawContent,
+                    parsed: data.parsed,
+                    parseWarning: data.parseWarning,
+                  }
+                : null
+            )
+            console.log('📦 [SSE] 完成结果已归一化:', {
+              hasResult: !!result,
+              questionType: result?.questionType,
+              contentLength: result?.content?.length || 0,
+              hasParsed: !!result?.parsed,
+            })
             this.updateProcessingStatus({
               requestId: this.currentTaskId || '',
               status: 'completed',
               stage: 'completed',
               progress: 100,
               message: '处理完成',
-              result: data.result || null,
+              result,
               error: null
             })
             
             // 🆕 发送最终格式化的结果，覆盖流式显示
-            if (data.result) {
+            if (result) {
               console.log('📤 [SSE] 发送最终格式化结果到UI')
-              this.emitEvent('final_result', data.result)
+              this.emitEvent('final_result', result)
             }
             
-            this.emitEvent('processing_complete', data.result)
+            this.emitEvent('processing_complete', result)
             // 完成后断开连接，防止重连循环
             this.disconnect()
             break
