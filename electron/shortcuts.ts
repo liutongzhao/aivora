@@ -8,7 +8,7 @@ import {
   ShortcutAction
 } from "../shared/shortcuts"
 
-const configData = require('../config.json')
+const configData = require('../../config.json')
 const API_BASE_URL = configData.api?.baseUrl || 'http://127.0.0.1:18000'
 
 const mouseButtonHookScript = String.raw`
