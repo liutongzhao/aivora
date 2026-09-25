@@ -168,81 +168,50 @@ export class SimpleAuthManager extends EventEmitter {
   public async loginWithCredentials(username: string, password: string): Promise<{ success: boolean; error?: string }> {
     console.log('🔐 开始账号密码登录...')
 
-    const webEndpoint = (configData.api?.webEndpoint || '/api').replace(/\/$/, '')
     const emailBody = { email: username, password }
-    const userBody = { username, password }
-    const dedupeEndpoints = (items: Array<{ path: string; body: any }>) => {
-      const seen = new Set<string>()
-      return items.filter(item => {
-        if (seen.has(item.path)) {
-          return false
-        }
-        seen.add(item.path)
-        return true
-      })
-    }
+    try {
+      console.log('🔗 登录接口: /api/auth/login')
+      const response = await this.apiClient.post('/api/auth/login', emailBody)
+      const sessionId = response.data?.session_id
 
-    const endpoints = dedupeEndpoints([
-      { path: `${webEndpoint}/login`, body: emailBody },
-      { path: '/login', body: emailBody },
-      { path: `${webEndpoint}/auth-enhanced/login`, body: userBody },
-      { path: '/api/auth-enhanced/login', body: userBody },
-      { path: `${webEndpoint}/auth/login`, body: userBody },
-      { path: '/api/auth/login', body: userBody }
-    ])
-    let lastError: any = null
-
-    for (const { path, body } of endpoints) {
-      try {
-        console.log(`🔗 尝试登录接口: ${path}`)
-        const response = await this.apiClient.post(path, body)
-        const sessionId = response.data?.sessionId || response.data?.token
-
-        if (!sessionId) {
-          throw new Error(response.data?.error || '服务器未返回会话信息')
-        }
-
-        this.token = sessionId
-        console.log('✅ 获取到会话凭证，保存中...')
-        await this.saveToken(this.token)
-        this.setupApiClient()
-
-        if (response.data.version) {
-          this.versionInfo = response.data.version
-          console.log(`🏷️ 登录时获取版本信息: 当前${this.versionInfo.current} -> 最新${this.versionInfo.latest}`)
-        }
-
-        await this.fetchUserInfo()
-        await this.fetchUserConfig()
-
-        if (this.user) {
-          this.emit('login-success', { user: this.user })
-          this.emit('authenticated', this.user)
-        }
-
-        if (this.userConfig) {
-          this.emit('config-synced', this.userConfig)
-        }
-
-        console.log('✅ 账号密码登录成功')
-        return { success: true }
-      } catch (error: any) {
-        lastError = error
-        const status = error.response?.status
-        if (status === 404) {
-          console.warn(`⚠️ 接口 ${path} 不存在，尝试下一个兼容路径`)
-          continue
-        }
-        console.error(`❌ 登录接口 ${path} 失败:`, error)
-        const serverMessage = error.response?.data?.error || error.response?.data?.message
-        const message = serverMessage || error.message || '登录失败'
-        return { success: false, error: serverMessage || this.getFriendlyErrorMessage(message) }
+      if (!sessionId) {
+        throw new Error(response.data?.error || '服务器未返回会话信息')
       }
-    }
 
-    const fallbackMessage = lastError?.response?.data?.error || lastError?.response?.data?.message
-    const defaultMessage = '服务器暂不支持账号密码登录，请升级后端或使用网页登录入口'
-    return { success: false, error: fallbackMessage || this.getFriendlyErrorMessage(defaultMessage) }
+      this.token = sessionId
+      console.log('✅ 获取到会话凭证，保存中...')
+      await this.saveToken(this.token)
+      this.setupApiClient()
+
+      if (response.data.version) {
+        this.versionInfo = response.data.version
+        console.log(`🏷️ 登录时获取版本信息: 当前${this.versionInfo.current} -> 最新${this.versionInfo.latest}`)
+      }
+
+      await this.fetchUserInfo()
+      await this.fetchUserConfig()
+
+      if (this.user) {
+        this.emit('login-success', { user: this.user })
+        this.emit('authenticated', this.user)
+      }
+
+      if (this.userConfig) {
+        this.emit('config-synced', this.userConfig)
+      }
+
+      console.log('✅ 账号密码登录成功')
+      return { success: true }
+    } catch (error: any) {
+      console.error('❌ 登录接口失败:', error)
+      const detail = error.response?.data?.detail
+      const serverMessage =
+        (typeof detail === 'string' ? detail : detail?.message) ||
+        error.response?.data?.error ||
+        error.response?.data?.message
+      const message = serverMessage || error.message || '登录失败'
+      return { success: false, error: serverMessage || this.getFriendlyErrorMessage(message) }
+    }
   }
 
   /**
