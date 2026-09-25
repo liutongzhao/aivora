@@ -170,7 +170,28 @@ export class ConfigHelper extends EventEmitter {
 
   public getShortcutBindings(): Record<ShortcutAction, string> {
     const config = this.loadConfig()
-    return mergeShortcutBindings(config.shortcutBindings)
+    const bindings = { ...(config.shortcutBindings || {}) }
+    const legacyDefaults: Partial<Record<ShortcutAction, string>> = {
+      screenshot: 'CommandOrControl+H',
+      singleChoice: 'CommandOrControl+M',
+      singleChoiceAlt: 'CommandOrControl+,'
+    }
+    let migrated = false
+
+    // macOS reserves Cmd+H/Cmd+M for Hide/Minimize. Migrate only values
+    // that still equal the old built-in defaults; user custom shortcuts stay intact.
+    Object.entries(legacyDefaults).forEach(([action, legacyAccelerator]) => {
+      const typedAction = action as ShortcutAction
+      if (bindings[typedAction] === legacyAccelerator) {
+        bindings[typedAction] = defaultShortcutBindings[typedAction]
+        migrated = true
+      }
+    })
+
+    if (migrated) {
+      this.updateConfig({ shortcutBindings: bindings })
+    }
+    return mergeShortcutBindings(bindings)
   }
 
   public updateShortcutBinding(action: ShortcutAction, accelerator: string): Record<ShortcutAction, string> {

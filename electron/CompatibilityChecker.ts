@@ -274,13 +274,13 @@ export class CompatibilityChecker {
     console.log('🔄 开始快捷键检测，暂时清除现有注册...')
 
     // 保存当前注册状态，稍后恢复
-    const wasRegistered = globalShortcut.isRegistered('CommandOrControl+H')
+    const wasRegistered = globalShortcut.isRegistered('CommandOrControl+Shift+H')
     console.log(`📋 应用快捷键当前状态: ${wasRegistered ? '已注册' : '未注册'}`)
 
     // 测试所有项目中使用的快捷键
     const testShortcuts = [
       // 基础功能快捷键
-      { keys: 'CommandOrControl+H', name: '截图' },
+      { keys: 'CommandOrControl+Shift+H', name: '截图' },
       { keys: 'CommandOrControl+B', name: '切换窗口可见性' },
       { keys: 'CommandOrControl+Q', name: '退出应用' },
       { keys: 'CommandOrControl+R', name: '重置/刷新' },
@@ -290,8 +290,8 @@ export class CompatibilityChecker {
       
       // AI处理快捷键
       { keys: 'CommandOrControl+Enter', name: '编程题处理' },
-      { keys: 'CommandOrControl+M', name: '单选题处理' },
-      { keys: 'CommandOrControl+,', name: '单选题处理(备用)' },
+      { keys: 'CommandOrControl+Shift+M', name: '单选题处理' },
+      { keys: 'CommandOrControl+Shift+,', name: '单选题处理(备用)' },
       { keys: 'CommandOrControl+Shift+Enter', name: '多选题处理' },
       { keys: 'CommandOrControl+.', name: '通用搜题' },
       { keys: 'CommandOrControl+Shift+S', name: '部分截图' },

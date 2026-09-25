@@ -256,11 +256,11 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
 ]
 
 export const defaultShortcutBindings: Record<ShortcutAction, string> = {
-  screenshot: 'CommandOrControl+H',
+  screenshot: 'CommandOrControl+Shift+H',
   partialScreenshot: 'CommandOrControl+Shift+S',
   programming: 'CommandOrControl+Enter',
-  singleChoice: 'CommandOrControl+M',
-  singleChoiceAlt: 'CommandOrControl+,',
+  singleChoice: 'CommandOrControl+Shift+M',
+  singleChoiceAlt: 'CommandOrControl+Shift+,',
   multipleChoice: 'CommandOrControl+Shift+Enter',
   universal: 'CommandOrControl+.',
   reset: 'CommandOrControl+R',
