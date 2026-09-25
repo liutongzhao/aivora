@@ -68,6 +68,7 @@ function App() {
   } = useWebAuth()
 
   // AI Processing Hook for WebSocket results
+  const aiProcessing = useAIProcessing()
   const {
     result,
     error: aiError,
@@ -76,7 +77,7 @@ function App() {
     processScreenshot,
     debugCode,
     cancelProcessing
-  } = useAIProcessing()
+  } = aiProcessing
 
   // 🆕 控制认证对话框显示
   // 当未认证时自动显示登录对话框，认证后自动关闭
@@ -609,6 +610,7 @@ function App() {
               >
                 <SubscribedApp
                   credits={credits}
+                  aiProcessing={aiProcessing}
                 />
               </ClickThroughManager>
             ) : (

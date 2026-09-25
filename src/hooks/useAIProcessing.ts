@@ -72,7 +72,7 @@ interface AIProcessingState {
   message: string
 }
 
-interface UseAIProcessingReturn extends AIProcessingState {
+export interface UseAIProcessingReturn extends AIProcessingState {
   processScreenshot: (screenshot: string | string[], options?: ProcessingOptions) => Promise<void>
   debugCode: (screenshot: string, code?: string, language?: string) => Promise<void>
   cancelProcessing: () => Promise<void>

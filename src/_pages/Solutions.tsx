@@ -14,8 +14,8 @@ import { COMMAND_KEY } from "../utils/platform"
 import { useLanguageConfig } from "../hooks/useLanguageConfig"
 import { parseStreamedSolution, shouldStartDisplaying } from "@/utils/streamParser"
 import { isMacOS } from "../utils/platform"
-import { useAIProcessing } from "../hooks/useAIProcessing"
 import { ProcessingStatus } from "../components/ProcessingStatus"
+import type { UseAIProcessingReturn } from "../hooks/useAIProcessing"
 
 // CSS variables follow the existing theme classes, including live theme changes.
 const codeColors: Record<string, string> = {
@@ -465,10 +465,12 @@ export const MultipleChoiceSection = ({
 export interface SolutionsProps {
   setView: (view: "queue" | "solutions" | "debug" | "raw-output") => void
   credits: number
+  aiProcessing: UseAIProcessingReturn
 }
 const Solutions: React.FC<SolutionsProps> = ({
   setView,
-  credits
+  credits,
+  aiProcessing
 }) => {
   const queryClient = useQueryClient()
   const contentRef = useRef<HTMLDivElement>(null)
@@ -485,7 +487,7 @@ const Solutions: React.FC<SolutionsProps> = ({
     message,
     error,
     debugCode 
-  } = useAIProcessing()
+  } = aiProcessing
 
   // 🔧 同步后端进度到本地的streamingProgress状态
   useEffect(() => {

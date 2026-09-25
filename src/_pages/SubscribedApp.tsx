@@ -2,23 +2,25 @@
 // 🆕 保留React Query导入以保持向后兼容（主要逻辑已迁移到SSE）
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import { useAIProcessing } from "../hooks/useAIProcessing"
 import Queue from "../_pages/Queue"
 import Solutions from "../_pages/Solutions"
 import RawOutput from "../_pages/RawOutput"
 import { useToast } from "../contexts/toast"
 import RemotePairingPanel from "../components/RemotePairingPanel"
+import type { UseAIProcessingReturn } from "../hooks/useAIProcessing"
 
 interface SubscribedAppProps {
   credits: number
+  aiProcessing: UseAIProcessingReturn
 }
 
 const SubscribedApp: React.FC<SubscribedAppProps> = ({
-  credits
+  credits,
+  aiProcessing
 }) => {
   // 🆕 恢复queryClient使用（向后兼容），同时保留SSE功能
   const queryClient = useQueryClient()
-  const { clearResult } = useAIProcessing()
+  const { clearResult } = aiProcessing
   const [view, setView] = useState<"queue" | "solutions" | "raw-output">("queue")
   const [previousView, setPreviousView] = useState<"queue" | "solutions">("queue")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -216,6 +218,7 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
         <Solutions
           setView={handleSetView}
           credits={credits}
+          aiProcessing={aiProcessing}
         />
       ) : view === "raw-output" ? (
         <RawOutput
