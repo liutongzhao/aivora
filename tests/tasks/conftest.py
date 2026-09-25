@@ -64,6 +64,23 @@ async def task_db(isolated_infrastructure):
     await engine.dispose()
 
 
+@pytest_asyncio.fixture
+async def dispatch_users(task_db):
+    users = [uuid4() for _ in range(4)]
+    async with task_db() as db:
+        for index, user in enumerate(users):
+            await db.execute(
+                text("INSERT INTO users (id, email, password_hash) VALUES (:id, :email, 'x')"),
+                {"id": user, "email": f"dispatch-{user}-{index}@example.test"},
+            )
+        await db.commit()
+    yield users
+    async with task_db() as db:
+        for user in users:
+            await db.execute(text("DELETE FROM users WHERE id = :id"), {"id": user})
+        await db.commit()
+
+
 @pytest.fixture
 def dispatch_boundary(monkeypatch):
     from app.modules.tasks import service
