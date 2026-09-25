@@ -12,7 +12,7 @@ from app.infrastructure.database import get_db_session
 from app.infrastructure.events import event_bus
 from app.modules.identity.dependencies import get_current_user
 from app.modules.identity.models import User
-from app.modules.tasks.models import AITask, TaskStreamToken
+from app.modules.tasks.models import AITask, Answer, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest, TaskCreatedResponse, TaskResponse
 from app.modules.tasks.service import TaskService, hash_stream_token
 
@@ -42,6 +42,40 @@ async def _find_stream_task(
     if not legacy_valid and not issued_valid:
         raise HTTPException(status_code=401, detail="SSE Token 无效或已过期")
     return task
+
+
+async def _database_terminal(task_id: UUID, db: AsyncSession) -> dict | None:
+    task = await db.scalar(
+        select(AITask).where(AITask.id == task_id).execution_options(populate_existing=True)
+    )
+    if not task:
+        return None
+    if task.status == "failed":
+        return {
+            "type": "error", "task_id": str(task_id), "stage": "error",
+            "data": {"code": task.error_code or "TASK_FAILED", "message": "任务处理失败"},
+        }
+    if task.status == "cancelled":
+        return {
+            "type": "cancelled", "task_id": str(task_id), "stage": "cancelled",
+            "data": {"message": "任务已取消"},
+        }
+    if task.status == "completed":
+        answer = await db.scalar(select(Answer).where(Answer.task_id == task_id))
+        result = None if answer is None else {
+            "questionType": answer.question_type, "content": answer.content,
+            "rawContent": answer.raw_content, "parsed": answer.parsed,
+            "parseWarning": answer.parse_warning,
+        }
+        return {
+            "type": "completed", "task_id": str(task_id), "stage": "completed",
+            "data": {"result": result, **(result or {})},
+        }
+    return None
+
+
+def _stream_frame(event: dict) -> str:
+    return "event: message\ndata: " + json.dumps(event, ensure_ascii=False) + "\n\n"
 
 
 @router.post("/process-screenshot", response_model=TaskCreatedResponse)
@@ -101,22 +135,35 @@ async def stream_task(
     last_id = request.headers.get("Last-Event-ID", "0-0")
 
     async def event_generator():
-        yield "event: message\ndata: " + json.dumps(
-            {"type": "connected", "task_id": str(task.id)}, ensure_ascii=False
-        ) + "\n\n"
-        for event in await event_bus.read_after(task.id, last_id):
-            yield f"id: {event.get('id', '')}\nevent: message\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
-            if event.get("type") in {"completed", "error", "cancelled"}:
+        yield _stream_frame({"type": "connected", "task_id": str(task.id)})
+        try:
+            for event in await event_bus.read_after(task.id, last_id):
+                yield f"id: {event.get('id', '')}\nevent: message\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event.get("type") in {"completed", "error", "cancelled"}:
+                    return
+            terminal = await _database_terminal(task.id, db)
+            if terminal:
+                yield _stream_frame(terminal)
                 return
-        async for event in event_bus.listen(task.id):
-            if await request.is_disconnected():
-                return
-            if event.get("type") == "heartbeat":
-                yield ": heartbeat\n\n"
-                continue
-            yield f"id: {event.get('id', '')}\nevent: message\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
-            if event.get("type") in {"completed", "error", "cancelled"}:
-                return
+            async for event in event_bus.listen(task.id):
+                if await request.is_disconnected():
+                    return
+                if event.get("type") == "heartbeat":
+                    terminal = await _database_terminal(task.id, db)
+                    if terminal:
+                        yield _stream_frame(terminal)
+                        return
+                    yield ": heartbeat\n\n"
+                    continue
+                yield f"id: {event.get('id', '')}\nevent: message\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event.get("type") in {"completed", "error", "cancelled"}:
+                    return
+        except Exception:
+            terminal = await _database_terminal(task.id, db)
+            yield _stream_frame(terminal or {
+                "type": "error", "task_id": str(task.id), "stage": "error",
+                "data": {"code": "STREAM_UNAVAILABLE", "message": "事件流暂不可用"},
+            })
 
     return StreamingResponse(
         event_generator(),

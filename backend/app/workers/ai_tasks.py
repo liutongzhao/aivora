@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.config import get_settings
 from app.infrastructure.database import session_factory
@@ -20,13 +20,24 @@ async def _run_task(task_id: UUID) -> None:
     redis = Redis.from_url(get_settings().redis_url, decode_responses=True)
     async with session_factory() as db:
         task = await db.get(AITask, task_id)
-        if not task or task.status in {"completed", "cancelled", "failed"}:
+        if not task or task.status != "queued":
+            await redis.aclose()
             return
-        task.status = "processing"
-        task.stage = "loading_images"
-        task.progress = 10
-        task.started_at = datetime.now(timezone.utc)
+        claimed = await db.scalar(
+            update(AITask)
+            .where(AITask.id == task_id, AITask.status == "queued")
+            .values(
+                status="processing", stage="loading_images", progress=10,
+                started_at=datetime.now(timezone.utc),
+            )
+            .returning(AITask.id)
+        )
+        if not claimed:
+            await db.rollback()
+            await redis.aclose()
+            return
         await db.commit()
+        await db.refresh(task)
         await event_bus.append(task_id, "progress", {}, stage="loading_images", progress=10)
 
         raw_input = await redis.get(f"aivora:task-input:{task_id}")

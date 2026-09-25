@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 from datetime import datetime, timedelta, timezone
@@ -6,6 +7,7 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.storage import storage
 from app.modules.tasks.models import AITask, Answer, TaskStreamToken
@@ -220,3 +222,52 @@ async def test_legacy_worker_consumes_redis_single_image(task_db, dispatch_bound
     async with task_db() as db:
         assert (await db.get(AITask, task.id)).status == "completed"
         assert (await db.scalar(select(Answer).where(Answer.task_id == task.id))) is not None
+
+
+@pytest.mark.asyncio
+async def test_worker_loses_queued_claim_when_dispatch_failure_wins_after_read(
+    task_db, dispatch_boundary, monkeypatch,
+):
+    from app.modules.tasks import service
+    from app.workers import ai_tasks
+
+    request = ProcessScreenshotRequest(image=base64.b64encode(b"race").decode())
+    async with task_db() as db:
+        task, _ = await TaskService(db).create(USER, request)
+
+    read_queued = asyncio.Event()
+    release_worker = asyncio.Event()
+    original_get = AsyncSession.get
+    provider_calls = []
+
+    async def pause_after_read(self, entity, ident, *args, **kwargs):
+        result = await original_get(self, entity, ident, *args, **kwargs)
+        if entity is AITask and ident == task.id and result.status == "queued":
+            read_queued.set()
+            await release_worker.wait()
+        return result
+
+    class Provider:
+        async def stream_answer(self, *args):
+            provider_calls.append(True)
+            yield SimpleNamespace(text='{"answer":"A"}')
+
+    monkeypatch.setattr(AsyncSession, "get", pause_after_read)
+    monkeypatch.setattr(ai_tasks, "session_factory", task_db)
+    monkeypatch.setattr(ai_tasks, "OpenAICompatibleProvider", Provider)
+    worker = asyncio.create_task(ai_tasks._run_task(task.id))
+    try:
+        await asyncio.wait_for(read_queued.wait(), 5)
+        async with task_db() as db:
+            await service.TaskService(db)._fail_queued(
+                task.id, "TASK_DISPATCH_UNCERTAIN", "任务派发结果无法确认"
+            )
+    finally:
+        release_worker.set()
+    await asyncio.wait_for(worker, 5)
+    async with task_db() as db:
+        persisted = await db.get(AITask, task.id)
+        assert persisted.status == "failed"
+        assert persisted.error_code == "TASK_DISPATCH_UNCERTAIN"
+        assert await db.scalar(select(Answer).where(Answer.task_id == task.id)) is None
+    assert provider_calls == []

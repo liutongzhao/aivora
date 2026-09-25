@@ -178,12 +178,19 @@ class TaskService:
         return task, stream_token
 
     async def _fail_queued(self, task_id: UUID, code: str, message: str) -> None:
-        await self.db.execute(
+        failed = await self.db.scalar(
             update(AITask).where(AITask.id == task_id, AITask.status == "queued").values(
                 status="failed", stage="error", error_code=code, error_message=message,
-            )
+            ).returning(AITask.id)
         )
         await self.db.commit()
+        if failed:
+            try:
+                await event_bus.append(
+                    task_id, "error", {"code": code, "message": message}, stage="error",
+                )
+            except Exception:
+                logger.warning("Failed to publish terminal task event for %s", task_id)
 
     async def _wait_for_existing(self, user_id: UUID, request_id: str) -> tuple[AITask, str]:
         while True:
