@@ -12,6 +12,7 @@ type RemoteClientDeps = {
 }
 
 const configData = require('../../config.json')
+const packageJson = require('../../package.json')
 const configuredApiBaseUrl = configData.api?.baseUrl || 'http://127.0.0.1:18000'
 const configuredWebBaseUrl = configData.web?.baseUrl || configuredApiBaseUrl
 
@@ -66,6 +67,23 @@ export class RemoteControlClient {
     const sessionId = simpleAuthManager.getToken()
     if (!sessionId) throw new Error('请先登录客户端')
     this.disconnect()
+
+    const registrationResponse = await fetch(`${this.apiBase.replace(/\/$/, '')}/api/remote/devices/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({
+        device_id: this.deviceId,
+        name: 'Aivora Desktop',
+        platform: process.platform,
+        client_version: packageJson.version
+      })
+    })
+    const registrationData = await registrationResponse.json()
+    if (!registrationResponse.ok || !registrationData.success) {
+      throw new Error(registrationData.error || registrationData.detail?.message || '桌面设备注册失败')
+    }
+
     // 先完成桌面端注册，再生成连接码，确保手机拿到连接码时服务端已能找到桌面端。
     const registration = this.connect(sessionId)
     const pairingSocket = this.socket
