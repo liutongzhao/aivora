@@ -20,7 +20,7 @@ async def _run_task(task_id: UUID) -> None:
     redis = Redis.from_url(get_settings().redis_url, decode_responses=True)
     async with session_factory() as db:
         task = await db.get(AITask, task_id)
-        if not task or task.status in {"completed", "cancelled"}:
+        if not task or task.status in {"completed", "cancelled", "failed"}:
             return
         task.status = "processing"
         task.stage = "loading_images"

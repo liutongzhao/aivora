@@ -12,7 +12,7 @@ from app.infrastructure.database import get_db_session
 from app.infrastructure.events import event_bus
 from app.modules.identity.dependencies import get_current_user
 from app.modules.identity.models import User
-from app.modules.tasks.models import AITask
+from app.modules.tasks.models import AITask, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest, TaskCreatedResponse, TaskResponse
 from app.modules.tasks.service import TaskService, hash_stream_token
 
@@ -25,13 +25,21 @@ async def _find_stream_task(
     db: AsyncSession,
 ) -> AITask:
     task = await db.get(AITask, task_id)
-    if (
-        not task
-        or not task.stream_token_hash
-        or task.stream_token_hash != hash_stream_token(token)
-        or not task.stream_token_expires_at
-        or task.stream_token_expires_at <= datetime.now(timezone.utc)
-    ):
+    if not task:
+        raise HTTPException(status_code=401, detail="SSE Token 无效或已过期")
+    token_hash = hash_stream_token(token)
+    now = datetime.now(timezone.utc)
+    legacy_valid = (
+        task.stream_token_hash == token_hash
+        and task.stream_token_expires_at is not None
+        and task.stream_token_expires_at > now
+    )
+    issued_valid = await db.scalar(select(TaskStreamToken.token_hash).where(
+        TaskStreamToken.task_id == task_id,
+        TaskStreamToken.token_hash == token_hash,
+        TaskStreamToken.expires_at > now,
+    ))
+    if not legacy_valid and not issued_valid:
         raise HTTPException(status_code=401, detail="SSE Token 无效或已过期")
     return task
 

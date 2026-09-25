@@ -49,6 +49,16 @@ class TaskImage(Base):
     )
 
 
+class TaskStreamToken(Base):
+    __tablename__ = "task_stream_tokens"
+
+    task_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ai_tasks.id", ondelete="CASCADE"), primary_key=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class TaskEvent(Base):
     __tablename__ = "task_events"
 

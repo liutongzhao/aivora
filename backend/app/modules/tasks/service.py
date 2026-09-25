@@ -2,12 +2,13 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +16,11 @@ from app.config import get_settings
 from app.infrastructure.events import event_bus
 from app.infrastructure.storage import storage
 from app.modules.files.service import FileService
-from app.modules.tasks.models import AITask, Answer, TaskImage
+from app.modules.tasks.models import AITask, Answer, TaskImage, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest
 from app.workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 def hash_stream_token(token: str) -> str:
@@ -38,11 +41,24 @@ def decode_image(value: str) -> tuple[bytes, str]:
 
 
 def _remove_task_objects(task: AITask, uploaded_keys: list[str] | None = None) -> None:
+    attempted = set()
     for key in uploaded_keys or []:
-        storage.delete(key)
+        attempted.add(key)
+        try:
+            storage.delete(key)
+        except Exception:
+            logger.exception("Failed to remove task input object %s", key)
     prefix = f"task-images/{task.user_id}/{task.id}/"
-    for item in storage.client.list_objects(storage.bucket, prefix=prefix, recursive=True):
-        storage.delete(item.object_name)
+    try:
+        for item in storage.client.list_objects(storage.bucket, prefix=prefix, recursive=True):
+            if item.object_name in attempted:
+                continue
+            try:
+                storage.delete(item.object_name)
+            except Exception:
+                logger.exception("Failed to remove task input object %s", item.object_name)
+    except Exception:
+        logger.exception("Failed to list task input objects for %s", task.id)
 
 
 async def reconcile_created_tasks(
@@ -124,8 +140,10 @@ class TaskService:
             await self.db.refresh(task, with_for_update=True)
             if task.status != "created":
                 raise RuntimeError("任务输入占位已失效")
-            task.stream_token_hash = hash_stream_token(stream_token)
-            task.stream_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+            self.db.add(TaskStreamToken(
+                task_id=task.id, token_hash=hash_stream_token(stream_token),
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+            ))
             task.status = "queued"
             task.stage = "queued"
             await self.db.commit()
@@ -140,14 +158,32 @@ class TaskService:
                 await self.db.commit()
             _remove_task_objects(task, uploaded_keys)
             raise
-        await self.redis.set(
-            f"aivora:task-input:{task.id}",
-            json.dumps({"images": image_keys, "mode": task.mode, "language": task.language}),
-            ex=3600,
-        )
-        await event_bus.append(task.id, "progress", {}, stage="queued", progress=0)
-        celery_app.send_task("aivora.run_ai_task", args=[str(task.id)], queue="aivora")
+        try:
+            await self.redis.set(
+                f"aivora:task-input:{task.id}",
+                json.dumps({"images": image_keys, "mode": task.mode, "language": task.language}),
+                ex=3600,
+            )
+            await event_bus.append(task.id, "progress", {}, stage="queued", progress=0)
+        except Exception:
+            await self._fail_queued(task.id, "TASK_INPUT_REDIS_ERROR", "任务输入发布失败")
+            raise
+        try:
+            celery_app.send_task("aivora.run_ai_task", args=[str(task.id)], queue="aivora")
+        except Exception:
+            # The broker may have accepted the message before losing its ACK.
+            # A retry here could execute the model twice.
+            await self._fail_queued(task.id, "TASK_DISPATCH_UNCERTAIN", "任务派发结果无法确认")
+            raise
         return task, stream_token
+
+    async def _fail_queued(self, task_id: UUID, code: str, message: str) -> None:
+        await self.db.execute(
+            update(AITask).where(AITask.id == task_id, AITask.status == "queued").values(
+                status="failed", stage="error", error_code=code, error_message=message,
+            )
+        )
+        await self.db.commit()
 
     async def _wait_for_existing(self, user_id: UUID, request_id: str) -> tuple[AITask, str]:
         while True:
@@ -157,8 +193,10 @@ class TaskService:
             ))).one()
             if existing.status != "created":
                 stream_token = secrets.token_urlsafe(32)
-                existing.stream_token_hash = hash_stream_token(stream_token)
-                existing.stream_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+                self.db.add(TaskStreamToken(
+                    task_id=existing.id, token_hash=hash_stream_token(stream_token),
+                    expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+                ))
                 await self.db.commit()
                 return existing, stream_token
             created_at = existing.created_at
