@@ -8,6 +8,7 @@ export type ShortcutAction =
   | 'partialScreenshot'
   | 'reset'
   | 'toggleWindow'
+  | 'openConfig'
   | 'moveWindowLeft'
   | 'moveWindowRight'
   | 'moveWindowUp'
@@ -94,6 +95,12 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
     action: 'toggleWindow',
     label: '显示/隐藏考试窗口',
     description: '在桌面显示或隐藏黑色客户端',
+    category: 'system'
+  },
+  {
+    action: 'openConfig',
+    label: '返回配置页',
+    description: '关闭考试小窗并返回账户与设置页面',
     category: 'system'
   },
   {
@@ -258,6 +265,7 @@ export const defaultShortcutBindings: Record<ShortcutAction, string> = {
   universal: 'CommandOrControl+.',
   reset: 'CommandOrControl+R',
   toggleWindow: 'CommandOrControl+B',
+  openConfig: 'CommandOrControl+Shift+P',
   moveWindowLeft: 'CommandOrControl+Left',
   moveWindowRight: 'CommandOrControl+Right',
   moveWindowUp: 'CommandOrControl+Up',

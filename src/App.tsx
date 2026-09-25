@@ -598,7 +598,14 @@ function App() {
             // 🆕 修改逻辑：只有在已认证时才显示主应用
             authenticated ? (
               <ClickThroughManager
-                nonClickThroughSelectors={[]}
+                nonClickThroughSelectors={[
+                  'button',
+                  'a',
+                  'input',
+                  'textarea',
+                  'select',
+                  '[role="button"]'
+                ]}
               >
                 <SubscribedApp
                   credits={credits}

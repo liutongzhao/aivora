@@ -550,7 +550,7 @@ export function ConfigPage() {
             </h1>
             <p className="text-sm text-slate-500">
               使用前可简单看一下常见快捷键，没问题后可点击右边的 开始使用<br />
-              如需重新打开当前配置页面，可以ctrl + q退出软件，再打开软件。
+              进入考试小窗后，可按 ⌘⇧P（Windows/Linux 为 Ctrl+Shift+P）返回当前配置页面；⌘Q / Ctrl+Q 用于退出软件。
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

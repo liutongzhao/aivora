@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, shell, ipcMain } from "electron"
+import { app, BrowserWindow, screen, shell, ipcMain, globalShortcut } from "electron"
 import path from "path"
 import fs from "fs"
 import { pathToFileURL } from "url"
@@ -252,6 +252,7 @@ export interface IShortcutsHelperDeps {
   setUserManuallyResized: (resized: boolean) => void // 🆕 添加标记函数
   isExamClientReady: () => boolean
   handleQuitShortcut?: () => void
+  openConfigWindow?: () => Promise<void> | void
   createRemotePairing?: () => Promise<void>
 }
 
@@ -387,6 +388,7 @@ function initializeHelpers() {
     },
     isExamClientReady: () => state.overlayLocked,
     handleQuitShortcut,
+    openConfigWindow: returnToConfigWindow,
     createRemotePairing: async () => {
       try {
         if (!state.remoteControlClient) throw new Error('远程控制尚未就绪')
@@ -952,6 +954,28 @@ function toggleMainWindow(): void {
   } else {
     showMainWindow();
   }
+}
+
+async function returnToConfigWindow(): Promise<void> {
+  if (state.isTestModeActive) {
+    await stopTestMode({ preserveEntryWindows: true })
+  }
+
+  // Overlay shortcuts are only needed while the exam window is active.
+  globalShortcut.unregisterAll()
+  state.overlayLocked = false
+  state.skipRestoreOnClose = true
+
+  const mainWindow = state.mainWindow
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    await new Promise<void>((resolve) => {
+      mainWindow.once('closed', resolve)
+      mainWindow.close()
+    })
+  }
+
+  state.skipRestoreOnClose = false
+  createConfigWindow()
 }
 
 // Window movement functions
@@ -1565,6 +1589,7 @@ function formatActionLabel(action: ShortcutAction) {
     partialScreenshot: '部分截图',
     reset: '重置',
     toggleWindow: '显示/隐藏',
+    openConfig: '返回配置页',
     moveWindowLeft: '窗口左移',
     moveWindowRight: '窗口右移',
     moveWindowUp: '窗口上移',

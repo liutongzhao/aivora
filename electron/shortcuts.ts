@@ -804,6 +804,15 @@ export class ShortcutsHelper {
       this.deps.toggleMainWindow()
     })
 
+    this.registerShortcut(bindings.openConfig, 'openConfig', () => {
+      console.log("Open config shortcut triggered.")
+      if (this.deps.openConfigWindow) {
+        Promise.resolve(this.deps.openConfigWindow()).catch((error) => {
+          console.error('Failed to open config window:', error)
+        })
+      }
+    })
+
     globalShortcut.register("CommandOrControl+Q", () => {
       console.log("Command/Ctrl + Q pressed.")
       if (this.deps.handleQuitShortcut) {
