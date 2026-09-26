@@ -94,6 +94,16 @@ async def set_model_default(
     return {"mode": item.mode, "model_id": item.model_id, "language": item.language}
 
 
+@router.get("/models/defaults")
+async def list_model_defaults(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db_session),
+):
+    return [
+        {"mode": item.mode, "model_id": item.model_id, "language": item.language}
+        for item in await BYOKService(db).defaults(user.id)
+    ]
+
+
 @router.get("/prompts/{mode}")
 async def list_prompts(
     mode: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db_session),

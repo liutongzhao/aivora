@@ -37,4 +37,3 @@ class TaskResponse(BaseModel):
     created_at: datetime
     completed_at: datetime | None
     result: dict | None = None
-

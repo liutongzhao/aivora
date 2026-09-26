@@ -64,9 +64,52 @@ class FieldProjector:
             start += 1
         if start >= len(self.buffer) or self.buffer[start] != '"':
             return None
-        decoder = json.JSONDecoder()
-        try:
-            value, _ = decoder.raw_decode(self.buffer[start:])
-        except json.JSONDecodeError:
-            return None
-        return value if isinstance(value, str) else None
+        return self._scan_string(start)
+
+    def _scan_string(self, start: int) -> str:
+        """Decode the portion of a JSON string that has arrived so far.
+
+        The model commonly splits a code block in the middle of the JSON
+        string. Using ``raw_decode`` would therefore hide all progress until
+        the closing quote arrives. This small scanner only emits complete
+        escape sequences and safely ignores an incomplete trailing escape.
+        """
+        value: list[str] = []
+        index = start + 1
+        while index < len(self.buffer):
+            char = self.buffer[index]
+            if char == '"':
+                break
+            if char != "\\":
+                value.append(char)
+                index += 1
+                continue
+            if index + 1 >= len(self.buffer):
+                break
+            escaped = self.buffer[index + 1]
+            simple = {
+                '"': '"',
+                "\\": "\\",
+                "/": "/",
+                "b": "\b",
+                "f": "\f",
+                "n": "\n",
+                "r": "\r",
+                "t": "\t",
+            }
+            if escaped in simple:
+                value.append(simple[escaped])
+                index += 2
+                continue
+            if escaped == "u":
+                digits = self.buffer[index + 2:index + 6]
+                if len(digits) < 4 or any(digit not in "0123456789abcdefABCDEF" for digit in digits):
+                    break
+                value.append(chr(int(digits, 16)))
+                index += 6
+                continue
+            # Invalid escape: keep the visible character instead of stopping
+            # the whole stream. The final parser will report the warning.
+            value.append(escaped)
+            index += 2
+        return "".join(value)

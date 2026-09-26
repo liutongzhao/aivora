@@ -15,12 +15,21 @@ const items = [
   { href: "/remote", label: "远程控制", icon: <Smartphone size={17} /> },
 ];
 
-export function AppShell({ children }: PropsWithChildren) {
+export function AppShell({ children, navigation = items }: PropsWithChildren<{ navigation?: typeof items }>) {
   const router = useRouter();
   async function logout() {
     await apiFetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     clearWebSessionId();
     router.replace("/login");
   }
-  return <div className="app-shell"><Sidebar items={items} /><div className="app-content"><div className="app-topbar"><span /><button className="button button-secondary" onClick={logout}>退出登录</button></div>{children}</div></div>;
+  return <div className="app-shell">
+      <Sidebar items={navigation} />
+    <div className="app-content">
+      <header className="app-topbar">
+        <span className="topbar-location">Aivora Workspace</span>
+        <div className="topbar-actions"><div className="user-menu"><span className="user-avatar">A</span><span className="user-name">我的工作区</span></div><button className="logout-button" onClick={logout}>退出登录</button></div>
+      </header>
+      <div className="page-shell">{children}</div>
+    </div>
+  </div>;
 }

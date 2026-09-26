@@ -7,6 +7,7 @@ import { MetricCard } from "../../../components/dashboard/MetricCard";
 import { RecentTasks } from "../../../components/dashboard/RecentTasks";
 import { DesktopStatusCard } from "../../../components/dashboard/DesktopStatusCard";
 import type { TaskSummary } from "../../../components/tasks/TaskList";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 
 type Task = TaskSummary;
 type Model = { name: string; display_name: string };
@@ -14,24 +15,32 @@ type Model = { name: string; display_name: string };
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [models, setModels] = useState<Model[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      apiFetch<{ tasks: Task[] }>("/api/ai/tasks?limit=100"),
+      apiFetch<{ tasks: Task[] }>("/api/ai/tasks?page=1&page_size=100"),
       apiFetch<Model[]>("/api/ai/models"),
     ]).then(([taskResult, modelResult]) => {
       setTasks(taskResult.tasks);
       setModels(modelResult);
-    }).catch(() => undefined);
+    }).catch((reason) => setError(reason instanceof Error ? reason.message : "数据加载失败"));
   }, []);
 
   const activeCount = tasks.filter((task) => ["queued", "processing", "streaming"].includes(task.status)).length;
+  const completedCount = tasks.filter((task) => task.status === "completed").length;
+  const failedCount = tasks.filter((task) => task.status === "failed").length;
 
-  return (
-    <main className="container">
-      <section className="app-page-heading"><div><div className="eyebrow">OVERVIEW</div><h1>工作台</h1><p className="muted">今天的任务和桌面工作流，都在这里。</p></div><Link className="button" href="/dashboard/tasks">查看全部任务</Link></section>
-      <section className="metric-grid"><MetricCard label="进行中的任务" value={activeCount} detail="实时同步" /><MetricCard label="历史任务" value={tasks.length} detail="保存在你的账户中" /><MetricCard label="当前模型" value={models[0]?.display_name ?? "—"} detail={`${models.length} 个可用模型`} /></section>
-      <section className="dashboard-columns"><div className="panel"><div className="panel-heading"><div><span className="eyebrow">RECENT ACTIVITY</span><h2>最近任务</h2></div><Link href="/dashboard/history">查看历史</Link></div>{tasks.length ? <RecentTasks tasks={tasks} /> : <div className="empty-inline">还没有任务，打开桌面端开始第一次处理。</div>}</div><DesktopStatusCard /></section>
-    </main>
-  );
+  return <main className="container">
+    <section className="app-page-heading"><div><div className="eyebrow">OVERVIEW</div><h1>工作台</h1><p>把截图交给 Aivora，答案会在这里准备好。</p></div><Link className="button" href="/dashboard/tasks">查看任务 <ArrowUpRight size={15} /></Link></section>
+    {error && <div className="notice" role="alert">工作台数据暂时无法加载：{error}</div>}
+    <section className="metric-grid"><MetricCard label="进行中的任务" value={activeCount} detail="当前队列" /><MetricCard label="已完成" value={completedCount} detail={`最近 ${tasks.length} 项任务`} /><MetricCard label="处理失败" value={failedCount} detail="可在任务页查看原因" /></section>
+    <section className="dashboard-columns">
+      <div className="panel"><div className="panel-heading"><div><span className="eyebrow">RECENT ACTIVITY</span><h2>最近任务</h2></div><Link href="/dashboard/history">查看全部 <ArrowUpRight size={14} /></Link></div>{tasks.length ? <RecentTasks tasks={tasks} /> : <div className="empty-inline"><Sparkles size={22} /><p>还没有任务，打开桌面端开始第一次处理。</p></div>}</div>
+      <div className="workspace-side">
+        <div className="panel model-summary"><span className="eyebrow">MODELS</span><strong>{models.length ? `${models.length} 个可用模型` : "尚未配置模型"}</strong><span>{models.length ? models.map((model) => model.display_name).slice(0, 3).join(" · ") : "添加自己的 API 连接后即可使用。"}</span><Link href="/dashboard/settings">管理模型 <ArrowUpRight size={14} /></Link></div>
+        <DesktopStatusCard />
+      </div>
+    </section>
+  </main>;
 }

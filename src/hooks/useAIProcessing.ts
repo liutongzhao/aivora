@@ -114,6 +114,13 @@ export function useAIProcessing(): UseAIProcessingReturn {
 
   // 流式内容累积（用于SSE实时内容更新）
   const streamingContent = useRef<string>('')
+  const streamingFields = useRef<{
+    code: string
+    explanation: string
+    answer?: string
+    answers?: string[]
+  }>({ code: '', explanation: '' })
+  const currentQuestionType = useRef<ProcessingOptions['forceQuestionType']>('programming')
   
   // 🆕 防重入锁：防止多次同时清除导致状态竞争
   const isClearingRef = useRef<boolean>(false)
@@ -222,7 +229,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     console.log('🌊 [SSE-HOOK] 收到内容更新, 长度:', content.length)
     console.log('🔍 [SSE-HOOK] 内容前200字符:', JSON.stringify(content.substring(0, 200)))
     
-    streamingContent.current = content
+    streamingContent.current = append ? streamingContent.current + content : content
     
     // 更新内部state
     setState(prev => {
@@ -231,11 +238,49 @@ export function useAIProcessing(): UseAIProcessingReturn {
         ...prev,
         result: {
           content: streamingContent.current,
-          type: 'programming',
+          questionType: currentQuestionType.current,
+          type: currentQuestionType.current,
           stage: 'processing'
         }
       }
     })
+  }, [])
+
+  const handleFieldUpdate = useCallback((event: {
+    type: 'code_delta' | 'explanation_delta' | 'answer_set'
+    field: string
+    delta?: string
+    value?: string | string[]
+  }) => {
+    const fields = streamingFields.current
+    if (event.type === 'code_delta') {
+      fields.code += event.delta || ''
+    } else if (event.type === 'explanation_delta') {
+      fields.explanation += event.delta || ''
+    } else if (event.field === 'answers' && Array.isArray(event.value)) {
+      fields.answers = event.value
+    } else if (event.field === 'answer' && typeof event.value === 'string') {
+      fields.answer = event.value
+    }
+
+    const parsed = {
+      question_type: currentQuestionType.current,
+      ...(fields.code ? { code: fields.code } : {}),
+      ...(fields.explanation ? { explanation: fields.explanation } : {}),
+      ...(fields.answer ? { answer: fields.answer } : {}),
+      ...(fields.answers ? { answers: fields.answers } : {}),
+    }
+    setState(prev => ({
+      ...prev,
+      result: {
+        ...prev.result,
+        content: fields.code || streamingContent.current,
+        questionType: currentQuestionType.current,
+        type: currentQuestionType.current,
+        parsed,
+        stage: 'processing',
+      }
+    }))
   }, [])
 
   // 🆕 处理完成后的格式化（从handleProcessingComplete调用）
@@ -245,20 +290,12 @@ export function useAIProcessing(): UseAIProcessingReturn {
     
     try {
       // 🆕 根据题目类型处理不同的数据格式
-      if (result.questionType === 'single_choice' || result.questionType === 'multiple_choice') {
-        // 选择题：设置formatted字段，让它走和编程题相同的显示逻辑
-        console.log('🎯 [SSE-HOOK] 处理选择题结果，设置formatted字段')
+      if (result.questionType === 'single_choice' || result.questionType === 'multiple_choice' || result.questionType === 'universal') {
         setState(prev => ({
           ...prev,
           result: {
             ...result,
             isFormatted: true,
-            formatted: {
-              code: result.content || '选择题答案',
-              thoughts: [`题目类型: ${result.questionType}`, '答案内容见上方'],
-              timeComplexity: '选择题',
-              spaceComplexity: '选择题'
-            },
             timestamp: Date.now()
           },
           isProcessing: false
@@ -359,6 +396,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     // 🔧 简化的SSE事件监听器
     sseService.onProcessingStatusUpdate(handleStatusUpdate)
     sseService.onContentUpdate(handleContentUpdate)  // 🔥 核心：处理流式内容
+    sseService.onFieldUpdate(handleFieldUpdate)
     sseService.onProcessingComplete(handleProcessingComplete)  // 🆕 处理完成时进行客户端格式化
     sseService.onFinalResult(handleFinalResult)  // 🆕 处理最终结果（选择题等）
     sseService.onError(handleSSEError)
@@ -370,11 +408,12 @@ export function useAIProcessing(): UseAIProcessingReturn {
       console.log('🧹 [SSE-HOOK] 清理事件监听器')
       sseService.offProcessingStatusUpdate(handleStatusUpdate)
       sseService.offContentUpdate(handleContentUpdate)
+      sseService.offFieldUpdate(handleFieldUpdate)
       sseService.offProcessingComplete(handleProcessingComplete)
       sseService.offFinalResult(handleFinalResult)
       sseService.offError(handleSSEError)
     }
-  }, [handleStatusUpdate, handleContentUpdate, handleProcessingComplete, handleFinalResult, handleSSEError])
+  }, [handleStatusUpdate, handleContentUpdate, handleFieldUpdate, handleProcessingComplete, handleFinalResult, handleSSEError])
 
   /**
    * 处理截图
@@ -410,6 +449,9 @@ export function useAIProcessing(): UseAIProcessingReturn {
       }
       
       // 保存处理参数用于重试
+      streamingContent.current = ''
+      streamingFields.current = { code: '', explanation: '' }
+      currentQuestionType.current = options?.forceQuestionType || 'programming'
       lastProcessingParams.current = {
         type: 'screenshot',
         screenshot,
@@ -645,6 +687,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
       // 🆕 断开SSE连接并重置状态
       sseService.disconnect()
       streamingContent.current = ''
+      streamingFields.current = { code: '', explanation: '' }
       
       // 🚀 清理动态轮询
       if (pollingCleanupRef.current) {
@@ -720,6 +763,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
       // 重置流式内容
       console.log(`🧹 [${clearId}] 清空流式内容`)
       streamingContent.current = ''
+      streamingFields.current = { code: '', explanation: '' }
       
       // 🚀 清理动态轮询
       if (pollingCleanupRef.current) {

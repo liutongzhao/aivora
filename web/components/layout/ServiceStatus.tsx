@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getApiBase } from "../../lib/api-client";
 
 export function ServiceStatus() {
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:18000"}/health/ready`)
+    fetch(`${getApiBase()}/health/ready`)
       .then((response) => setStatus(response.ok ? "online" : "offline"))
       .catch(() => setStatus("offline"));
   }, []);

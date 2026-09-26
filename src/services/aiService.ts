@@ -39,13 +39,24 @@ export interface AIProcessResult {
     spaceComplexity: string;
   };
   parsed?: {                 // 后端解析的数据（用于final_result事件）
+    question_type?: string;
+    question?: string;
+    options?: Record<string, string> | string[];
+    answer?: string;
+    answers?: string[];
+    explanation?: string;
+    warnings?: string[] | string;
+    raw?: string;
     code?: string;
     thoughts?: string[];
     timeComplexity?: string;
     spaceComplexity?: string;
     time_complexity?: string;
     space_complexity?: string;
+    analysis?: string;
+    reasoning?: string;
   };
+  parseWarning?: string;
 }
 
 // 处理状态接口

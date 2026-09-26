@@ -25,11 +25,12 @@ class OpenAICompatibleProvider:
         mode: str,
         model: str,
         language: str | None,
+        prompt_override: str | None = None,
     ) -> AsyncIterator[ProviderChunk]:
         if not self.api_key:
             raise RuntimeError("AI_API_KEY 未配置")
         definition = PromptRegistry.get(mode, language)
-        prompt = definition.user_prompt(len(images), language)
+        prompt = prompt_override or definition.user_prompt(len(images), language)
         content: list[dict] = [{"type": "text", "text": prompt}]
         content.extend({"type": "image_url", "image_url": {"url": image}} for image in images)
         payload = {

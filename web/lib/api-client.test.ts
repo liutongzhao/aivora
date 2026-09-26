@@ -18,8 +18,9 @@ describe("apiFetch", () => {
 
     await apiFetch("/api/session_status");
 
+    const expectedBase = `${window.location.protocol}//${window.location.hostname}:18000`;
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:18000/api/session_status",
+      `${expectedBase}/api/session_status`,
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Session-Id": "session-test" }),
       }),

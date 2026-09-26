@@ -79,6 +79,11 @@ class BYOKService:
             select(UserModel).where(UserModel.user_id == user_id)
         )).all())
 
+    async def defaults(self, user_id: UUID) -> list[QuestionModelDefault]:
+        return list((await self.db.scalars(
+            select(QuestionModelDefault).where(QuestionModelDefault.user_id == user_id)
+        )).all())
+
     async def resolve_runtime(self, user_id: UUID, mode: str):
         default = await self.db.scalar(select(QuestionModelDefault).where(
             QuestionModelDefault.user_id == user_id, QuestionModelDefault.mode == mode,
@@ -98,9 +103,20 @@ class BYOKService:
         ))
         if not connection:
             raise ValueError("模型连接不可用")
+        prompt = await self.db.scalar(
+            select(UserPromptVersion)
+            .where(
+                UserPromptVersion.user_id == user_id,
+                UserPromptVersion.mode == mode,
+                UserPromptVersion.enabled.is_(True),
+            )
+            .order_by(UserPromptVersion.version.desc())
+        )
         return {
             "connection_id": connection.id,
             "model_id": model.id,
+            "prompt_version_id": prompt.id if prompt else None,
+            "prompt": prompt.content if prompt else None,
             "model": model.name,
             "base_url": connection.base_url,
             "api_key": decrypt_secret(connection.api_key_encrypted),

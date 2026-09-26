@@ -8,6 +8,16 @@ import { LoadingState } from "../ui";
 export function AuthGuard({ children }: PropsWithChildren) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  useEffect(() => { apiFetch("/api/session_status").then(() => setReady(true)).catch(() => router.replace("/login")); }, [router]);
+  useEffect(() => {
+    apiFetch("/api/session_status")
+      .then(() => setReady(true))
+      .catch((error) => {
+        if (error instanceof Error && error.message.includes("无法连接服务")) {
+          setReady(true);
+          return;
+        }
+        router.replace("/login");
+      });
+  }, [router]);
   return ready ? children : <LoadingState label="正在验证登录状态" />;
 }

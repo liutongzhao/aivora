@@ -145,18 +145,23 @@ class TaskService:
             user_id=user_id,
             client_request_id=request.client_request_id,
             mode=request.mode,
-            language=request.language,
+            language=runtime_config["language"] if runtime_config else request.language,
             status="created",
             stage="created",
             input_image_count=len(images),
             provider_connection_id=runtime_config["connection_id"] if runtime_config else None,
             user_model_id=runtime_config["model_id"] if runtime_config else None,
+            prompt_version_id=runtime_config["prompt_version_id"] if runtime_config else None,
         )
         if request.client_request_id:
             statement = insert(AITask).values(
                 id=task.id, user_id=user_id, client_request_id=request.client_request_id,
-                mode=request.mode, language=request.language, status="created", stage="created",
+                mode=request.mode,
+                language=runtime_config["language"] if runtime_config else request.language,
                 input_image_count=len(images),
+                provider_connection_id=runtime_config["connection_id"] if runtime_config else None,
+                user_model_id=runtime_config["model_id"] if runtime_config else None,
+                prompt_version_id=runtime_config["prompt_version_id"] if runtime_config else None,
             ).on_conflict_do_nothing(
                 index_elements=[AITask.user_id, AITask.client_request_id],
                 index_where=AITask.client_request_id.is_not(None),
@@ -273,3 +278,18 @@ class TaskService:
             raise ValueError("任务不存在")
         answer_result = await self.db.execute(select(Answer).where(Answer.task_id == task_id))
         return task, answer_result.scalar_one_or_none()
+
+    async def issue_stream_token(self, user_id: UUID, task_id: UUID) -> str:
+        task = await self.db.scalar(
+            select(AITask).where(AITask.id == task_id, AITask.user_id == user_id)
+        )
+        if not task:
+            raise ValueError("任务不存在")
+        token = secrets.token_urlsafe(32)
+        self.db.add(TaskStreamToken(
+            task_id=task.id,
+            token_hash=hash_stream_token(token),
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+        ))
+        await self.db.commit()
+        return token

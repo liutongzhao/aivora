@@ -5,9 +5,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database import get_db_session
+from app.infrastructure.storage import storage
 from app.modules.identity.dependencies import require_admin
 from app.modules.identity.models import Session, User
-from app.modules.tasks.models import AITask
+from app.modules.files.models import StoredFile
+from app.modules.tasks.models import AITask, Answer, TaskImage
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -82,6 +84,54 @@ async def list_tasks(
             }
             for task in result.scalars().all()
         ]
+    }
+
+
+@router.get("/tasks/{task_id}")
+async def get_task(
+    task_id: UUID,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    task = await db.get(AITask, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    answer = await db.scalar(select(Answer).where(Answer.task_id == task_id))
+    files = (await db.execute(
+        select(StoredFile)
+        .join(TaskImage, TaskImage.stored_file_id == StoredFile.id)
+        .where(TaskImage.task_id == task_id)
+        .order_by(TaskImage.ordinal)
+    )).scalars().all()
+    return {
+        "task": {
+            "id": str(task.id),
+            "user_id": str(task.user_id),
+            "mode": task.mode,
+            "status": task.status,
+            "stage": task.stage,
+            "progress": task.progress,
+            "created_at": task.created_at,
+            "completed_at": task.completed_at,
+            "error_code": task.error_code,
+            "error_message": task.error_message,
+        },
+        "answer": None if not answer else {
+            "question_type": answer.question_type,
+            "content": answer.content,
+            "raw_content": answer.raw_content,
+            "parsed": answer.parsed,
+            "parse_warning": answer.parse_warning,
+        },
+        "images": [
+            {
+                "id": str(file.id),
+                "content_type": file.content_type,
+                "size_bytes": file.size_bytes,
+                "url": storage.presigned_get(file.object_key),
+            }
+            for file in files
+        ],
     }
 
 

@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism"
 
 import ScreenshotQueue from "../components/Queue/ScreenshotQueue"
+import { ChoiceResult } from "../components/Solutions/ChoiceResult"
 
 import { ProblemStatementData, SolutionData, MultipleChoiceAnswer } from "../types/solutions"
 import SolutionCommands from "../components/Solutions/SolutionCommands"
@@ -488,6 +489,15 @@ const Solutions: React.FC<SolutionsProps> = ({
     error,
     debugCode 
   } = aiProcessing
+  const choiceMode = aiResult?.questionType || aiResult?.type
+  const isStructuredAnswer = choiceMode === 'single_choice' ||
+    choiceMode === 'multiple_choice' || choiceMode === 'universal'
+  const choiceResult = isStructuredAnswer && aiResult && (
+    aiResult.isFormatted ||
+    !!aiResult.parsed?.answer ||
+    (Array.isArray(aiResult.parsed?.answers) && aiResult.parsed.answers.length > 0)
+  ) ? aiResult : null
+  const choicePending = isStructuredAnswer && !choiceResult
 
   // 🔧 同步后端进度到本地的streamingProgress状态
   useEffect(() => {
@@ -588,11 +598,27 @@ const Solutions: React.FC<SolutionsProps> = ({
         console.log('⚡ [SOLUTIONS-DIRECT] 防抖触发，开始处理结果')
         
         try {
-          if (aiResult.isFormatted && aiResult.formatted) {
+          if (isStructuredAnswer) {
+            setIsStreaming(!aiResult.isFormatted)
+            setStreamingContent('')
+            setSolutionData(null)
+            setMultipleChoiceAnswers(null)
+            setTimeComplexityData(null)
+            setSpaceComplexityData(null)
+            if (aiResult.isFormatted) {
+              queryClient.setQueryData(["raw_output"], {
+                type: choiceMode,
+                content: aiResult.rawContent || aiResult.content,
+                timestamp: new Date().toISOString(),
+                model: 'complete'
+              })
+            }
+          } else if (aiResult.isFormatted && aiResult.formatted) {
             // 处理最终格式化数据
             console.log('✨ [SOLUTIONS-DIRECT] 处理最终格式化数据')
-            setIsStreaming(false)
-            setStreamingContent('')
+            const isLive = isProcessing && !aiResult.isFormatted
+            setIsStreaming(isLive)
+            setStreamingContent(isLive ? (aiResult.parsed?.code || aiResult.content || '') : '')
             setStreamingParsedData(null)
             
             setSolutionData(aiResult.formatted.code)
@@ -614,6 +640,7 @@ const Solutions: React.FC<SolutionsProps> = ({
           } else {
             // 处理完成的AI结果（非格式化数据）
             console.log('✅ [SOLUTIONS-DIRECT] AI处理已完成，设置最终结果显示')
+            const isLive = isProcessing && !aiResult.isFormatted
             
             // 🔍 [DEBUG] 打印aiResult的完整结构用于调试
             console.log('🔍 [DEBUG] aiResult完整结构:', JSON.stringify(aiResult, null, 2))
@@ -623,8 +650,8 @@ const Solutions: React.FC<SolutionsProps> = ({
               mode: aiResult.mode
             })
             
-            setIsStreaming(false)
-            setStreamingContent('')
+            setIsStreaming(isLive)
+            setStreamingContent(isLive ? (aiResult.parsed?.code || aiResult.content || '') : '')
             setStreamingParsedData(null)
             
             // 🆕 根据题目类型决定处理方式
@@ -653,7 +680,7 @@ const Solutions: React.FC<SolutionsProps> = ({
               // 优先使用后端已解析的数据
               if (aiResult.parsed) {
                 console.log('✨ [SOLUTIONS-DIRECT] 使用后端解析的数据')
-                setSolutionData(aiResult.parsed.code || '')
+              setSolutionData(aiResult.parsed.code || '')
                 setThoughtsData(aiResult.parsed.thoughts || [])
                 setTimeComplexityData(aiResult.parsed.timeComplexity || null)
                 setSpaceComplexityData(aiResult.parsed.spaceComplexity || null)
@@ -661,7 +688,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                 // 后备方案：客户端解析
                 console.log('🔄 [SOLUTIONS-DIRECT] 使用客户端解析')
                 const parsed = parseStreamedSolution(aiResult.content)
-                setSolutionData(parsed.code)
+              setSolutionData(parsed.code)
                 setThoughtsData(parsed.thoughts)
                 setTimeComplexityData(parsed.time_complexity)
                 setSpaceComplexityData(parsed.space_complexity)
@@ -679,7 +706,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                 time_complexity: finalTimeComplexity,
                 space_complexity: finalSpaceComplexity,
                 type: 'programming',
-                isStreaming: false
+                isStreaming: isLive
               })
             }
             
@@ -705,7 +732,7 @@ const Solutions: React.FC<SolutionsProps> = ({
         clearTimeout(updateTimeoutRef.current)
       }
     }
-  }, [aiResult, isProcessing, queryClient])
+  }, [aiResult, isProcessing, queryClient, isStructuredAnswer, choiceMode])
 
   // 🔍 [DEBUG] 监听solutionData变化
   useEffect(() => {
@@ -1416,7 +1443,13 @@ const Solutions: React.FC<SolutionsProps> = ({
           <div className="w-full text-sm text-black opacity-controlled-bg rounded-md pointer-events-none main-content">
             <div className="rounded-lg overflow-hidden">
               <div className="px-4 py-3 space-y-4 max-w-full">
-                {!solutionData && !multipleChoiceAnswers && !isStreaming && (
+                {choiceResult ? (
+                  <ChoiceResult result={choiceResult} />
+                ) : choicePending ? (
+                  <p className="text-sm text-[color:var(--text-color)] opacity-75 py-3">
+                    正在整理答案与解题原因...
+                  </p>
+                ) : !solutionData && !multipleChoiceAnswers && !isStreaming && (
                   <>
                     <ContentSection
                       title="问题描述"
@@ -1433,7 +1466,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                   </>
                 )}
 
-                {(solutionData || multipleChoiceAnswers || isStreaming) && (
+                {!isStructuredAnswer && (solutionData || multipleChoiceAnswers || isStreaming) && (
                   <>
                     {/* 🚫 正常界面不显示思路 - 思路只在原始输出界面(Ctrl+L)显示 */}
 

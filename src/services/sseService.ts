@@ -6,7 +6,8 @@ import { getWebSocketUrl } from '../utils/config'
  * SSE消息类型
  */
 interface SSEMessage {
-  type: 'connected' | 'progress' | 'content' | 'complete' | 'completed' | 'error' | 'cancelled'
+  type: 'connected' | 'progress' | 'content' | 'complete' | 'completed' | 'error' | 'cancelled' |
+    'code_delta' | 'explanation_delta' | 'answer_set'
   task_id?: string
   stage?: string
   message?: string
@@ -24,6 +25,9 @@ interface SSEMessage {
   parsed?: Record<string, any>
   parseWarning?: string | null
   data?: Record<string, any>
+  field?: string
+  delta?: string
+  value?: string | string[]
 }
 
 /**
@@ -251,9 +255,6 @@ export class SSEService {
       this.currentTaskId = null
       this.processingStatus = null
       
-      // 清空事件处理器映射
-      this.eventHandlers.clear()
-      
       console.log('🧹 [SSE] 连接状态已完全重置')
     } else {
       console.log('ℹ️ [SSE] 没有活跃连接需要断开')
@@ -296,6 +297,24 @@ export class SSEService {
    */
   onContentUpdate(callback: (content: string, append: boolean) => void) {
     this.addEventListener('content_update', callback)
+  }
+
+  onFieldUpdate(callback: (event: {
+    type: 'code_delta' | 'explanation_delta' | 'answer_set'
+    field: string
+    delta?: string
+    value?: string | string[]
+  }) => void) {
+    this.addEventListener('field_update', callback)
+  }
+
+  offFieldUpdate(callback: (event: {
+    type: 'code_delta' | 'explanation_delta' | 'answer_set'
+    field: string
+    delta?: string
+    value?: string | string[]
+  }) => void) {
+    this.removeEventListener('field_update', callback)
   }
 
   /**
@@ -455,6 +474,17 @@ export class SSEService {
           case 'content':
             // 流式内容更新
             this.emitEvent('content_update', data.content || '', data.append || false)
+            break
+
+          case 'code_delta':
+          case 'explanation_delta':
+          case 'answer_set':
+            this.emitEvent('field_update', {
+              type: data.type,
+              field: data.field || '',
+              delta: data.delta,
+              value: data.value,
+            })
             break
 
           case 'completed':

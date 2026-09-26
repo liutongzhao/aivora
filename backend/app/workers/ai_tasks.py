@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -16,14 +17,13 @@ from app.modules.files.models import StoredFile
 from app.modules.tasks.models import AITask, Answer, TaskImage
 from app.modules.tasks.field_stream import FieldProjector
 from app.modules.byok.crypto import decrypt_secret
-from app.modules.byok.models import ProviderConnection, UserModel
+from app.modules.byok.models import ProviderConnection, UserModel, UserPromptVersion
 from app.modules.tasks.parser import parse_answer
 from app.providers.openai_compatible import OpenAICompatibleProvider
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 LEASE_DURATION = timedelta(minutes=4)
-
 
 class ClaimUnavailable(RuntimeError):
     def __init__(self):
@@ -243,10 +243,21 @@ async def _load_runtime_config(task_id: UUID):
         ))
         if not connection or not model or model.connection_id != connection.id:
             raise LookupError("用户模型配置不可用")
+        prompt = None
+        if task.prompt_version_id:
+            prompt_version = await db.scalar(select(UserPromptVersion).where(
+                UserPromptVersion.id == task.prompt_version_id,
+                UserPromptVersion.user_id == task.user_id,
+                UserPromptVersion.enabled.is_(True),
+            ))
+            if prompt_version:
+                prompt = prompt_version.content
         return {
             "base_url": connection.base_url,
             "api_key": decrypt_secret(connection.api_key_encrypted),
             "model": model.name,
+            "language": task.language,
+            "prompt": prompt,
         }
 
 
@@ -315,7 +326,11 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
         projector = FieldProjector(mode)
         try:
             async for chunk in provider.stream_answer(
-                images, mode, runtime_config["model"] if runtime_config else settings.ai_model, language
+                images,
+                mode,
+                runtime_config["model"] if runtime_config else settings.ai_model,
+                runtime_config["language"] if runtime_config else language,
+                runtime_config["prompt"] if runtime_config else None,
             ):
                 async with session_factory() as db:
                     current = await heartbeat_if_current(db, task_id, active_generation)
@@ -395,13 +410,21 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
                 logger.warning("Failed to close task input connection for %s", task_id)
 
 
+_runner: asyncio.Runner | None = None
+_runner_pid: int | None = None
+
+
 @celery_app.task(name="aivora.run_ai_task", bind=True, max_retries=None)
 def run_ai_task(self, task_id: str, generation: int | None = None) -> None:
+    global _runner, _runner_pid
+    if _runner is None or _runner_pid != os.getpid():
+        _runner = asyncio.Runner()
+        _runner_pid = os.getpid()
     try:
         if generation is None:
-            asyncio.run(_run_task(UUID(task_id)))
+            _runner.run(_run_task(UUID(task_id)))
         else:
-            asyncio.run(_run_task(UUID(task_id), generation))
+            _runner.run(_run_task(UUID(task_id), generation))
     except ClaimUnavailable:
         self.retry(countdown=min(2 ** min(self.request.retries, 6), 60), max_retries=None)
     except Exception:

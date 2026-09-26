@@ -23,14 +23,19 @@ export default function SettingsPage() {
   const [modelDisplayName, setModelDisplayName] = useState("");
   const [selectedConnection, setSelectedConnection] = useState("");
   const [message, setMessage] = useState("");
+  const [defaults, setDefaults] = useState<Record<string, { model_id: string; language: string }>>({});
+  const [promptMode, setPromptMode] = useState<(typeof modes)[number][0]>("programming");
+  const [prompt, setPrompt] = useState("");
 
   async function refresh() {
-    const [nextConnections, nextModels] = await Promise.all([
+    const [nextConnections, nextModels, nextDefaults] = await Promise.all([
       apiFetch<Connection[]>("/api/user/connections"),
       apiFetch<UserModel[]>("/api/user/models"),
+      apiFetch<{ mode: string; model_id: string; language: string }[]>("/api/user/models/defaults"),
     ]);
     setConnections(nextConnections);
     setModels(nextModels);
+    setDefaults(Object.fromEntries(nextDefaults.map((item) => [item.mode, { model_id: item.model_id, language: item.language }])));
     if (!selectedConnection && nextConnections[0]) setSelectedConnection(nextConnections[0].id);
   }
 
@@ -72,17 +77,44 @@ export default function SettingsPage() {
     try {
       await apiFetch(`/api/user/models/defaults/${mode}`, {
         method: "PUT",
-        body: JSON.stringify({ model_id: modelId, language: "python" }),
+        body: JSON.stringify({ model_id: modelId, language: defaults[mode]?.language || (mode === "programming" || mode === "debug" ? "python" : "") }),
       });
       setMessage("题型模型已更新");
+      setDefaults((current) => ({ ...current, [mode]: { model_id: modelId, language: current[mode]?.language || (mode === "programming" || mode === "debug" ? "python" : "") } }));
+    } catch (error) { setMessage(error instanceof Error ? error.message : "保存失败"); }
+  }
+
+  async function setLanguage(mode: string, language: string) {
+    const current = defaults[mode];
+    if (!current?.model_id) return;
+    await apiFetch(`/api/user/models/defaults/${mode}`, {
+      method: "PUT",
+      body: JSON.stringify({ model_id: current.model_id, language }),
+    });
+    setDefaults((value) => ({ ...value, [mode]: { ...current, language } }));
+    setMessage("语言已更新");
+  }
+
+  async function loadPrompt(mode: string) {
+    setPromptMode(mode as (typeof modes)[number][0]);
+    const versions = await apiFetch<{ content: string }[]>(`/api/user/prompts/${mode}`);
+    setPrompt(versions[0]?.content ?? "");
+  }
+
+  async function savePrompt(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      await apiFetch(`/api/user/prompts/${promptMode}`, { method: "POST", body: JSON.stringify({ content: prompt }) });
+      setMessage("提示词已保存，新任务会使用新版本");
     } catch (error) { setMessage(error instanceof Error ? error.message : "保存失败"); }
   }
 
   return <main className="container">
-    <div className="app-page-heading"><div><div className="eyebrow">YOUR API</div><h1>模型设置</h1><p className="muted">只使用你自己的 API。密钥保存后不会再次显示。</p></div></div>
+    <div className="app-page-heading"><div><div className="eyebrow">CONFIGURATION</div><h1>模型设置</h1><p>管理你的 API 连接、题型模型和输出规则。</p></div><div className="settings-security"><span>●</span> 密钥加密保存</div></div>
     {message && <div className="notice">{message}</div>}
-    <section className="card">
-      <h2>API 连接</h2>
+    <div className="settings-grid">
+    <section className="card settings-card">
+      <div className="section-heading"><div><span className="eyebrow">01 / CONNECTION</span><h2>API 连接</h2></div><span className="section-dot" /></div>
       <form className="form" onSubmit={createConnection}>
         <label>连接名称<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
         <label>API 地址<input type="url" placeholder="https://example.com/v1" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required /></label>
@@ -91,8 +123,8 @@ export default function SettingsPage() {
       </form>
       {connections.length > 0 && <ul className="settings-list">{connections.map((connection) => <li key={connection.id}><strong>{connection.name}</strong><span>{connection.base_url}</span><small>{connection.enabled ? "已启用" : "已停用"}</small></li>)}</ul>}
     </section>
-    <section className="card">
-      <h2>模型</h2>
+    <section className="card settings-card">
+      <div className="section-heading"><div><span className="eyebrow">02 / MODELS</span><h2>模型</h2></div><span className="section-dot" /></div>
       <form className="form" onSubmit={createModel}>
         <label>使用连接<select value={selectedConnection} onChange={(event) => setSelectedConnection(event.target.value)} required><option value="">选择连接</option>{connections.map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}</select></label>
         <label>模型 ID<input value={modelName} onChange={(event) => setModelName(event.target.value)} placeholder="例如 gpt-4o" required /></label>
@@ -101,9 +133,15 @@ export default function SettingsPage() {
       </form>
       {models.length > 0 && <div className="settings-list">{models.map((model) => <div key={model.id}><strong>{model.display_name}</strong><span>{model.name}</span></div>)}</div>}
     </section>
-    <section className="card">
-      <h2>题型默认模型</h2>
-      <div className="form">{modes.map(([mode, label]) => <label key={mode}>{label}<select defaultValue="" onChange={(event) => event.target.value && setDefault(mode, event.target.value)}><option value="">选择模型</option>{models.map((model) => <option key={model.id} value={model.id}>{model.display_name}</option>)}</select></label>)}</div>
+    <section className="card settings-card settings-card-wide">
+      <div className="section-heading"><div><span className="eyebrow">03 / ROUTING</span><h2>题型默认模型</h2></div><span className="section-dot" /></div>
+      <div className="routing-grid">{modes.map(([mode, label]) => <div className="routing-row" key={mode}><label>{label}<select value={defaults[mode]?.model_id || ""} onChange={(event) => event.target.value && setDefault(mode, event.target.value)}><option value="">选择模型</option>{models.map((model) => <option key={model.id} value={model.id}>{model.display_name}</option>)}</select></label>{(mode === "programming" || mode === "debug") && <label>输出语言<select value={defaults[mode]?.language || "python"} onChange={(event) => void setLanguage(mode, event.target.value)}><option value="python">Python</option><option value="java">Java</option><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="cpp">C++</option><option value="go">Go</option><option value="rust">Rust</option></select></label>}</div>)}</div>
     </section>
+    <section className="card settings-card settings-card-wide">
+      <div className="section-heading"><div><span className="eyebrow">04 / PROMPTS</span><h2>题型提示词</h2></div><span className="section-dot" /></div>
+      <div className="form-actions">{modes.map(([mode, label]) => <button className={promptMode === mode ? "button" : "button secondary"} type="button" key={mode} onClick={() => void loadPrompt(mode)}>{label}</button>)}</div>
+      <form className="form prompt-form" onSubmit={savePrompt}><label>{modes.find(([mode]) => mode === promptMode)?.[1]}提示词<textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={10} required /></label><button className="button" type="submit">保存提示词</button></form>
+    </section>
+    </div>
   </main>;
 }

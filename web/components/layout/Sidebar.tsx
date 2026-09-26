@@ -1,6 +1,25 @@
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 export function Sidebar({ items }: { items: Array<{ href: string; label: string; icon: ReactNode }> }) {
-  return <aside className="app-sidebar"><div className="sidebar-header"><span className="brand-symbol">A</span><span>Aivora</span></div><nav className="sidebar-nav">{items.map((item) => <Link href={item.href} key={item.href}><span className="sidebar-icon">{item.icon}</span><span>{item.label}</span></Link>)}</nav><div className="sidebar-footer"><span className="sidebar-footer-dot" />本地工作区</div></aside>;
+  const pathname = usePathname();
+  return (
+    <aside className="app-sidebar">
+      <div className="sidebar-brand">
+        <span className="brand-symbol">A</span>
+        <div><strong>Aivora</strong><small>AI WORKSPACE</small></div>
+      </div>
+      <div className="sidebar-section-label">工作区</div>
+      <nav className="sidebar-nav">
+        {items.map((item) => {
+          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+          return <Link className={active ? "is-active" : ""} href={item.href} key={item.href} aria-current={active ? "page" : undefined}>
+            <span className="sidebar-icon">{item.icon}</span><span>{item.label}</span>{active && <i className="sidebar-active-mark" />}
+          </Link>;
+        })}
+      </nav>
+      <div className="sidebar-bottom"><div className="sidebar-version">Aivora · 2026</div></div>
+    </aside>
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { getApiBase } from "../../lib/api-client";
 
 const actions = [
   ["截图", "screenshot"],
@@ -35,7 +36,7 @@ export default function RemotePage() {
       return;
     }
     setMessage("正在连接桌面端…");
-    const socket = io(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:18000"}/remote`, { auth: { sessionId }, transports: ["websocket"] });
+    const socket = io(`${getApiBase()}/remote`, { auth: { sessionId }, transports: ["websocket"] });
     socketRef.current = socket;
     socket.on("connect", () => socket.emit("remote:mobile_register", { code }, (result: { success?: boolean; error?: string }) => {
       if (!result?.success) { setMessage(result?.error ?? "连接失败"); socket.disconnect(); return; }

@@ -5,14 +5,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database import get_db_session
 from app.infrastructure.events import event_bus
+from app.infrastructure.storage import storage
+from app.modules.files.models import StoredFile
 from app.modules.identity.dependencies import get_current_user
 from app.modules.identity.models import User
-from app.modules.tasks.models import AITask, Answer, TaskStreamToken
+from app.modules.tasks.models import AITask, Answer, TaskImage, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest, TaskCreatedResponse, TaskResponse
 from app.modules.tasks.service import TaskService, hash_stream_token
 
@@ -97,15 +99,30 @@ async def process_screenshot(
 async def list_tasks(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
-    limit: int = 50,
+    page: int = 1,
+    page_size: int = 20,
+    status: str | None = None,
 ) -> dict:
+    safe_page = max(page, 1)
+    safe_page_size = min(max(page_size, 1), 100)
+    statuses = [item.strip() for item in status.split(",") if item.strip()] if status else []
+    task_filter = [AITask.user_id == user.id]
+    if statuses:
+        task_filter.append(AITask.status.in_(statuses))
+    total = await db.scalar(
+        select(func.count()).select_from(AITask).where(*task_filter)
+    )
     result = await db.execute(
         select(AITask)
-        .where(AITask.user_id == user.id)
+        .where(*task_filter)
         .order_by(AITask.created_at.desc())
-        .limit(min(max(limit, 1), 100))
+        .offset((safe_page - 1) * safe_page_size)
+        .limit(safe_page_size)
     )
     return {
+        "page": safe_page,
+        "page_size": safe_page_size,
+        "total": total or 0,
         "tasks": [
             {
                 "id": str(task.id),
@@ -189,7 +206,24 @@ async def get_task(
             "content": answer.content,
             "rawContent": answer.raw_content,
             "parsed": answer.parsed,
+            "parseWarning": answer.parse_warning,
         }
+    files = (await db.execute(
+        select(StoredFile)
+        .join(TaskImage, TaskImage.stored_file_id == StoredFile.id)
+        .where(TaskImage.task_id == task_id)
+        .order_by(TaskImage.ordinal)
+    )).scalars().all()
+    if result is None:
+        result = {}
+    result["images"] = [
+        {
+            "id": str(file.id),
+            "contentType": file.content_type,
+            "url": storage.presigned_get(file.object_key),
+        }
+        for file in files
+    ]
     return TaskResponse(
         id=task.id,
         mode=task.mode,
@@ -202,6 +236,19 @@ async def get_task(
         completed_at=task.completed_at,
         result=result,
     )
+
+
+@router.get("/tasks/{task_id}/stream-token")
+async def issue_stream_token(
+    task_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict[str, str]:
+    try:
+        token = await TaskService(db).issue_stream_token(user.id, task_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    return {"token": token}
 
 
 @router.delete("/tasks/{task_id}")
