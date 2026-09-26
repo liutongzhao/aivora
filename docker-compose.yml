@@ -81,7 +81,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
-      TASK_DISPATCH_ENABLED: "true"
       BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
@@ -109,63 +108,10 @@ services:
       DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
-      TASK_DISPATCH_ENABLED: "true"
       BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
     command: bash -lc "pip install -e . >/tmp/aivora-worker-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=prefork --concurrency=4 --queues=aivora --hostname=aivora-worker@%h"
-
-  beat:
-    image: python:3.12-slim
-    container_name: aivora-beat
-    working_dir: /workspace/backend
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_started
-      flyway:
-        condition: service_completed_successfully
-    env_file:
-      - backend/.env.local
-    environment:
-      PYTHONPATH: /workspace/backend
-      DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
-      REDIS_URL: redis://redis:6379/0
-      MINIO_ENDPOINT: minio:9000
-      TASK_DISPATCH_ENABLED: "true"
-      BYOK_REQUIRED: "true"
-    volumes:
-      - .:/workspace
-    command: bash -lc "pip install -e . >/tmp/aivora-beat-install.log && celery -A app.workers.celery_app.celery_app beat --loglevel=INFO"
-
-  maintenance:
-    image: python:3.12-slim
-    container_name: aivora-maintenance
-    working_dir: /workspace/backend
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_started
-      flyway:
-        condition: service_completed_successfully
-    env_file:
-      - backend/.env.local
-    environment:
-      PYTHONPATH: /workspace/backend
-      DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
-      REDIS_URL: redis://redis:6379/0
-      MINIO_ENDPOINT: minio:9000
-      TASK_DISPATCH_ENABLED: "true"
-      BYOK_REQUIRED: "true"
-    volumes:
-      - .:/workspace
-    command: bash -lc "pip install -e . >/tmp/aivora-maintenance-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=prefork --concurrency=1 --queues=aivora-maintenance --hostname=aivora-maintenance@%h"
 
   web:
     image: node:22-alpine

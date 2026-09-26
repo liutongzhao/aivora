@@ -268,9 +268,7 @@ async def cancel_task(
             AITask.user_id == user.id,
             AITask.status.not_in(("completed", "failed", "cancelled")),
         ).values(
-            status="cancelled", stage="cancelled", lease_state=None,
-            lease_expires_at=None, published_at=None,
-            dispatch_generation=AITask.dispatch_generation + 1,
+            status="cancelled", stage="cancelled",
         ).returning(AITask.id)
     )
     await db.commit()

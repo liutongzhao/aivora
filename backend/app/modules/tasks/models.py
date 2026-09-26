@@ -29,10 +29,6 @@ class AITask(Base):
     prompt_version_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("user_prompt_versions.id")
     )
-    dispatch_generation: Mapped[int] = mapped_column(Integer, default=0)
-    lease_state: Mapped[str | None] = mapped_column(String(16))
-    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stream_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     stream_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(80))
@@ -40,8 +36,6 @@ class AITask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    input_cleanup_attempted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    input_cleanup_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

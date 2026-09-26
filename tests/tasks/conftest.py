@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -84,6 +85,10 @@ async def dispatch_users(task_db):
 @pytest.fixture
 def dispatch_boundary(monkeypatch):
     from app.modules.tasks import service
+    monkeypatch.setattr(
+        service, "get_settings",
+        lambda: SimpleNamespace(redis_url="redis://unused", byok_required=False),
+    )
 
     class FakeRedis:
         def __init__(self):
@@ -107,7 +112,9 @@ def dispatch_boundary(monkeypatch):
     async def append(*args, **kwargs):
         return "1-0"
 
-    monkeypatch.setattr(service.Redis, "from_url", lambda *args, **kwargs: redis)
     monkeypatch.setattr(service.event_bus, "append", append)
-    monkeypatch.setattr(service.celery_app, "send_task", lambda *args, **kwargs: dispatched.append(args))
+    monkeypatch.setattr(
+        service.celery_app, "send_task",
+        lambda *args, **kwargs: dispatched.append((args[0], kwargs)),
+    )
     return redis, dispatched

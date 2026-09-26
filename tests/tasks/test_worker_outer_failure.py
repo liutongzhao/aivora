@@ -123,9 +123,8 @@ def test_legacy_celery_entry_does_not_retry_unknown_exception(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("fault", ["read"])
 async def test_preclaim_database_fault_retries_without_reopening_claim(
-    task_db, dispatch_boundary, monkeypatch, fault,
+    task_db, dispatch_boundary, monkeypatch,
 ):
     from uuid import UUID
 
@@ -138,26 +137,16 @@ async def test_preclaim_database_fault_retries_without_reopening_claim(
             UUID(USER), ProcessScreenshotRequest(image=base64.b64encode(b"claim").decode())
         )
 
-    original_get = AsyncSession.get
-    original_commit = AsyncSession.commit
+    original_acquire = ai_tasks.acquire_execution
     failed = False
     provider_calls = []
 
-    async def flaky_get(self, entity, ident, *args, **kwargs):
+    async def flaky_acquire(db, task_id):
         nonlocal failed
-        if fault == "read" and not failed and entity is AITask and ident == task.id:
+        if not failed:
             failed = True
             raise ConnectionError(SECRET)
-        return await original_get(self, entity, ident, *args, **kwargs)
-
-    async def flaky_commit(self):
-        nonlocal failed
-        if fault.startswith("commit") and not failed:
-            failed = True
-            if fault == "commit_after_write":
-                await original_commit(self)
-            raise ConnectionError(SECRET)
-        return await original_commit(self)
+        return await original_acquire(db, task_id)
 
     class Provider:
         async def stream_answer(self, *args):
@@ -166,26 +155,20 @@ async def test_preclaim_database_fault_retries_without_reopening_claim(
 
     monkeypatch.setattr(ai_tasks, "session_factory", task_db)
     monkeypatch.setattr(ai_tasks, "OpenAICompatibleProvider", Provider)
-    monkeypatch.setattr(AsyncSession, "get", flaky_get)
-    monkeypatch.setattr(AsyncSession, "commit", flaky_commit)
+    monkeypatch.setattr(ai_tasks, "acquire_execution", flaky_acquire)
     with pytest.raises(RuntimeError, match="claim unavailable"):
         await ai_tasks._run_task(task.id)
     assert failed
     async with task_db() as db:
         persisted = await db.get(AITask, task.id)
-        assert persisted.status == ("processing" if fault == "commit_after_write" else "queued")
+        assert persisted.status == "queued"
 
     await ai_tasks._run_task(task.id)
     async with task_db() as db:
         persisted = await db.get(AITask, task.id)
         answers = (await db.scalars(select(Answer).where(Answer.task_id == task.id))).all()
-        if fault == "commit_after_write":
-            assert persisted.status == "processing"
-            assert answers == []
-            assert provider_calls == []
-        else:
-            assert persisted.status == "completed"
-            assert len(answers) == len(provider_calls) == 1
+        assert persisted.status == "completed"
+        assert len(answers) == len(provider_calls) == 1
 
 
 def test_legacy_celery_entry_retries_only_preclaim_fault(monkeypatch):

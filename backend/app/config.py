@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     minio_bucket: str = "aivora-private"
     task_image_timeout_seconds: float = 20.0
-    task_dispatch_enabled: bool = False
     # Every model request must use the user's own provider connection.
     byok_required: bool = True
     task_dispatch_global_limit: int = Field(default=4, ge=1)
