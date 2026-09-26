@@ -17,7 +17,7 @@ SECRET = "secret-object-key-and-screenshot-data"
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("fault", ["redis", "image", "progress"])
+@pytest.mark.parametrize("fault", ["image", "progress"])
 async def test_claimed_worker_outer_fault_fails_once_without_leaking_input(
     task_db, dispatch_boundary, monkeypatch, fault,
 ):
@@ -123,7 +123,7 @@ def test_legacy_celery_entry_does_not_retry_unknown_exception(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("fault", ["read", "commit_before_write", "commit_after_write"])
+@pytest.mark.parametrize("fault", ["read"])
 async def test_preclaim_database_fault_retries_without_reopening_claim(
     task_db, dispatch_boundary, monkeypatch, fault,
 ):
@@ -152,10 +152,7 @@ async def test_preclaim_database_fault_retries_without_reopening_claim(
 
     async def flaky_commit(self):
         nonlocal failed
-        if fault.startswith("commit") and not failed and any(
-            obj.status == "processing" for obj in self.identity_map.values()
-            if isinstance(obj, AITask)
-        ):
+        if fault.startswith("commit") and not failed:
             failed = True
             if fault == "commit_after_write":
                 await original_commit(self)

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database import get_db_session
@@ -210,13 +210,23 @@ async def cancel_task(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict[str, bool]:
-    task = await db.get(AITask, task_id)
-    if not task or task.user_id != user.id:
+    task = await db.scalar(select(AITask).where(AITask.id == task_id, AITask.user_id == user.id))
+    if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     if task.status in {"completed", "failed", "cancelled"}:
         return {"success": True}
-    task.status = "cancelled"
-    task.stage = "cancelled"
+    cancelled = await db.scalar(
+        update(AITask).where(
+            AITask.id == task_id,
+            AITask.user_id == user.id,
+            AITask.status.not_in(("completed", "failed", "cancelled")),
+        ).values(
+            status="cancelled", stage="cancelled", lease_state=None,
+            lease_expires_at=None, published_at=None,
+            dispatch_generation=AITask.dispatch_generation + 1,
+        ).returning(AITask.id)
+    )
     await db.commit()
-    await event_bus.append(task.id, "cancelled", {"message": "任务已取消"}, stage="cancelled")
+    if cancelled:
+        await event_bus.append(task.id, "cancelled", {"message": "任务已取消"}, stage="cancelled")
     return {"success": True}

@@ -197,23 +197,26 @@ class TaskService:
                 await self.db.commit()
             _remove_task_objects(task, uploaded_keys)
             raise
-        try:
-            await self.redis.set(
-                f"aivora:task-input:{task.id}",
-                json.dumps({"images": image_keys, "mode": task.mode, "language": task.language}),
-                ex=3600,
-            )
+        if not get_settings().task_dispatch_enabled:
+            try:
+                await self.redis.set(
+                    f"aivora:task-input:{task.id}",
+                    json.dumps({"images": image_keys, "mode": task.mode, "language": task.language}),
+                    ex=3600,
+                )
+                await event_bus.append(task.id, "progress", {}, stage="queued", progress=0)
+            except Exception:
+                await self._fail_queued(task.id, "TASK_INPUT_REDIS_ERROR", "任务输入发布失败")
+                raise
+            try:
+                celery_app.send_task("aivora.run_ai_task", args=[str(task.id)], queue="aivora")
+            except Exception:
+                # The broker may have accepted the message before losing its ACK.
+                # A retry here could execute the model twice.
+                await self._fail_queued(task.id, "TASK_DISPATCH_UNCERTAIN", "任务派发结果无法确认")
+                raise
+        else:
             await event_bus.append(task.id, "progress", {}, stage="queued", progress=0)
-        except Exception:
-            await self._fail_queued(task.id, "TASK_INPUT_REDIS_ERROR", "任务输入发布失败")
-            raise
-        try:
-            celery_app.send_task("aivora.run_ai_task", args=[str(task.id)], queue="aivora")
-        except Exception:
-            # The broker may have accepted the message before losing its ACK.
-            # A retry here could execute the model twice.
-            await self._fail_queued(task.id, "TASK_DISPATCH_UNCERTAIN", "任务派发结果无法确认")
-            raise
         return task, stream_token
 
     async def _fail_queued(self, task_id: UUID, code: str, message: str) -> None:
