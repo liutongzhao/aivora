@@ -82,6 +82,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       TASK_DISPATCH_ENABLED: "true"
+      BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
     command: bash -lc "pip install -e . >/tmp/aivora-api-install.log && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -109,6 +110,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       TASK_DISPATCH_ENABLED: "true"
+      BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
     command: bash -lc "pip install -e . >/tmp/aivora-worker-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=prefork --concurrency=4 --queues=aivora --hostname=aivora-worker@%h"
@@ -134,6 +136,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       TASK_DISPATCH_ENABLED: "true"
+      BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
     command: bash -lc "pip install -e . >/tmp/aivora-beat-install.log && celery -A app.workers.celery_app.celery_app beat --loglevel=INFO"
@@ -159,6 +162,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       TASK_DISPATCH_ENABLED: "true"
+      BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
     command: bash -lc "pip install -e . >/tmp/aivora-maintenance-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=prefork --concurrency=1 --queues=aivora-maintenance --hostname=aivora-maintenance@%h"

@@ -20,6 +20,15 @@ class AITask(Base):
     stage: Mapped[str] = mapped_column(String(80), default="created")
     progress: Mapped[int] = mapped_column(SmallInteger, default=0)
     input_image_count: Mapped[int] = mapped_column(Integer, default=0)
+    provider_connection_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("provider_connections.id")
+    )
+    user_model_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user_models.id")
+    )
+    prompt_version_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user_prompt_versions.id")
+    )
     dispatch_generation: Mapped[int] = mapped_column(Integer, default=0)
     lease_state: Mapped[str | None] = mapped_column(String(16))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

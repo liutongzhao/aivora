@@ -14,6 +14,8 @@ from app.infrastructure.events import event_bus
 from app.infrastructure.storage import storage
 from app.modules.files.models import StoredFile
 from app.modules.tasks.models import AITask, Answer, TaskImage
+from app.modules.byok.crypto import decrypt_secret
+from app.modules.byok.models import ProviderConnection, UserModel
 from app.modules.tasks.parser import parse_answer
 from app.providers.openai_compatible import OpenAICompatibleProvider
 from app.workers.celery_app import celery_app
@@ -223,6 +225,30 @@ async def _load_task_input(task_id: UUID, redis: Redis | None):
     return task_input["mode"], task_input.get("language"), task_input["images"], task_input
 
 
+async def _load_runtime_config(task_id: UUID):
+    async with session_factory() as db:
+        task = await db.get(AITask, task_id)
+        if not task or not task.provider_connection_id or not task.user_model_id:
+            return None
+        connection = await db.scalar(select(ProviderConnection).where(
+            ProviderConnection.id == task.provider_connection_id,
+            ProviderConnection.user_id == task.user_id,
+            ProviderConnection.enabled.is_(True),
+        ))
+        model = await db.scalar(select(UserModel).where(
+            UserModel.id == task.user_model_id,
+            UserModel.user_id == task.user_id,
+            UserModel.enabled.is_(True),
+        ))
+        if not connection or not model or model.connection_id != connection.id:
+            raise LookupError("用户模型配置不可用")
+        return {
+            "base_url": connection.base_url,
+            "api_key": decrypt_secret(connection.api_key_encrypted),
+            "model": model.name,
+        }
+
+
 async def _run_task(task_id: UUID, generation: int | None = None) -> None:
     redis: Redis | None = None
     claimed = False
@@ -251,6 +277,7 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
             )).all()
         if task is None:
             return
+        runtime_config = await _load_runtime_config(task_id)
         redis = None if durable_images else Redis.from_url(settings.redis_url, decode_responses=True)
         legacy_input = not durable_images
         mode, language, image_keys, _ = await _load_task_input(task_id, redis)
@@ -275,10 +302,19 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
             return
         if not await _mark_provider_started(task_id, active_generation):
             return
-        provider = OpenAICompatibleProvider()
+        provider = (
+            OpenAICompatibleProvider(
+                base_url=runtime_config["base_url"],
+                api_key=runtime_config["api_key"],
+            )
+            if runtime_config
+            else OpenAICompatibleProvider()
+        )
         chunks: list[str] = []
         try:
-            async for chunk in provider.stream_answer(images, mode, settings.ai_model, language):
+            async for chunk in provider.stream_answer(
+                images, mode, runtime_config["model"] if runtime_config else settings.ai_model, language
+            ):
                 async with session_factory() as db:
                     current = await heartbeat_if_current(db, task_id, active_generation)
                     await db.commit()
@@ -325,6 +361,7 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
     except Exception:
         if claimed:
             try:
+                logger.exception("Task worker failed for %s", task_id)
                 await _fail_if_current(task_id, active_generation, "WORKER_UNCERTAIN", "任务处理失败")
             except Exception:
                 logger.warning("Failed to persist task terminal state for %s", task_id)

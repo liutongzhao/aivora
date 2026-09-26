@@ -9,10 +9,14 @@ from app.prompts.registry import PromptRegistry
 
 
 class OpenAICompatibleProvider:
-    def __init__(self, base_url: str | None = None, api_key: str | None = None) -> None:
+    def __init__(
+        self, base_url: str | None = None, api_key: str | None = None,
+        system_prompt: str | None = None,
+    ) -> None:
         settings = get_settings()
         self.base_url = (base_url or settings.ai_base_url).rstrip("/")
         self.api_key = api_key or settings.ai_api_key
+        self.system_prompt = system_prompt
         self.timeout = httpx.Timeout(120.0, connect=20.0)
 
     async def stream_answer(
@@ -32,7 +36,7 @@ class OpenAICompatibleProvider:
             "model": model,
             "stream": True,
             "messages": [
-                {"role": "system", "content": definition.system_prompt},
+                {"role": "system", "content": self.system_prompt or definition.system_prompt},
                 {"role": "user", "content": content},
             ],
         }

@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.infrastructure.events import event_bus
 from app.infrastructure.storage import storage
 from app.modules.files.service import FileService
+from app.modules.byok.service import BYOKService
 from app.modules.tasks.models import AITask, Answer, TaskImage, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest
 from app.workers.celery_app import celery_app
@@ -132,6 +133,13 @@ class TaskService:
 
     async def create(self, user_id: UUID, request: ProcessScreenshotRequest) -> tuple[AITask, str]:
         images = [request.image] if request.image else request.images or []
+        runtime_config = None
+        settings = get_settings()
+        if settings.task_dispatch_enabled and getattr(settings, "byok_required", False):
+            try:
+                runtime_config = await BYOKService(self.db).resolve_runtime(user_id, request.mode)
+            except ValueError:
+                raise
         task = AITask(
             id=uuid4(),
             user_id=user_id,
@@ -141,6 +149,8 @@ class TaskService:
             status="created",
             stage="created",
             input_image_count=len(images),
+            provider_connection_id=runtime_config["connection_id"] if runtime_config else None,
+            user_model_id=runtime_config["model_id"] if runtime_config else None,
         )
         if request.client_request_id:
             statement = insert(AITask).values(

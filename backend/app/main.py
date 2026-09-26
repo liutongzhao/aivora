@@ -11,6 +11,7 @@ from app.modules.files.router import router as files_router
 from app.modules.tasks.router import router as tasks_router
 from app.modules.admin.router import router as admin_router
 from app.modules.devices.router import router as devices_router
+from app.modules.byok.router import router as byok_router
 from app.infrastructure.health import router as health_router
 from app.infrastructure.bootstrap import bootstrap_initial_admin
 from app.infrastructure.socketio import sio
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     application.include_router(tasks_router)
     application.include_router(admin_router)
     application.include_router(devices_router)
+    application.include_router(byok_router)
     application.include_router(health_router)
 
     @application.on_event("startup")

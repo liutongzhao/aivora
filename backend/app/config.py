@@ -22,12 +22,14 @@ class Settings(BaseSettings):
     minio_bucket: str = "aivora-private"
     task_image_timeout_seconds: float = 20.0
     task_dispatch_enabled: bool = False
+    byok_required: bool = False
     task_dispatch_global_limit: int = Field(default=4, ge=1)
     task_dispatch_user_limit: int = Field(default=2, ge=1)
 
     ai_base_url: str = "https://ai-pixel.online"
     ai_model: str = "gpt-6-sol"
     ai_api_key: str = ""
+    aivora_master_key: str = ""
     initial_admin_email: str = ""
     initial_admin_password: str = ""
 
