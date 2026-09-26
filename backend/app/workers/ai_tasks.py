@@ -14,6 +14,7 @@ from app.infrastructure.events import event_bus
 from app.infrastructure.storage import storage
 from app.modules.files.models import StoredFile
 from app.modules.tasks.models import AITask, Answer, TaskImage
+from app.modules.tasks.field_stream import FieldProjector
 from app.modules.byok.crypto import decrypt_secret
 from app.modules.byok.models import ProviderConnection, UserModel
 from app.modules.tasks.parser import parse_answer
@@ -311,6 +312,7 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
             else OpenAICompatibleProvider()
         )
         chunks: list[str] = []
+        projector = FieldProjector(mode)
         try:
             async for chunk in provider.stream_answer(
                 images, mode, runtime_config["model"] if runtime_config else settings.ai_model, language
@@ -327,17 +329,30 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
                         min(95, 20 + len("".join(chunks)) // 20),
                     ):
                         return
+                    for field_event in projector.feed(chunk.text):
+                        await event_bus.append(
+                            task_id,
+                            field_event.type,
+                            {
+                                "field": field_event.field,
+                                "delta": field_event.delta,
+                                "value": field_event.value,
+                                "schema_version": 1,
+                            },
+                            stage="ai_streaming",
+                        )
         except Exception:
             await _fail_if_current(task_id, active_generation, "AI_PROVIDER_ERROR", "模型处理失败")
             return
 
         content = "".join(chunks)
         parsed_answer = parse_answer(content, mode)
+        parse_warning = parsed_answer.warning or projector.finish()
         answer = Answer(
             task_id=task_id, question_type=mode, content=content,
             raw_content=content, parsed=parsed_answer.parsed,
-            parse_warning=parsed_answer.warning,
-            parse_status="fallback" if parsed_answer.warning else "structured",
+            parse_warning=parse_warning,
+            parse_status="fallback" if parse_warning else "structured",
         )
         async with session_factory() as db:
             finished = await finish_if_current(db, task_id, active_generation, answer)
@@ -346,7 +361,7 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
             return
         result_payload = {
             "questionType": mode, "content": content, "rawContent": content,
-            "parsed": parsed_answer.parsed, "parseWarning": parsed_answer.warning,
+            "parsed": parsed_answer.parsed, "parseWarning": parse_warning,
         }
         await event_bus.append(
             task_id, "completed", {"result": result_payload, **result_payload},
