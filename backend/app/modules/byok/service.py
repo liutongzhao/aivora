@@ -4,6 +4,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.byok.crypto import decrypt_secret, encrypt_secret
+from app.modules.byok.outbound import validate_endpoint
 from app.modules.byok.models import (
     ProviderConnection,
     QuestionModelDefault,
@@ -33,7 +34,7 @@ class BYOKService:
 
     async def create_connection(self, user_id: UUID, request: ConnectionCreate) -> ProviderConnection:
         item = ProviderConnection(
-            user_id=user_id, name=request.name, base_url=str(request.base_url).rstrip("/"),
+            user_id=user_id, name=request.name, base_url=validate_endpoint(str(request.base_url)),
             api_key_encrypted=encrypt_secret(request.api_key),
         )
         self.db.add(item)
@@ -52,7 +53,7 @@ class BYOKService:
         if request.name is not None:
             item.name = request.name
         if request.base_url is not None:
-            item.base_url = str(request.base_url).rstrip("/")
+            item.base_url = validate_endpoint(str(request.base_url))
         if request.api_key is not None:
             if not request.replace_key:
                 raise ValueError("替换 API 密钥需要确认")
