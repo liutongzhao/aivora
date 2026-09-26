@@ -1,7 +1,17 @@
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _compose_service_block(compose: str, service: str) -> str:
+    match = re.search(
+        rf"(?ms)^  {re.escape(service)}:\n(?P<block>.*?)(?=^  \w[\w-]*:|^volumes:)",
+        compose,
+    )
+    assert match, f"Compose service not found: {service}"
+    return match.group("block")
 
 
 def test_local_startup_separates_worker_beat_and_maintenance_processes():
@@ -18,6 +28,27 @@ def test_local_startup_separates_worker_beat_and_maintenance_processes():
     assert "--concurrency=1" in script
 
 
+def test_local_api_worker_beat_and_maintenance_enable_task_dispatch():
+    script = (ROOT / "scripts" / "start-aivora.sh").read_text()
+
+    for process in ("aivora-backend", "aivora-worker", "aivora-beat", "aivora-maintenance"):
+        process_line = next(line for line in script.splitlines() if f"start_screen {process} " in line)
+        assert "export TASK_DISPATCH_ENABLED=true;" in process_line
+
+
+def test_local_workers_consume_only_their_assigned_queues():
+    script = (ROOT / "scripts" / "start-aivora.sh").read_text()
+
+    worker_line = next(line for line in script.splitlines() if "start_screen aivora-worker " in line)
+    maintenance_line = next(
+        line for line in script.splitlines() if "start_screen aivora-maintenance " in line
+    )
+    assert "--queues=aivora --hostname=aivora-worker@%h" in worker_line
+    assert "aivora-maintenance" not in worker_line
+    assert "--queues=aivora-maintenance" in maintenance_line
+    assert "--queues=aivora --" not in maintenance_line
+
+
 def test_compose_separates_worker_beat_and_maintenance_services():
     compose = (ROOT / "docker-compose.yml").read_text()
 
@@ -29,3 +60,22 @@ def test_compose_separates_worker_beat_and_maintenance_services():
     assert "celery -A app.workers.celery_app.celery_app beat --loglevel=INFO" in compose
     assert "--queues=aivora-maintenance" in compose
     assert "--concurrency=1" in compose
+
+
+def test_compose_api_worker_beat_and_maintenance_enable_task_dispatch():
+    compose = (ROOT / "docker-compose.yml").read_text()
+
+    for service in ("api", "worker", "beat", "maintenance"):
+        block = _compose_service_block(compose, service)
+        assert "TASK_DISPATCH_ENABLED: \"true\"" in block
+
+
+def test_compose_workers_consume_only_their_assigned_queues():
+    compose = (ROOT / "docker-compose.yml").read_text()
+
+    worker = _compose_service_block(compose, "worker")
+    maintenance = _compose_service_block(compose, "maintenance")
+    assert "--queues=aivora --hostname=aivora-worker@%h" in worker
+    assert "aivora-maintenance" not in worker
+    assert "--queues=aivora-maintenance" in maintenance
+    assert "--queues=aivora --" not in maintenance
