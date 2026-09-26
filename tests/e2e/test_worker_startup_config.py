@@ -49,6 +49,24 @@ def test_local_workers_consume_only_their_assigned_queues():
     assert "--queues=aivora --" not in maintenance_line
 
 
+def test_local_startup_does_not_silently_reuse_old_screen_configuration():
+    script = (ROOT / "scripts" / "start-aivora.sh").read_text()
+
+    assert "复用 screen" not in script
+    assert "检测到已有 screen" in script
+    assert "screen -S \"$name\" -X quit" in script
+    assert "按当前工作树配置重启" in script
+
+
+def test_local_stop_and_check_cover_beat_and_maintenance():
+    stop_script = (ROOT / "scripts" / "stop-aivora.sh").read_text()
+    check_script = (ROOT / "scripts" / "check-aivora.sh").read_text()
+
+    for process in ("aivora-beat", "aivora-maintenance"):
+        assert process in stop_script
+        assert process in check_script
+
+
 def test_compose_separates_worker_beat_and_maintenance_services():
     compose = (ROOT / "docker-compose.yml").read_text()
 

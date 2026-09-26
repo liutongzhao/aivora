@@ -2,7 +2,7 @@
 set -u
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "== Aivora screen =="
-for name in aivora-dev aivora-web aivora-backend aivora-worker; do
+for name in aivora-dev aivora-web aivora-backend aivora-worker aivora-beat aivora-maintenance; do
   if printf "%s\n" "$(screen -list 2>/dev/null)" | grep -q "[.]${name}[[:space:]]"; then echo "${name}: running"; else echo "${name}: stopped"; fi
 done
 echo "== Ports =="

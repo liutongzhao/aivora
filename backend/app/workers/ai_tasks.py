@@ -142,6 +142,18 @@ async def _confirm_current(task_id: UUID, generation: int) -> bool:
         return current is not None
 
 
+async def _confirm_provider_call(task_id: UUID, generation: int) -> bool:
+    """Serialize the final cancellation check without holding a lock over streaming."""
+    async with session_factory() as db:
+        current = await db.scalar(
+            select(AITask.id)
+            .where(*_current_task_where(task_id, generation))
+            .with_for_update()
+        )
+        await db.commit()
+    return current is not None
+
+
 async def _append_content_if_current(
     task_id: UUID, generation: int, content: str, progress: int,
 ) -> bool:
@@ -228,6 +240,8 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
             stage="ai_streaming", progress=20,
         )
         if not await _confirm_current(task_id, active_generation):
+            return
+        if not await _confirm_provider_call(task_id, active_generation):
             return
         provider = OpenAICompatibleProvider()
         chunks: list[str] = []
