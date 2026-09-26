@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,6 +71,13 @@ class TaskService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _purge_expired_tokens(self) -> None:
+        await self.db.execute(
+            delete(TaskStreamToken).where(
+                TaskStreamToken.expires_at <= datetime.now(timezone.utc)
+            )
+        )
+
     async def create(self, user_id: UUID, request: ProcessScreenshotRequest) -> tuple[AITask, str]:
         images = [request.image] if request.image else request.images or []
         runtime_config = None
@@ -80,6 +87,7 @@ class TaskService:
                 runtime_config = await BYOKService(self.db).resolve_runtime(user_id, request.mode)
             except ValueError:
                 raise
+        await self._purge_expired_tokens()
         task = AITask(
             id=uuid4(),
             user_id=user_id,
@@ -177,6 +185,7 @@ class TaskService:
                 logger.warning("Failed to publish terminal task event for %s", task_id)
 
     async def _wait_for_existing(self, user_id: UUID, request_id: str) -> tuple[AITask, str]:
+        await self._purge_expired_tokens()
         existing = (await self.db.scalars(select(AITask).where(
             AITask.user_id == user_id, AITask.client_request_id == request_id,
         ))).one()
@@ -199,6 +208,7 @@ class TaskService:
         return task, answer_result.scalar_one_or_none()
 
     async def issue_stream_token(self, user_id: UUID, task_id: UUID) -> str:
+        await self._purge_expired_tokens()
         task = await self.db.scalar(
             select(AITask).where(AITask.id == task_id, AITask.user_id == user_id)
         )

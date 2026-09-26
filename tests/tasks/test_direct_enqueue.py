@@ -1,11 +1,12 @@
 import base64
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 from sqlalchemy import select
 
-from app.modules.tasks.models import AITask
+from app.modules.tasks.models import AITask, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest
 from app.modules.tasks.service import TaskService
 
@@ -87,3 +88,16 @@ async def test_byok_is_required_independent_of_dispatch_mode(
         with pytest.raises(ValueError, match="配置模型"):
             await TaskService(db).create(USER_A, REQUEST)
     assert dispatch_boundary[1] == []
+
+
+@pytest.mark.asyncio
+async def test_new_task_purges_expired_stream_tokens(task_db, dispatch_boundary):
+    async with task_db() as db:
+        first, _ = await TaskService(db).create(USER_A, REQUEST)
+        token = await db.scalar(select(TaskStreamToken).where(TaskStreamToken.task_id == first.id))
+        token.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        await db.commit()
+    async with task_db() as db:
+        await TaskService(db).create(USER_B, REQUEST)
+    async with task_db() as db:
+        assert await db.scalar(select(TaskStreamToken).where(TaskStreamToken.task_id == first.id)) is None

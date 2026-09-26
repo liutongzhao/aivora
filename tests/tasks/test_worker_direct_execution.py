@@ -150,3 +150,37 @@ async def test_cancel_during_stream_discards_answer(task_db, dispatch_boundary, 
     async with task_db() as db:
         assert (await db.get(AITask, task.id)).status == "cancelled"
         assert (await db.scalars(select(Answer).where(Answer.task_id == task.id))).all() == []
+
+
+@pytest.mark.asyncio
+async def test_redelivered_running_task_fails_without_second_provider_call(
+    task_db, dispatch_boundary, monkeypatch,
+):
+    request = ProcessScreenshotRequest(image=base64.b64encode(b"image").decode())
+    async with task_db() as db:
+        task, _ = await TaskService(db).create(USER, request)
+        assert await ai_tasks.acquire_execution(db, task.id)
+        await db.commit()
+
+    async def append(*args, **kwargs):
+        return "1-0"
+
+    monkeypatch.setattr(ai_tasks, "session_factory", task_db)
+    monkeypatch.setattr(ai_tasks.event_bus, "append", append)
+    assert await ai_tasks.recover_redelivery(task.id) is True
+    async with task_db() as db:
+        persisted = await db.get(AITask, task.id)
+        assert persisted.status == "failed"
+        assert persisted.error_code == "WORKER_LOST_UNCERTAIN"
+        assert (await db.scalars(select(Answer).where(Answer.task_id == task.id))).all() == []
+
+
+@pytest.mark.asyncio
+async def test_redelivered_unclaimed_task_remains_queued(task_db, dispatch_boundary):
+    async with task_db() as db:
+        task = AITask(user_id=USER, mode="programming", status="queued", stage="queued")
+        db.add(task)
+        await db.commit()
+    assert await ai_tasks.recover_redelivery(task.id) is False
+    async with task_db() as db:
+        assert (await db.get(AITask, task.id)).status == "queued"

@@ -81,6 +81,12 @@ async def _fail_if_current(task_id: UUID, code: str, message: str) -> bool:
     return failed is not None
 
 
+async def recover_redelivery(task_id: UUID) -> bool:
+    return await _fail_if_current(
+        task_id, "WORKER_LOST_UNCERTAIN", "任务执行中断，无法确认模型是否已计费",
+    )
+
+
 async def _set_streaming(task_id: UUID) -> bool:
     async with session_factory() as db:
         streaming = await db.scalar(
@@ -344,6 +350,9 @@ def run_ai_task(self, task_id: str) -> None:
         _runner = asyncio.Runner()
         _runner_pid = os.getpid()
     try:
+        if (self.request.delivery_info or {}).get("redelivered"):
+            if _runner.run(recover_redelivery(UUID(task_id))):
+                return
         _runner.run(_run_task(UUID(task_id)))
     except ClaimUnavailable:
         self.retry(countdown=min(2 ** min(self.request.retries, 6), 60), max_retries=None)

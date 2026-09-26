@@ -12,6 +12,7 @@ celery_app.conf.update(
     task_default_queue="aivora",
     task_acks_late=True,
     task_reject_on_worker_lost=True,
+    task_acks_on_failure_or_timeout=False,
     task_time_limit=180,
     task_soft_time_limit=150,
     worker_prefetch_multiplier=1,
