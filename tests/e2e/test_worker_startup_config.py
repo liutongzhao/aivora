@@ -88,6 +88,15 @@ def test_compose_api_worker_beat_and_maintenance_enable_task_dispatch():
         assert "TASK_DISPATCH_ENABLED: \"true\"" in block
 
 
+def test_compose_api_worker_beat_and_maintenance_wait_for_successful_flyway():
+    compose = (ROOT / "docker-compose.yml").read_text()
+
+    for service in ("api", "worker", "beat", "maintenance"):
+        block = _compose_service_block(compose, service)
+        assert "flyway:" in block
+        assert "condition: service_completed_successfully" in block
+
+
 def test_compose_workers_consume_only_their_assigned_queues():
     compose = (ROOT / "docker-compose.yml").read_text()
 

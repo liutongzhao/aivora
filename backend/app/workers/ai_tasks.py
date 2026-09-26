@@ -154,6 +154,35 @@ async def _confirm_provider_call(task_id: UUID, generation: int) -> bool:
     return current is not None
 
 
+async def _mark_provider_started(task_id: UUID, generation: int) -> bool:
+    async with session_factory() as db:
+        started = await db.scalar(
+            update(AITask).where(
+                *_current_task_where(task_id, generation),
+                AITask.stage == "ai_streaming",
+            ).values(stage="provider_started").returning(AITask.id)
+        )
+        await db.commit()
+    return started is not None
+
+
+async def _append_progress_if_current(
+    task_id: UUID, generation: int, payload: dict, stage: str, progress: int,
+) -> bool:
+    async with session_factory() as db:
+        current = await db.scalar(
+            select(AITask.id).where(*_current_task_where(task_id, generation))
+            .with_for_update()
+        )
+        if current is None:
+            return False
+        await event_bus.append(
+            task_id, "progress", payload, stage=stage, progress=progress,
+        )
+        await db.commit()
+    return True
+
+
 async def _append_content_if_current(
     task_id: UUID, generation: int, content: str, progress: int,
 ) -> bool:
@@ -235,13 +264,16 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
 
         if not await _set_streaming(task_id, active_generation):
             return
-        await event_bus.append(
-            task_id, "progress", {"streamingStarted": True},
+        if not await _append_progress_if_current(
+            task_id, active_generation, {"streamingStarted": True},
             stage="ai_streaming", progress=20,
-        )
+        ):
+            return
         if not await _confirm_current(task_id, active_generation):
             return
         if not await _confirm_provider_call(task_id, active_generation):
+            return
+        if not await _mark_provider_started(task_id, active_generation):
             return
         provider = OpenAICompatibleProvider()
         chunks: list[str] = []

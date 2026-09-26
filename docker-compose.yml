@@ -72,6 +72,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      flyway:
+        condition: service_completed_successfully
     env_file:
       - backend/.env.local
     environment:
@@ -97,6 +99,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      flyway:
+        condition: service_completed_successfully
     env_file:
       - backend/.env.local
     environment:
@@ -120,6 +124,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      flyway:
+        condition: service_completed_successfully
     env_file:
       - backend/.env.local
     environment:
@@ -143,6 +149,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      flyway:
+        condition: service_completed_successfully
     env_file:
       - backend/.env.local
     environment:

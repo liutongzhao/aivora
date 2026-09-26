@@ -168,6 +168,93 @@ async def test_cancel_after_confirmation_blocks_provider_start(
 
 
 @pytest.mark.asyncio
+async def test_cancel_after_final_confirmation_before_provider_start_skips_provider(
+    task_db, dispatch_boundary, dispatch_users, monkeypatch,
+):
+    request = ProcessScreenshotRequest(image=base64.b64encode(b"after-final-confirmation").decode())
+    async with task_db() as db:
+        task, _ = await TaskService(db).create(dispatch_users[0], request)
+    async with task_db() as db:
+        await db.execute(update(AITask).where(AITask.id == task.id).values(
+            dispatch_generation=1, lease_state="reserved",
+            lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        ))
+        await db.commit()
+
+    provider_calls = []
+    original_confirm_provider_call = ai_tasks._confirm_provider_call
+
+    class Provider:
+        async def stream_answer(self, *args):
+            provider_calls.append(True)
+            yield SimpleNamespace(text='{"answer":"A"}')
+
+    async def confirm_then_cancel(task_id, generation):
+        confirmed = await original_confirm_provider_call(task_id, generation)
+        async with task_db() as db:
+            await router.cancel_task(task_id, SimpleNamespace(id=dispatch_users[0]), db)
+        return confirmed
+
+    monkeypatch.setattr(ai_tasks, "session_factory", task_db)
+    monkeypatch.setattr(ai_tasks, "_confirm_provider_call", confirm_then_cancel)
+    monkeypatch.setattr(ai_tasks, "OpenAICompatibleProvider", Provider)
+    monkeypatch.setattr(ai_tasks.storage, "get_bytes", lambda key: b"after-final-confirmation")
+
+    await ai_tasks._run_task(task.id, 1)
+
+    async with task_db() as db:
+        persisted = await db.get(AITask, task.id)
+    assert provider_calls == []
+    assert persisted.status == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_cancel_after_provider_start_fence_discards_provider_result(
+    task_db, dispatch_boundary, dispatch_users, monkeypatch,
+):
+    request = ProcessScreenshotRequest(image=base64.b64encode(b"after-provider-start").decode())
+    async with task_db() as db:
+        task, _ = await TaskService(db).create(dispatch_users[0], request)
+    async with task_db() as db:
+        await db.execute(update(AITask).where(AITask.id == task.id).values(
+            dispatch_generation=1, lease_state="reserved",
+            lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        ))
+        await db.commit()
+
+    provider_calls = []
+    events = []
+
+    class Provider:
+        async def stream_answer(self, *args):
+            provider_calls.append(True)
+            async with task_db() as db:
+                persisted = await db.get(AITask, task.id)
+                assert persisted.stage == "provider_started"
+                await router.cancel_task(task.id, SimpleNamespace(id=dispatch_users[0]), db)
+            yield SimpleNamespace(text='{"answer":"A"}')
+
+    async def append(*args, **kwargs):
+        events.append((args, kwargs))
+
+    monkeypatch.setattr(ai_tasks, "session_factory", task_db)
+    monkeypatch.setattr(ai_tasks, "OpenAICompatibleProvider", Provider)
+    monkeypatch.setattr(ai_tasks.storage, "get_bytes", lambda key: b"after-provider-start")
+    monkeypatch.setattr(ai_tasks.event_bus, "append", append)
+
+    await ai_tasks._run_task(task.id, 1)
+
+    async with task_db() as db:
+        persisted = await db.get(AITask, task.id)
+        answers = (await db.scalars(select(Answer).where(Answer.task_id == task.id))).all()
+    assert provider_calls == [True]
+    assert persisted.status == "cancelled"
+    assert answers == []
+    assert [event[0][1] for event in events].count("content") == 0
+    assert [event[0][1] for event in events].count("completed") == 0
+
+
+@pytest.mark.asyncio
 async def test_cancel_after_heartbeat_blocks_content_event(
     task_db, dispatch_boundary, dispatch_users, monkeypatch,
 ):
