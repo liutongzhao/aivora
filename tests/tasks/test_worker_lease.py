@@ -5,9 +5,10 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 
-from app.modules.tasks.models import AITask, Answer
+from app.modules.files.models import StoredFile
+from app.modules.tasks.models import AITask, Answer, TaskImage
 from app.modules.tasks.schemas import ProcessScreenshotRequest
 from app.modules.tasks.service import TaskService
 from app.workers import ai_tasks
@@ -123,3 +124,48 @@ async def test_durable_creation_leaves_queued_work_for_dispatcher(
         persisted = await db.get(AITask, task.id)
     assert persisted.status == "queued"
     assert persisted.lease_state is None
+
+
+@pytest.mark.asyncio
+async def test_legacy_worker_reads_redis_payload_when_task_images_are_missing(
+    task_db, dispatch_boundary, monkeypatch,
+):
+    redis, _ = dispatch_boundary
+    request = ProcessScreenshotRequest(image=base64.b64encode(b"legacy-image").decode())
+    async with task_db() as db:
+        task, _ = await TaskService(db).create(USER, request)
+        stored_file_id = await db.scalar(
+            select(StoredFile.id).where(StoredFile.task_id == task.id)
+        )
+        await db.execute(delete(TaskImage).where(TaskImage.task_id == task.id))
+        await db.commit()
+
+    redis.values[f"aivora:task-input:{task.id}"] = (
+        '{"images":["legacy-key"],"mode":"programming","language":null}'
+    )
+    calls = []
+
+    class Provider:
+        async def stream_answer(self, images, *args):
+            calls.append(images)
+            yield SimpleNamespace(text='{"answer":"A"}')
+
+    monkeypatch.setattr(ai_tasks, "session_factory", task_db)
+    monkeypatch.setattr(
+        ai_tasks,
+        "Redis",
+        SimpleNamespace(from_url=lambda *args, **kwargs: redis),
+    )
+    monkeypatch.setattr(ai_tasks, "OpenAICompatibleProvider", Provider)
+    monkeypatch.setattr(ai_tasks.storage, "get_bytes", lambda key: b"legacy-image")
+    monkeypatch.setattr(ai_tasks.event_bus, "append", lambda *args, **kwargs: asyncio.sleep(0))
+
+    await ai_tasks._run_task(task.id)
+
+    async with task_db() as db:
+        persisted = await db.get(AITask, task.id)
+        answers = (await db.scalars(select(Answer).where(Answer.task_id == task.id))).all()
+    assert stored_file_id is not None
+    assert persisted.status == "completed"
+    assert len(answers) == 1
+    assert calls == [["data:image/png;base64,bGVnYWN5LWltYWdl"]]

@@ -134,6 +134,32 @@ async def _set_streaming(task_id: UUID, generation: int) -> bool:
     return streaming is not None
 
 
+async def _confirm_current(task_id: UUID, generation: int) -> bool:
+    async with session_factory() as db:
+        current = await db.scalar(
+            select(AITask.id).where(*_current_task_where(task_id, generation))
+        )
+        return current is not None
+
+
+async def _append_content_if_current(
+    task_id: UUID, generation: int, content: str, progress: int,
+) -> bool:
+    async with session_factory() as db:
+        current = await db.scalar(
+            select(AITask.id).where(*_current_task_where(task_id, generation))
+            .with_for_update()
+        )
+        if current is None:
+            return False
+        await event_bus.append(
+            task_id, "content", {"content": content, "append": True},
+            stage="ai_streaming", progress=progress,
+        )
+        await db.commit()
+    return True
+
+
 async def _load_task_input(task_id: UUID, redis: Redis | None):
     async with session_factory() as db:
         task = await db.get(AITask, task_id)
@@ -201,6 +227,8 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
             task_id, "progress", {"streamingStarted": True},
             stage="ai_streaming", progress=20,
         )
+        if not await _confirm_current(task_id, active_generation):
+            return
         provider = OpenAICompatibleProvider()
         chunks: list[str] = []
         try:
@@ -212,11 +240,11 @@ async def _run_task(task_id: UUID, generation: int | None = None) -> None:
                     return
                 if chunk.text:
                     chunks.append(chunk.text)
-                    await event_bus.append(
-                        task_id, "content", {"content": chunk.text, "append": True},
-                        stage="ai_streaming",
-                        progress=min(95, 20 + len("".join(chunks)) // 20),
-                    )
+                    if not await _append_content_if_current(
+                        task_id, active_generation, chunk.text,
+                        min(95, 20 + len("".join(chunks)) // 20),
+                    ):
+                        return
         except Exception:
             await _fail_if_current(task_id, active_generation, "AI_PROVIDER_ERROR", "模型处理失败")
             return
