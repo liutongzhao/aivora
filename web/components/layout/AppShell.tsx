@@ -1,6 +1,11 @@
+"use client";
+
 import type { PropsWithChildren } from "react";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard, ListTodo, History, Settings2, Smartphone } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { apiFetch } from "../../lib/api-client";
+import { clearWebSessionId } from "../../lib/session";
 
 const items = [
   { href: "/dashboard", label: "工作台", icon: <LayoutDashboard size={17} /> },
@@ -11,5 +16,11 @@ const items = [
 ];
 
 export function AppShell({ children }: PropsWithChildren) {
-  return <div className="app-shell"><Sidebar items={items} /><div className="app-content">{children}</div></div>;
+  const router = useRouter();
+  async function logout() {
+    await apiFetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    clearWebSessionId();
+    router.replace("/login");
+  }
+  return <div className="app-shell"><Sidebar items={items} /><div className="app-content"><div className="app-topbar"><span /><button className="button button-secondary" onClick={logout}>退出登录</button></div>{children}</div></div>;
 }
