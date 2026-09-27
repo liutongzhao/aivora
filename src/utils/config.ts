@@ -31,11 +31,6 @@ export const getWebApiBaseUrl = (): string => {
   return `${config.api.baseUrl}${config.api.webEndpoint}`
 }
 
-// 获取WebSocket URL
-export const getWebSocketUrl = (): string => {
-  return config.websocket.url
-}
-
 // 获取Web页面URL
 export const getWebUrl = (path: string): string => {
   return `${config.web.baseUrl}${path}`
@@ -45,6 +40,5 @@ export const getWebUrl = (path: string): string => {
 console.log('📋 加载配置文件:', {
   aiApiUrl: getAIApiBaseUrl(),
   webApiUrl: getWebApiBaseUrl(), 
-  websocketUrl: getWebSocketUrl(),
   environment: config.environment
 })

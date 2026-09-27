@@ -1,34 +1,10 @@
 // sseService.ts - Server-Sent Events (SSE) 服务
-import { ProcessingStatus } from './aiService'
-import { getWebSocketUrl } from '../utils/config'
-
-/**
- * SSE消息类型
- */
-interface SSEMessage {
-  type: 'connected' | 'progress' | 'content' | 'complete' | 'completed' | 'error' | 'cancelled' |
-    'code_delta' | 'explanation_delta' | 'answer_set'
-  task_id?: string
-  stage?: string
-  message?: string
-  progress?: number
-  section?: string
-  content?: string
-  append?: boolean
-  final_status?: string
-  partialContent?: string  // 🆕 流式内容
-  streamingStarted?: boolean
-  isComplete?: boolean
-  result?: any
-  questionType?: string
-  rawContent?: string
-  parsed?: Record<string, any>
-  parseWarning?: string | null
-  data?: Record<string, any>
-  field?: string
-  delta?: string
-  value?: string | string[]
-}
+import type {
+  AIProcessResult,
+  NormalizedTaskSSEEvent,
+  ProcessingStatus,
+} from '../types/api'
+import { getApiBaseUrl } from './apiClient'
 
 /**
  * SSE连接状态
@@ -46,7 +22,7 @@ interface SSEConnectionStatus {
  */
 export class SSEService {
 
-  private baseURL = getWebSocketUrl()
+  private baseURL = getApiBaseUrl()
 
   private eventSource: EventSource | null = null
   private connectionStatus: SSEConnectionStatus = {
@@ -65,76 +41,6 @@ export class SSEService {
 
   constructor() {
     console.log('🌊 SSE服务初始化')
-  }
-
-  /**
-   * 启动AI处理并获取任务ID
-   */
-  async startProcessing(image: string, mode: 'programming' | 'debug' = 'programming'): Promise<{
-    success: boolean
-    task_id?: string
-    error?: string
-  }> {
-    try {
-      console.log('🚀 [SSE] 启动处理请求:', { mode, hasImage: !!image })
-
-      // 获取认证信息
-      let headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-
-      try {
-        if (window.electronAPI?.webAuthStatus) {
-          const authStatus = await window.electronAPI.webAuthStatus()
-          if (authStatus.authenticated && authStatus.sessionId) {
-            headers['X-Session-Id'] = authStatus.sessionId
-            console.log('🔐 [SSE] 设置认证头')
-          }
-        }
-      } catch (authError) {
-        console.warn('⚠️ [SSE] 获取认证信息失败:', authError)
-      }
-
-      // 🆕 添加客户端版本信息
-      try {
-        const { getVersionHeaders } = await import('../utils/version')
-        const versionHeaders = getVersionHeaders()
-        Object.assign(headers, versionHeaders)
-        console.log('🏷️ [SSE] 添加版本信息:', versionHeaders)
-      } catch (versionError) {
-        console.warn('⚠️ [SSE] 获取版本信息失败:', versionError)
-      }
-
-      // 发送POST请求启动处理
-      const response = await fetch(`${this.baseURL}/api/ai/process-screenshot`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          image,
-          mode
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: { message: '未知错误' } }))
-        throw new Error(errorData.error?.message || `HTTP ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log('✅ [SSE] 处理启动成功:', data)
-
-      return {
-        success: true,
-        task_id: data.task_id
-      }
-
-    } catch (error: any) {
-      console.error('❌ [SSE] 启动处理失败:', error)
-      return {
-        success: false,
-        error: error.message || '启动处理失败'
-      }
-    }
   }
 
   /**
@@ -173,7 +79,7 @@ export class SSEService {
 
         const handleConnect = (event: MessageEvent) => {
           try {
-            const data: SSEMessage = JSON.parse(event.data)
+            const data: NormalizedTaskSSEEvent = JSON.parse(event.data)
             if (data.type === 'connected') {
               console.log('✅ [SSE] 连接成功')
               clearTimeout(timeout)
@@ -416,10 +322,10 @@ export class SSEService {
     // 消息处理
     this.eventSource.onmessage = (event) => {
       try {
-        const raw: SSEMessage = JSON.parse(event.data)
+        const raw: NormalizedTaskSSEEvent = JSON.parse(event.data)
         // The local API wraps event-specific fields in `data`; normalize the
         // envelope so the renderer can consume both local and legacy payloads.
-        const data: SSEMessage = raw.data
+        const data: NormalizedTaskSSEEvent = raw.data
           ? { ...raw, ...raw.data }
           : raw
         console.log(`🌊 [SSE] 收到消息:`, data.type, data)
@@ -492,7 +398,7 @@ export class SSEService {
             console.log('🎉 [SSE] 处理完成，准备发送最终结果')
             // 本地 API 将完成结果直接放在事件 envelope 的 data 中，
             // 旧版接口则可能使用 data.result；统一成桌面端结果协议。
-            const result = data.result || (
+            const result: AIProcessResult | null = data.result || (
               data.questionType || data.content || data.parsed
                 ? {
                     questionType: data.questionType,

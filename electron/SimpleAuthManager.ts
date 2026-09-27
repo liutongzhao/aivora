@@ -248,7 +248,7 @@ export class SimpleAuthManager extends EventEmitter {
       // 🆕 通知服务器登出（使用增强认证API）
       if (this.token) {
         try {
-          await this.apiClient.post('/api/logout')
+          await this.apiClient.post('/api/auth/logout')
         } catch (error) {
           console.warn('服务器登出请求失败，但继续本地登出')
         }
@@ -1250,7 +1250,7 @@ export class SimpleAuthManager extends EventEmitter {
    */
   private async checkServerConnection(): Promise<boolean> {
     try {
-      const response = await axios.get(`${this.apiBaseUrl}/api/health`, { timeout: 5000 })
+      const response = await axios.get(`${this.apiBaseUrl}/health/live`, { timeout: 5000 })
       return response.status === 200
     } catch (error) {
       console.error('服务器连接检查失败:', error)

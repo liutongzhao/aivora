@@ -478,14 +478,12 @@ export function useAIProcessing(): UseAIProcessingReturn {
       }))
 
       // 🆕 使用新的SSE方式发送处理请求，根据题目类型设置mode
-      const mode: 'programming' | 'debug' | 'universal' = options?.forceQuestionType === 'single_choice' ? 'single_choice' as any :
-                   options?.forceQuestionType === 'multiple_choice' ? 'multiple_choice' :
-                   options?.forceQuestionType === 'universal' ? 'universal' :
-                   'programming'
+      const mode = options?.forceQuestionType || 'programming'
       console.log('🎯 [SSE] 发送请求，mode:', mode, 'options:', options)
       const response = await aiService.processScreenshotSSE(
-        Array.isArray(screenshot) ? screenshot.join('\n') : screenshot,
-        mode
+        screenshot,
+        mode,
+        { language: options?.preferredLanguage }
       )
       
       if (response.success && response.task_id) {
