@@ -547,6 +547,75 @@
   grid-column: 1 / -1;
 }
 
+.window-settings-panel h2,
+.account-settings-panel h2 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0 0 16px;
+}
+
+.window-setting-row,
+.account-setting-row {
+  align-items: center;
+  border-top: 1px solid var(--client-border);
+  display: flex;
+  justify-content: space-between;
+  min-height: 64px;
+  gap: 16px;
+}
+
+.window-setting-row > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.window-setting-row span,
+.account-setting-row span {
+  color: var(--client-text-muted);
+  font-size: 12px;
+}
+
+.window-theme-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.window-theme-buttons button {
+  background: var(--client-surface-elevated);
+  border: 1px solid var(--client-border-strong);
+  border-radius: 6px;
+  color: var(--client-text-muted);
+  font-size: 12px;
+  height: 32px;
+  padding: 0 12px;
+}
+
+.window-theme-buttons button.is-active {
+  background: var(--client-accent-soft);
+  border-color: var(--client-accent);
+  color: var(--client-accent);
+  font-weight: 650;
+}
+
+.window-opacity-control {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.window-opacity-control span {
+  color: var(--client-text);
+  min-width: 38px;
+  text-align: right;
+}
+
+.account-setting-actions {
+  border-top: 1px solid var(--client-border);
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+}
+
 @media (max-width: 720px) {
   .model-toolbar,
   .model-toolbar-actions {
@@ -584,6 +653,13 @@
 
   .connection-editor-wide {
     grid-column: auto;
+  }
+
+  .window-setting-row,
+  .account-setting-row {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 0;
   }
 }
 

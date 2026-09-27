@@ -12,6 +12,8 @@ import { ClientSection, ClientSidebar } from '../components/ClientShell/ClientSi
 import { ClientTitleBar } from '../components/ClientShell/ClientTitleBar'
 import { ModelPromptCenter } from '../components/ModelPromptCenter/ModelPromptCenter'
 import { ConnectionSettings } from '../components/ConnectionSettings/ConnectionSettings'
+import { WindowSettings } from '../components/WindowSettings/WindowSettings'
+import { AccountSettings } from '../components/AccountSettings/AccountSettings'
 
 type ShortcutMap = Record<ShortcutAction, string>
 
@@ -920,16 +922,11 @@ export function ConfigPage() {
         </section>
 
         <section data-client-page="window" className="client-placeholder-panel">
-          <h2>窗口</h2>
-          <p>主题、透明度、缩放和窗口位置将在这里统一管理。</p>
+          <WindowSettings />
         </section>
 
         <section data-client-page="account" className="client-placeholder-panel">
-          <h2>账户</h2>
-          <p>{user?.username || user?.email || '未登录'}</p>
-          <button type="button" className="client-button client-button-secondary" onClick={handleLogout} disabled={logoutLoading}>
-            {logoutLoading ? '退出中...' : '退出登录'}
-          </button>
+          <AccountSettings user={user} version={versionInfo} />
         </section>
 
       {isThemeDialogOpen && (
