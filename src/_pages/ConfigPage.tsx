@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, RefreshCw, Smartphone, Play, LogOut, BookOpen } from 'lucide-react'
+import { Loader2, RefreshCw, Smartphone, Play, LogOut } from 'lucide-react'
 import {
   ShortcutAction,
   shortcutDefinitions,
@@ -42,6 +42,11 @@ interface ShortcutTestResult {
   message?: string
 }
 
+interface ShortcutConflict {
+  action: ShortcutAction
+  message: string
+}
+
 interface VersionInfo {
   current: string
   latest: string
@@ -56,6 +61,7 @@ export function ConfigPage() {
   const [shortcuts, setShortcuts] = useState<ShortcutMap>({ ...defaultShortcutBindings })
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null)
   const [recordingHint, setRecordingHint] = useState<string | null>(null)
+  const [shortcutConflict, setShortcutConflict] = useState<ShortcutConflict | null>(null)
   const [testResult, setTestResult] = useState<ShortcutTestResult | null>(null)
   const [isTestingMode, setIsTestingMode] = useState(false)
   const [examClientLaunching, setExamClientLaunching] = useState(false)
@@ -159,6 +165,7 @@ export function ConfigPage() {
   const handleStartRecording = (action: ShortcutAction) => {
     setRecordingAction(action)
     setRecordingHint('请按下新的快捷键组合（至少包含Ctrl/Cmd）')
+    setShortcutConflict(null)
     setTestResult(null)
   }
   useEffect(() => {
@@ -186,10 +193,8 @@ export function ConfigPage() {
         if (conflict) {
           const label = shortcutDefinitions.find(def => def.action === conflict[0] as ShortcutAction)?.label || '其它快捷键'
           const conflictMessage = `快捷键冲突：已被 ${label}`
-          showToastMessage(conflictMessage, false)
-          showCenterNotice(conflictMessage)
+          setShortcutConflict({ action, message: conflictMessage })
           setRecordingAction(null)
-          setRecordingHint(null)
           return
         }
 
@@ -197,6 +202,7 @@ export function ConfigPage() {
         if (result.success && result.bindings) {
           setShortcuts(result.bindings)
           setRecordingHint(null)
+          setShortcutConflict(null)
           setRecordingAction(null)
           window.electronAPI.syncUserShortcuts?.(result.bindings).catch((syncError: any) => {
             console.error('同步用户快捷键失败:', syncError)
@@ -211,6 +217,27 @@ export function ConfigPage() {
     },
     [showToastMessage]
   )
+
+  const handleRestoreDefaults = useCallback(async () => {
+    setShortcutConflict(null)
+    setRecordingHint(null)
+    try {
+      const results = await Promise.all(
+        Object.entries(defaultShortcutBindings).map(([action, accelerator]) =>
+          window.electronAPI.updateShortcutBinding({
+            action: action as ShortcutAction,
+            accelerator
+          })
+        )
+      )
+      const latest = results.find(result => result.success && result.bindings)?.bindings
+      setShortcuts(latest || { ...defaultShortcutBindings })
+      showCenterNotice('已恢复默认快捷键')
+    } catch (error) {
+      console.error('恢复默认快捷键失败:', error)
+      setRecordingHint('恢复默认快捷键失败，请重试')
+    }
+  }, [showCenterNotice])
 
   useEffect(() => {
     if (!recordingAction) return
@@ -279,15 +306,6 @@ export function ConfigPage() {
     setTestResult(null)
     setIsThemeDialogOpen(true)
   }
-
-  const handleOpenTutorial = useCallback(() => {
-    const tutorialUrl = 'https://image.iamshuaidi.com/temp/QZ_peizhi.mp4'
-    if (window.electronAPI.openExternal) {
-      window.electronAPI.openExternal(tutorialUrl)
-    } else {
-      window.open(tutorialUrl, '_blank')
-    }
-  }, [])
 
   const handleThemeSelection = async (theme: 'dark' | 'light') => {
     if (themeSelectionLoading) return
@@ -531,19 +549,9 @@ export function ConfigPage() {
             <h1 className="text-2xl font-semibold text-slate-900">
               {user?.username || user?.email || '未登录'}
             </h1>
-            <p className="text-sm text-slate-500">
-              使用前可简单看一下常见快捷键，没问题后可点击右边的 开始使用<br />
-              进入考试小窗后，可按 ⌘⇧P（Windows/Linux 为 Ctrl+Shift+P）返回当前配置页面；⌘Q / Ctrl+Q 用于退出软件。
-            </p>
+            <p className="text-sm text-slate-500">准备好后即可开始使用。</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleOpenTutorial}
-              className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100"
-            >
-              <BookOpen size={16} aria-hidden="true" />
-              使用视频教程
-            </button>
             <button
               onClick={handleCheckUpdate}
               className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
@@ -685,15 +693,7 @@ export function ConfigPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">快捷键管理</h2>
-              <p className="text-sm text-slate-500">必看：常见快捷键可以自定义，但是没有特殊需求建议按照默认的，如果自定义了一定一定要测试，以免出现快捷键冲突</p>
-              <p className="mt-1 text-sm font-semibold text-rose-600">更改快捷键之后一定要测试是否生效！</p>
             </div>
-            <button
-              onClick={handleOpenTutorial}
-              className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100"
-            >
-              点我查看使用教程
-            </button>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -727,6 +727,13 @@ export function ConfigPage() {
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={handleRestoreDefaults}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
+          >
+            恢复默认快捷键
+          </button>
 
           <div ref={commonSectionRef}>
             {expandedSections.common && (
@@ -754,6 +761,11 @@ export function ConfigPage() {
                           更改
                         </button>
                       </div>
+                      {shortcutConflict?.action === definition.action && (
+                        <p className="text-xs font-medium text-rose-600 md:col-span-4" role="alert">
+                          {shortcutConflict.message}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
