@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.signals import worker_process_init, worker_process_shutdown
 
 from app.config import get_settings
 
@@ -18,3 +19,20 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     imports=("app.workers.ai_tasks",),
 )
+
+
+@worker_process_init.connect
+def initialize_worker_process(**_kwargs) -> None:
+    from app.workers.ai_tasks import reset_worker_process
+
+    reset_worker_process()
+
+
+@worker_process_shutdown.connect
+def shutdown_worker_process(**_kwargs) -> None:
+    from app.workers import ai_tasks
+
+    if ai_tasks._runner is not None:
+        ai_tasks._runner.close()
+        ai_tasks._runner = None
+    ai_tasks._runner_pid = None

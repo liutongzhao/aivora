@@ -343,6 +343,18 @@ _runner: asyncio.Runner | None = None
 _runner_pid: int | None = None
 
 
+def reset_worker_process() -> None:
+    global _runner, _runner_pid
+    if _runner is not None:
+        _runner.close()
+    _runner = None
+    _runner_pid = None
+    from app.infrastructure import database
+
+    database.reset_for_worker_process()
+    event_bus.reset_for_worker_process()
+
+
 @celery_app.task(name="aivora.run_ai_task", bind=True, max_retries=None)
 def run_ai_task(self, task_id: str) -> None:
     global _runner, _runner_pid

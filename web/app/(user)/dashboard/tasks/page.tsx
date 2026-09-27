@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch, getApiBase } from "../../../../lib/api-client";
 import { getWebSessionId } from "../../../../lib/session";
+import { mergeTaskResult, type TaskResult } from "../../../../lib/task-result";
 import { TaskWorkspace } from "../../../../components/tasks/TaskWorkspace";
 import type { TaskSummary } from "../../../../components/tasks/TaskList";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [selected, setSelected] = useState<TaskSummary | null>(null);
-  const [result, setResult] = useState<{ content?: string; rawContent?: string; parsed?: Record<string, unknown>; parseWarning?: string | null; images?: { id: string; url: string; contentType?: string }[] } | null>(null);
+  const [result, setResult] = useState<TaskResult | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -56,7 +57,7 @@ export default function TasksPage() {
         updateTask({ status: event.status ?? (event.stage === "ai_streaming" ? "streaming" : selected.status), stage: event.stage ?? selected.stage, progress: Number(event.progress ?? selected.progress) });
       } else if (event.type === "completed") {
         const finalResult = event.result ?? (event.questionType || event.parsed ? event : null);
-        if (finalResult) setResult(finalResult);
+        if (finalResult) setResult((current) => mergeTaskResult(current, finalResult));
         updateTask({ status: "completed", stage: "completed", progress: 100 });
         source?.close();
       } else if (event.type === "error") {
