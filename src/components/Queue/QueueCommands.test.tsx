@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ToastContext } from '../../contexts/toast'
 import QueueCommands from './QueueCommands'
 
 describe('QueueCommands', () => {
-  it('exposes the core screenshot, process, and reset actions', () => {
+  it('shows shortcut hints without exposing mouse operation buttons', () => {
     const triggerScreenshot = vi.fn().mockResolvedValue({ success: true })
     const triggerProcessScreenshots = vi.fn().mockResolvedValue({ success: true })
     const triggerReset = vi.fn().mockResolvedValue({ success: true })
@@ -23,17 +23,13 @@ describe('QueueCommands', () => {
       </ToastContext.Provider>
     )
 
-    expect(screen.getByRole('button', { name: '截图' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '局部截图' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '处理截图' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '重置队列' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: '截图' }))
-    fireEvent.click(screen.getByRole('button', { name: '处理截图' }))
-    fireEvent.click(screen.getByRole('button', { name: '重置队列' }))
-
-    expect(triggerScreenshot).toHaveBeenCalledTimes(1)
-    expect(triggerProcessScreenshots).toHaveBeenCalledTimes(1)
-    expect(triggerReset).toHaveBeenCalledTimes(1)
+    expect(screen.getAllByText('截图').length).toBeGreaterThan(0)
+    expect(screen.getByText('单选')).toBeTruthy()
+    expect(screen.getByText('编程')).toBeTruthy()
+    expect(screen.getByText('通用')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(triggerScreenshot).not.toHaveBeenCalled()
+    expect(triggerProcessScreenshots).not.toHaveBeenCalled()
+    expect(triggerReset).not.toHaveBeenCalled()
   })
 })
