@@ -11,6 +11,7 @@ import { config } from '../utils/config'
 import { ClientSection, ClientSidebar } from '../components/ClientShell/ClientSidebar'
 import { ClientTitleBar } from '../components/ClientShell/ClientTitleBar'
 import { ModelPromptCenter } from '../components/ModelPromptCenter/ModelPromptCenter'
+import { ConnectionSettings } from '../components/ConnectionSettings/ConnectionSettings'
 
 type ShortcutMap = Record<ShortcutAction, string>
 
@@ -616,6 +617,10 @@ export function ConfigPage() {
             </div>
           </div>
         )}
+
+        <section data-client-page="connection" className="client-placeholder-panel">
+          <ConnectionSettings />
+        </section>
 
         <section ref={remoteRef} data-client-page="connection" className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

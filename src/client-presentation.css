@@ -468,6 +468,85 @@
   margin: 0;
 }
 
+.connection-panel-heading,
+.connection-row,
+.connection-row-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.connection-panel-heading {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.connection-panel-heading h2 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.connection-panel-heading p {
+  color: var(--client-text-muted);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.connection-row {
+  border-top: 1px solid var(--client-border);
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.connection-row > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.connection-row small {
+  color: var(--client-text-subtle);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-editor {
+  background: var(--client-surface-muted);
+  border: 1px solid var(--client-border);
+  border-radius: 8px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.connection-editor-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.connection-editor-grid label {
+  color: var(--client-text-muted);
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.connection-editor-grid input {
+  background: var(--client-surface-elevated);
+  border: 1px solid var(--client-border-strong);
+  border-radius: 6px;
+  color: var(--client-text);
+  height: 36px;
+  padding: 0 10px;
+}
+
+.connection-editor-wide {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 720px) {
   .model-toolbar,
   .model-toolbar-actions {
@@ -482,6 +561,29 @@
   .model-workspace-grid,
   .model-editor-grid {
     grid-template-columns: 1fr;
+  }
+
+  .connection-panel-heading,
+  .connection-row {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px 0;
+  }
+
+  .connection-row-actions {
+    width: 100%;
+  }
+
+  .connection-row-actions .client-button {
+    flex: 1;
+  }
+
+  .connection-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .connection-editor-wide {
+    grid-column: auto;
   }
 }
 
