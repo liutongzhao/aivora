@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { userConfigService } from '../../services/userConfigService'
 import type { Connection, UserModel } from '../../types/userConfig'
 import { ModelList } from './ModelList'
+import { ModelRoutingPanel } from './ModelRoutingPanel'
+import { PromptEditor } from './PromptEditor'
 
 const tabs = [
   ['models', '模型'],
@@ -57,12 +59,8 @@ export function ModelPromptCenter() {
       {!loading && !error && activeTab === 'models' && (
         <ModelList connections={connections} models={models} onRefresh={refresh} />
       )}
-      {!loading && !error && activeTab !== 'models' && (
-        <div className="model-placeholder-tab">
-          <h2>{tabs.find(([key]) => key === activeTab)?.[1]}</h2>
-          <p>该配置页即将接入服务端同步数据。</p>
-        </div>
-      )}
+      {!loading && !error && activeTab === 'routing' && <ModelRoutingPanel />}
+      {!loading && !error && activeTab === 'prompts' && <PromptEditor />}
     </section>
   )
 }
