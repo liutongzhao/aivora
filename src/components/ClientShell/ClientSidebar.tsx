@@ -1,6 +1,19 @@
-import { Keyboard, LayoutDashboard, MonitorCog } from 'lucide-react'
+import {
+  Cable,
+  Keyboard,
+  LayoutDashboard,
+  Monitor,
+  SlidersHorizontal,
+  UserRound,
+} from 'lucide-react'
 
-export type ClientSection = 'overview' | 'shortcuts' | 'system'
+export type ClientSection =
+  | 'overview'
+  | 'shortcuts'
+  | 'models'
+  | 'window'
+  | 'connection'
+  | 'account'
 
 interface ClientSidebarProps {
   activeSection: ClientSection
@@ -12,9 +25,12 @@ const navigationItems: Array<{
   label: string
   icon: typeof LayoutDashboard
 }> = [
-  { section: 'overview', label: '概览', icon: LayoutDashboard },
+  { section: 'overview', label: '工作台', icon: LayoutDashboard },
   { section: 'shortcuts', label: '快捷键', icon: Keyboard },
-  { section: 'system', label: '外观与系统', icon: MonitorCog }
+  { section: 'models', label: '模型与提示词', icon: SlidersHorizontal },
+  { section: 'window', label: '窗口', icon: Monitor },
+  { section: 'connection', label: '连接', icon: Cable },
+  { section: 'account', label: '账户', icon: UserRound },
 ]
 
 export function ClientSidebar({ activeSection, onSelect }: ClientSidebarProps) {

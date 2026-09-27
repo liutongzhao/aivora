@@ -33,9 +33,14 @@ describe('ClientSidebar', () => {
     render(<ClientSidebar activeSection="overview" onSelect={onSelect} />)
 
     expect(screen.getByRole('navigation', { name: '设置导航' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '概览' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: '工作台' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('button', { name: '快捷键' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '外观与系统' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '模型与提示词' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '窗口' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '连接' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '账户' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '外观与系统' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '远程控制' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: '快捷键' }))
     expect(onSelect).toHaveBeenCalledWith('shortcuts')

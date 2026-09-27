@@ -530,20 +530,31 @@ export function ConfigPage() {
 
   const scrollToSection = (section: ClientSection) => {
     setActiveSection(section)
-    const target = section === 'overview'
-      ? overviewRef.current
-      : section === 'shortcuts'
-        ? shortcutsRef.current
-        : remoteRef.current
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const sectionTitles: Record<ClientSection, { title: string; eyebrow: string }> = {
+    overview: { title: '工作台', eyebrow: '开始使用' },
+    shortcuts: { title: '快捷键', eyebrow: '操作方式' },
+    models: { title: '模型与提示词', eyebrow: 'AI 配置' },
+    window: { title: '窗口', eyebrow: '显示设置' },
+    connection: { title: '连接', eyebrow: '服务与设备' },
+    account: { title: '账户', eyebrow: '账户信息' },
   }
 
   return (
     <div className="client-settings">
       <ClientTitleBar />
       <ClientSidebar activeSection={activeSection} onSelect={scrollToSection} />
-      <main className="client-settings-content space-y-8">
-        <header ref={overviewRef} className="client-account rounded-3xl bg-white border border-slate-100 p-8 shadow-[0_12px_50px_rgba(15,23,42,0.05)] flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+      <main className="client-settings-content space-y-8" data-active-section={activeSection}>
+        <div className="client-page-heading">
+          <div>
+            <p className="client-eyebrow">{sectionTitles[activeSection].eyebrow}</p>
+            <h1>{sectionTitles[activeSection].title}</h1>
+          </div>
+          {activeSection === 'overview' && <span className="client-status-dot">客户端服务正常</span>}
+        </div>
+
+        <header ref={overviewRef} data-client-page="overview" className="client-account rounded-3xl bg-white border border-slate-100 p-8 shadow-[0_12px_50px_rgba(15,23,42,0.05)] flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <p className="text-xs text-slate-500">账户与设置</p>
             <h1 className="text-2xl font-semibold text-slate-900">
@@ -586,7 +597,7 @@ export function ConfigPage() {
         </header>
 
         {versionInfo?.needsUpdate && (
-          <div className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
+          <div data-client-page="connection account" className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2 text-amber-600 text-sm font-medium">
                 <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
@@ -605,7 +616,7 @@ export function ConfigPage() {
           </div>
         )}
 
-        <section ref={remoteRef} className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+        <section ref={remoteRef} data-client-page="connection" className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">手机远程控制</h2>
@@ -672,7 +683,7 @@ export function ConfigPage() {
           )}
         </section>
 
-        <section className="client-section-nav rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
+        <section data-client-page="overview" className="client-section-nav rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
           <div className="flex flex-wrap gap-3">
             <button
               className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
@@ -689,7 +700,7 @@ export function ConfigPage() {
           </div>
         </section>
 
-        <section ref={shortcutsRef} className="rounded-3xl border border-slate-100 bg-white p-6 space-y-5 shadow-sm">
+        <section ref={shortcutsRef} data-client-page="shortcuts" className="rounded-3xl border border-slate-100 bg-white p-6 space-y-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">快捷键管理</h2>
@@ -829,7 +840,7 @@ export function ConfigPage() {
           )}
         </section>
 
-        <section ref={testingRef} className="rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
+        <section ref={testingRef} data-client-page="shortcuts" className="rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">快捷键生效验证</h2>
@@ -896,6 +907,24 @@ export function ConfigPage() {
             )}
           </div>
         )}
+        </section>
+
+        <section data-client-page="models" className="client-placeholder-panel">
+          <h2>模型与提示词</h2>
+          <p>模型、题型分配和提示词配置将在这里统一管理。</p>
+        </section>
+
+        <section data-client-page="window" className="client-placeholder-panel">
+          <h2>窗口</h2>
+          <p>主题、透明度、缩放和窗口位置将在这里统一管理。</p>
+        </section>
+
+        <section data-client-page="account" className="client-placeholder-panel">
+          <h2>账户</h2>
+          <p>{user?.username || user?.email || '未登录'}</p>
+          <button type="button" className="client-button client-button-secondary" onClick={handleLogout} disabled={logoutLoading}>
+            {logoutLoading ? '退出中...' : '退出登录'}
+          </button>
         </section>
 
       {isThemeDialogOpen && (

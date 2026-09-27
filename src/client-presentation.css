@@ -120,6 +120,95 @@
   scroll-margin-top: 72px;
 }
 
+.client-settings-content > [data-client-page] {
+  display: none;
+}
+
+.client-settings-content[data-active-section="overview"] > [data-client-page~="overview"],
+.client-settings-content[data-active-section="shortcuts"] > [data-client-page~="shortcuts"],
+.client-settings-content[data-active-section="models"] > [data-client-page~="models"],
+.client-settings-content[data-active-section="window"] > [data-client-page~="window"],
+.client-settings-content[data-active-section="connection"] > [data-client-page~="connection"],
+.client-settings-content[data-active-section="account"] > [data-client-page~="account"] {
+  display: block;
+}
+
+.client-page-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 56px;
+}
+
+.client-page-heading h1 {
+  color: var(--client-text);
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: 0;
+  margin: 2px 0 0;
+}
+
+.client-eyebrow {
+  color: var(--client-text-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.client-status-dot {
+  align-items: center;
+  color: #16805b;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 7px;
+}
+
+.client-status-dot::before {
+  background: #20a46b;
+  border-radius: 999px;
+  content: "";
+  height: 7px;
+  width: 7px;
+}
+
+.client-placeholder-panel {
+  background: var(--client-surface-elevated);
+  border: 1px solid var(--client-border);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.client-placeholder-panel h2 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.client-placeholder-panel p {
+  color: var(--client-text-muted);
+  font-size: 13px;
+  margin: 8px 0 16px;
+}
+
+.client-button {
+  align-items: center;
+  border-radius: 6px;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  height: var(--client-control-height);
+  justify-content: center;
+  padding: 0 14px;
+}
+
+.client-button-secondary {
+  background: var(--client-surface-elevated);
+  border: 1px solid var(--client-border-strong);
+  color: var(--client-text);
+}
+
 .client-queue-empty {
   align-items: center;
   border: 1px dashed var(--overlay-rule);

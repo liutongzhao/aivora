@@ -32,7 +32,7 @@ describe('ConfigPage overview', () => {
       expect(screen.getByRole('heading', { name: '测试用户' })).toBeTruthy()
     })
     expect(screen.getByRole('button', { name: /开始使用/ })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '手机远程控制' })).toBeTruthy()
+    expect(screen.getByText('客户端服务正常')).toBeTruthy()
     expect(screen.queryByText(/使用前可简单看一下常见快捷键/)).toBeNull()
     expect(screen.queryByRole('button', { name: '使用视频教程' })).toBeNull()
   })
