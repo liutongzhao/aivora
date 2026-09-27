@@ -111,7 +111,7 @@ services:
       BYOK_REQUIRED: "true"
     volumes:
       - .:/workspace
-    command: bash -lc "pip install -e . >/tmp/aivora-worker-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=prefork --concurrency=4 --queues=aivora --hostname=aivora-worker@%h"
+    command: bash -lc "pip install -e . >/tmp/aivora-worker-install.log && celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=threads --concurrency=4 --queues=aivora --hostname=aivora-worker@%h"
 
   web:
     image: node:22-alpine

@@ -1,4 +1,5 @@
 import json
+import threading
 from collections.abc import AsyncIterator
 from uuid import UUID, uuid4
 
@@ -9,14 +10,22 @@ from app.config import get_settings
 
 class EventBus:
     def __init__(self) -> None:
-        self.redis: Redis | None = None
+        self._local = threading.local()
+
+    @property
+    def redis(self) -> Redis | None:
+        return getattr(self._local, "redis", None)
+
+    @redis.setter
+    def redis(self, value: Redis | None) -> None:
+        self._local.redis = value
 
     def _client(self) -> Redis:
         if self.redis is None:
             self.redis = Redis.from_url(get_settings().redis_url, decode_responses=True)
         return self.redis
 
-    def reset_for_worker_process(self) -> None:
+    def reset_for_current_thread(self) -> None:
         self.redis = None
 
     @staticmethod

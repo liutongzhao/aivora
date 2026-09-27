@@ -23,6 +23,6 @@ start_screen() {
   echo "已启动 screen: ${name}"
 }
 start_screen aivora-backend "cd '$ROOT_DIR/backend'; export PYTHONPATH=\"\$PWD\"; export BYOK_REQUIRED=true; exec /Users/liutongzhao/miniconda3/envs/aivora-backend/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000"
-start_screen aivora-worker "cd '$ROOT_DIR/backend'; export PYTHONPATH=\"\$PWD\"; export BYOK_REQUIRED=true; exec /Users/liutongzhao/miniconda3/envs/aivora-backend/bin/celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=prefork --concurrency=4 --queues=aivora --hostname=aivora-worker@%h"
+start_screen aivora-worker "cd '$ROOT_DIR/backend'; export PYTHONPATH=\"\$PWD\"; export BYOK_REQUIRED=true; exec /Users/liutongzhao/miniconda3/envs/aivora-backend/bin/celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=threads --concurrency=4 --queues=aivora --hostname=aivora-worker@%h"
 start_screen aivora-web "cd '$ROOT_DIR'; exec npm run dev --prefix web -- --hostname 127.0.0.1 --port 3000"
 start_screen aivora-dev "cd '$ROOT_DIR'; exec npm run dev"

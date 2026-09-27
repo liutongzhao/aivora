@@ -1,7 +1,7 @@
 import asyncio
 import base64
 import logging
-import os
+import threading
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -339,33 +339,20 @@ async def _run_task(task_id: UUID) -> None:
             raise ClaimUnavailable() from None
 
 
-_runner: asyncio.Runner | None = None
-_runner_pid: int | None = None
-
-
-def reset_worker_process() -> None:
-    global _runner, _runner_pid
-    if _runner is not None:
-        _runner.close()
-    _runner = None
-    _runner_pid = None
-    from app.infrastructure import database
-
-    database.reset_for_worker_process()
-    event_bus.reset_for_worker_process()
+_runner_local = threading.local()
 
 
 @celery_app.task(name="aivora.run_ai_task", bind=True, max_retries=None)
 def run_ai_task(self, task_id: str) -> None:
-    global _runner, _runner_pid
-    if _runner is None or _runner_pid != os.getpid():
-        _runner = asyncio.Runner()
-        _runner_pid = os.getpid()
+    runner = getattr(_runner_local, "runner", None)
+    if runner is None:
+        runner = asyncio.Runner()
+        _runner_local.runner = runner
     try:
         if (self.request.delivery_info or {}).get("redelivered"):
-            if _runner.run(recover_redelivery(UUID(task_id))):
+            if runner.run(recover_redelivery(UUID(task_id))):
                 return
-        _runner.run(_run_task(UUID(task_id)))
+        runner.run(_run_task(UUID(task_id)))
     except ClaimUnavailable:
         self.retry(countdown=min(2 ** min(self.request.retries, 6), 60), max_retries=None)
     except Exception:
