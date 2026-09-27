@@ -10,6 +10,7 @@ import { formatShortcut } from '../utils/shortcutFormat'
 import { config } from '../utils/config'
 import { ClientSection, ClientSidebar } from '../components/ClientShell/ClientSidebar'
 import { ClientTitleBar } from '../components/ClientShell/ClientTitleBar'
+import { ModelPromptCenter } from '../components/ModelPromptCenter/ModelPromptCenter'
 
 type ShortcutMap = Record<ShortcutAction, string>
 
@@ -910,8 +911,7 @@ export function ConfigPage() {
         </section>
 
         <section data-client-page="models" className="client-placeholder-panel">
-          <h2>模型与提示词</h2>
-          <p>模型、题型分配和提示词配置将在这里统一管理。</p>
+          <ModelPromptCenter />
         </section>
 
         <section data-client-page="window" className="client-placeholder-panel">
