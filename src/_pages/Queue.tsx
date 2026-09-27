@@ -233,7 +233,7 @@ const Queue: React.FC<QueueProps> = ({
     <div ref={contentRef} className="w-full">
       <div className="w-full lg:w-1/2 opacity-controlled-bg rounded-xl border border-white/10 shadow-lg px-4 py-3 transition-colors">
         <div className="space-y-3 w-full">
-          {showScreenshotPreviews && screenshots.length > 0 && (
+          {showScreenshotPreviews && (
             <ScreenshotQueue
               isLoading={false}
               screenshots={screenshots}

@@ -120,6 +120,59 @@
   scroll-margin-top: 72px;
 }
 
+.client-command-button {
+  align-items: center;
+  background: var(--overlay-key-bg);
+  border: 1px solid var(--overlay-rule);
+  border-radius: 5px;
+  color: var(--text-color);
+  display: inline-flex;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.client-command-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.client-command-button-primary {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.client-command-button-primary:hover {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+}
+
+.client-queue-empty {
+  align-items: center;
+  border: 1px dashed var(--overlay-rule);
+  border-radius: 6px;
+  color: var(--overlay-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+  min-height: 76px;
+  padding: 16px;
+  text-align: center;
+}
+
+.client-queue-empty p {
+  color: var(--text-color);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.client-queue-empty span {
+  font-size: 11px;
+}
+
 @media (max-width: 720px) {
   .client-settings {
     padding-left: 0;

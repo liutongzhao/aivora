@@ -17,7 +17,12 @@ const ScreenshotQueue: React.FC<ScreenshotQueueProps> = ({
   onDeleteScreenshot
 }) => {
   if (screenshots.length === 0) {
-    return <></>
+    return (
+      <div className="client-queue-empty" role="status">
+        <p>还没有截图</p>
+        <span>使用截图按钮开始</span>
+      </div>
+    )
   }
 
   const displayScreenshots = screenshots.slice(0, 5)

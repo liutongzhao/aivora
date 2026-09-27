@@ -1,4 +1,5 @@
 import React from "react"
+import { Camera, Crop, Play, RotateCcw } from "lucide-react"
 
 import { useToast } from "../../contexts/toast"
 import { useShortcutBindings } from "../../contexts/shortcuts"
@@ -72,10 +73,54 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({ screenshotCount = 0, cred
     }
   }
 
+  const handlePartialScreenshot = async () => {
+    try {
+      const triggerPartialScreenshot = window.electronAPI.triggerPartialScreenshot as
+        | (() => Promise<{ success?: boolean; error?: string }>)
+        | undefined
+      if (triggerPartialScreenshot) {
+        await triggerPartialScreenshot()
+      } else {
+        showToast('提示', '请使用局部截图快捷键', 'neutral')
+      }
+    } catch (error) {
+      showToast('错误', '局部截图失败', 'error')
+    }
+  }
+
+  const handleReset = async () => {
+    try {
+      const result = await window.electronAPI.triggerReset?.()
+      if (result?.error) {
+        showToast('错误', result.error, 'error')
+      }
+    } catch (error) {
+      showToast('错误', '重置队列失败', 'error')
+    }
+  }
+
   return (
     <div className="w-full">
       <div className="pt-2 w-full">
-        <div className="client-command-bar text-[10px] text-white/90 backdrop-blur-md opacity-controlled-bg-light rounded-lg py-2 px-3 flex flex-wrap items-center gap-3 transition-colors">
+        <div className="client-command-bar text-[10px] text-white/90 backdrop-blur-md opacity-controlled-bg-light rounded-lg py-2 px-3 flex flex-wrap items-center gap-2 transition-colors">
+          <div className="flex items-center gap-2">
+            <button type="button" className="client-command-button" onClick={handleScreenshot} title="截图">
+              <Camera size={15} aria-hidden="true" />
+              <span>截图</span>
+            </button>
+            <button type="button" className="client-command-button" onClick={handlePartialScreenshot} title="局部截图">
+              <Crop size={15} aria-hidden="true" />
+              <span>局部截图</span>
+            </button>
+            <button type="button" className="client-command-button client-command-button-primary" onClick={handleSolve} title="处理截图">
+              <Play size={14} aria-hidden="true" />
+              <span>处理截图</span>
+            </button>
+            <button type="button" className="client-command-button" onClick={handleReset} title="重置队列">
+              <RotateCcw size={14} aria-hidden="true" />
+              <span>重置队列</span>
+            </button>
+          </div>
           {navShortcuts.map((item) => (
             <div key={item.action} className="flex items-center gap-1 whitespace-nowrap">
               <span>{item.label}</span>
