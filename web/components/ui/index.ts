@@ -7,3 +7,4 @@ export { Input } from "./Input";
 export { LoadingState } from "./LoadingState";
 export { Progress } from "./Progress";
 export { Select } from "./Select";
+export { Toast } from "./Toast";
