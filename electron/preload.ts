@@ -76,6 +76,7 @@ const electronAPI = {
   },
   downloadLatestVersion: (url: string) => ipcRenderer.invoke('updates:download-latest', url),
   windowControl: (action: 'minimize' | 'close' | 'toggle-maximize') => ipcRenderer.invoke('window-control', action),
+  recoverWindow: () => ipcRenderer.invoke('window-recover'),
   remoteControl: {
     createPairing: () => ipcRenderer.invoke('remote:create-pairing'),
     disconnect: () => ipcRenderer.invoke('remote:disconnect'),

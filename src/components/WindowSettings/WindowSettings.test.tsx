@@ -7,12 +7,14 @@ describe('WindowSettings', () => {
   it('loads and updates theme and opacity controls', async () => {
     const setClientTheme = vi.fn().mockResolvedValue({ success: true })
     const setOpacity = vi.fn().mockResolvedValue({ success: true, opacity: 0.8 })
+    const recoverWindow = vi.fn().mockResolvedValue({ success: true })
     Object.assign(window, {
       electronAPI: {
         getClientTheme: vi.fn().mockResolvedValue({ theme: 'dark' }),
         setClientTheme,
         getOpacity: vi.fn().mockResolvedValue({ opacity: 1 }),
         setOpacity,
+        recoverWindow,
       },
     })
 
@@ -22,5 +24,7 @@ describe('WindowSettings', () => {
     await waitFor(() => expect(setOpacity).toHaveBeenCalledWith(0.8))
     fireEvent.click(screen.getByRole('button', { name: '浅色' }))
     await waitFor(() => expect(setClientTheme).toHaveBeenCalledWith('light'))
+    fireEvent.click(screen.getByRole('button', { name: '恢复位置' }))
+    await waitFor(() => expect(recoverWindow).toHaveBeenCalled())
   })
 })

@@ -525,8 +525,8 @@ function createConfigWindow() {
   state.configWindow = new BrowserWindow({
     width: 1100,
     height: 780,
-    minWidth: 900,
-    minHeight: 640,
+    minWidth: 800,
+    minHeight: 600,
     backgroundColor: '#f5f6fb',
     title: '考试客户端配置',
     icon: appIconPath,

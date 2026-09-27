@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Connection, UserModel } from '../../types/userConfig'
 import { userConfigService } from '../../services/userConfigService'
 import { ModelEditor } from './ModelEditor'
@@ -17,6 +17,19 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
   const selectedModels = models.filter((model) => model.connection_id === selectedConnection)
   const selectedModel = models.find((model) => model.id === selectedModelId) ?? selectedModels[0] ?? null
   const importedNames = new Set(selectedModels.map((model) => model.name))
+
+  useEffect(() => {
+    const nextConnection = enabledConnections[0]?.id ?? ''
+    if (!enabledConnections.some((connection) => connection.id === selectedConnection)) {
+      setSelectedConnection(nextConnection)
+    }
+  }, [enabledConnections, selectedConnection])
+
+  useEffect(() => {
+    if (!selectedModels.some((model) => model.id === selectedModelId)) {
+      setSelectedModelId(selectedModels[0]?.id ?? '')
+    }
+  }, [selectedModelId, selectedModels])
 
   async function syncModels() {
     if (!selectedConnection) return
@@ -73,6 +86,20 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
       setNotice('模型已停用')
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '模型停用失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function toggleModel() {
+    if (!selectedModel) return
+    setBusy(true)
+    try {
+      await userConfigService.updateModel(selectedModel.id, { enabled: !selectedModel.enabled })
+      await onRefresh?.()
+      setNotice(selectedModel.enabled ? '模型已停用' : '模型已启用')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '模型状态更新失败')
     } finally {
       setBusy(false)
     }
@@ -150,7 +177,7 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
               <div className="model-detail-actions">
                 <button type="button" className="client-button client-button-secondary" aria-label="测试模型" onClick={() => void testModel()} disabled={busy || !selectedModel.enabled}>测试</button>
                 <button type="button" className="client-button client-button-secondary" onClick={() => { setEditingModel(selectedModel); setEditorOpen(true) }}>编辑</button>
-                <button type="button" className="client-button client-button-danger" aria-label="停用模型" onClick={() => void disableModel()} disabled={busy || !selectedModel.enabled}>停用</button>
+                <button type="button" className={selectedModel.enabled ? 'client-button client-button-danger' : 'client-button client-button-secondary'} aria-label={selectedModel.enabled ? '停用模型' : '启用模型'} onClick={() => void (selectedModel.enabled ? disableModel() : toggleModel())} disabled={busy}>{selectedModel.enabled ? '停用' : '启用'}</button>
               </div>
             </>
           ) : <div className="model-empty">选择一个模型查看详情</div>}

@@ -1,6 +1,6 @@
 // ipcHandlers.ts
 
-import { ipcMain, shell, dialog, clipboard } from "electron"
+import { BrowserWindow, ipcMain, shell, dialog, clipboard, screen } from "electron"
 import { randomBytes } from "crypto"
 import { IIpcHandlerDeps } from "./main"
 import { configHelper } from "./ConfigHelper"
@@ -47,6 +47,21 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
 
   ipcMain.handle('remote:disconnect', () => {
     deps.remoteControlClient?.disconnect()
+    return { success: true }
+  })
+
+  ipcMain.handle('window-recover', (event) => {
+    const targetWindow = BrowserWindow.fromWebContents(event.sender)
+    if (!targetWindow || targetWindow.isDestroyed()) {
+      return { success: false, error: '无法获取窗口实例' }
+    }
+    const workArea = screen.getPrimaryDisplay().workArea
+    const bounds = targetWindow.getBounds()
+    targetWindow.setPosition(
+      Math.round(workArea.x + (workArea.width - bounds.width) / 2),
+      Math.round(workArea.y + (workArea.height - bounds.height) / 2),
+    )
+    targetWindow.showInactive()
     return { success: true }
   })
 
@@ -472,16 +487,16 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
 
   ipcMain.handle("set-opacity", (event, opacity: number) => {
     try {
-      const mainWindow = deps.getMainWindow()
-      if (!mainWindow) {
-        return { success: false, error: "Main window not available" }
+      const targetWindow = BrowserWindow.fromWebContents(event.sender)
+      if (!targetWindow || targetWindow.isDestroyed()) {
+        return { success: false, error: "Window not available" }
       }
       
       const clampedOpacity = Math.max(0, Math.min(1.0, opacity))
       console.log(`IPC设置背景透明度: ${clampedOpacity}`)
       
       // 发送CSS透明度更新事件到前端
-      mainWindow.webContents.send("background-opacity-changed", clampedOpacity)
+      targetWindow.webContents.send("background-opacity-changed", clampedOpacity)
       
       // 保存背景透明度到配置文件
       configHelper.updateClientSettings({ backgroundOpacity: clampedOpacity })

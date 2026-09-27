@@ -687,6 +687,32 @@
   font-size: 11px;
 }
 
+@media (max-width: 900px) {
+  .client-settings {
+    padding-left: 180px;
+  }
+
+  .client-sidebar {
+    padding: 16px 8px;
+    width: 180px;
+  }
+
+  .client-sidebar-item {
+    gap: 7px;
+    padding: 0 8px;
+  }
+
+  .client-settings-content {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .model-prompt-tabs {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
 @media (max-width: 720px) {
   .client-settings {
     padding-left: 0;
@@ -694,26 +720,26 @@
 
   .client-sidebar {
     bottom: auto;
-    height: 54px;
+    height: auto;
     left: 0;
-    padding: 8px 12px;
+    padding: 8px;
     right: 0;
     top: 48px;
     width: auto;
   }
 
   .client-sidebar nav {
-    display: flex;
+    display: grid;
     gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .client-sidebar-item {
-    flex: 1;
-    justify-content: center;
-    padding: 0 8px;
+    justify-content: flex-start;
+    min-width: 0;
   }
 
   .client-settings-content {
-    padding: 86px 16px 32px;
+    padding: 148px 16px 32px;
   }
 }

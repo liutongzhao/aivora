@@ -600,7 +600,7 @@ export function ConfigPage() {
         </header>
 
         {versionInfo?.needsUpdate && (
-          <div data-client-page="connection account" className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
+          <div data-client-page="connection" className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2 text-amber-600 text-sm font-medium">
                 <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>

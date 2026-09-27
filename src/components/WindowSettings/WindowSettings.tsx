@@ -43,7 +43,7 @@ export function WindowSettings() {
       </div>
       <div className="window-setting-row">
         <div><strong>窗口位置</strong><span>恢复考试窗口默认位置</span></div>
-        <button type="button" className="client-button client-button-secondary" onClick={() => window.electronAPI?.windowControl?.('toggle-maximize')}>恢复位置</button>
+        <button type="button" className="client-button client-button-secondary" onClick={() => window.electronAPI?.recoverWindow?.()}>恢复位置</button>
       </div>
     </section>
   )

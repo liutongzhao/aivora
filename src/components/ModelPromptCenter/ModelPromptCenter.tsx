@@ -39,7 +39,7 @@ export function ModelPromptCenter() {
 
   return (
     <section className="model-prompt-center" aria-label="模型与提示词">
-      <h2 className="model-prompt-title">模型</h2>
+      <h2 className="model-prompt-title">{tabs.find(([key]) => key === activeTab)?.[1]}</h2>
       <div className="model-prompt-tabs" role="tablist" aria-label="模型配置">
         {tabs.map(([key, label]) => (
           <button
