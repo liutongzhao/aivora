@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, RefreshCw, Smartphone, Minus, Square, X, Play, LogOut, BookOpen } from 'lucide-react'
-import appIcon from '../../assets/icons/win/aivora.ico'
+import { Loader2, RefreshCw, Smartphone, Play, LogOut, BookOpen } from 'lucide-react'
 import {
   ShortcutAction,
   shortcutDefinitions,
@@ -9,6 +8,8 @@ import {
 } from '../../shared/shortcuts'
 import { formatShortcut } from '../utils/shortcutFormat'
 import { config } from '../utils/config'
+import { ClientSection, ClientSidebar } from '../components/ClientShell/ClientSidebar'
+import { ClientTitleBar } from '../components/ClientShell/ClientTitleBar'
 
 type ShortcutMap = Record<ShortcutAction, string>
 
@@ -67,6 +68,7 @@ export function ConfigPage() {
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number; remoteUrl: string } | null>(null)
   const [pairingLoading, setPairingLoading] = useState(false)
   const [pairingRemaining, setPairingRemaining] = useState(0)
+  const [activeSection, setActiveSection] = useState<ClientSection>('overview')
   const centerNoticeTimer = useRef<NodeJS.Timeout | null>(null)
 
   const showCenterNotice = useCallback((message: string) => {
@@ -384,6 +386,8 @@ export function ConfigPage() {
   const testingRef = useRef<HTMLDivElement>(null)
   const commonSectionRef = useRef<HTMLDivElement>(null)
   const advancedSectionRef = useRef<HTMLDivElement>(null)
+  const overviewRef = useRef<HTMLElement>(null)
+  const remoteRef = useRef<HTMLElement>(null)
 
   const shortcutGroups = useMemo(() => {
     const groups: Record<'common' | 'advanced', ShortcutDefinition[]> = {
@@ -506,43 +510,22 @@ export function ConfigPage() {
     })
   }
 
-  const WindowHeader = () => (
-    <div
-      className="client-titlebar fixed inset-x-0 top-0 z-10 flex h-12 items-center justify-between px-4"
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-    >
-      <div className="client-brand"><img src={appIcon} alt="" width={22} height={22} />Aivora</div>
-      <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <button
-          className="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100"
-          title="最小化" aria-label="最小化"
-          onClick={() => window.electronAPI.windowControl?.('minimize')}
-        >
-          <Minus size={15} />
-        </button>
-        <button
-          className="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100"
-          title="最大化或还原" aria-label="最大化或还原"
-          onClick={() => window.electronAPI.windowControl?.('toggle-maximize')}
-        >
-          <Square size={13} />
-        </button>
-        <button
-          className="h-7 w-7 rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-500"
-          title="关闭" aria-label="关闭"
-          onClick={() => window.electronAPI.windowControl?.('close')}
-        >
-          <X size={16} />
-        </button>
-      </div>
-    </div>
-  )
+  const scrollToSection = (section: ClientSection) => {
+    setActiveSection(section)
+    const target = section === 'overview'
+      ? overviewRef.current
+      : section === 'shortcuts'
+        ? shortcutsRef.current
+        : remoteRef.current
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
-    <div className="client-settings min-h-screen bg-[#f5f6fb] px-6 py-12">
-      <WindowHeader />
-      <div className="client-settings-content mx-auto max-w-6xl space-y-8">
-        <header className="client-account rounded-3xl bg-white border border-slate-100 p-8 shadow-[0_12px_50px_rgba(15,23,42,0.05)] flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+    <div className="client-settings">
+      <ClientTitleBar />
+      <ClientSidebar activeSection={activeSection} onSelect={scrollToSection} />
+      <main className="client-settings-content space-y-8">
+        <header ref={overviewRef} className="client-account rounded-3xl bg-white border border-slate-100 p-8 shadow-[0_12px_50px_rgba(15,23,42,0.05)] flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <p className="text-xs text-slate-500">账户与设置</p>
             <h1 className="text-2xl font-semibold text-slate-900">
@@ -614,7 +597,7 @@ export function ConfigPage() {
           </div>
         )}
 
-        <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+        <section ref={remoteRef} className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">手机远程控制</h2>
@@ -965,7 +948,7 @@ export function ConfigPage() {
         </div>
       )}
 
-      </div>
+      </main>
 
       {centerNotice && (
           <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
