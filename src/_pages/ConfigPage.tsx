@@ -581,13 +581,12 @@ export function ConfigPage() {
               ) : updateChecking ? '检测中...' : '检测更新'}
             </button>
             <button
-              className="rounded-2xl bg-slate-900 px-6 py-2 text-sm font-semibold shadow-lg shadow-slate-900/20 hover:bg-slate-800 disabled:opacity-60"
+              className="client-button client-button-primary"
               onClick={handleLaunchExamClient}
               disabled={examClientLaunching}
-              style={{ color: '#ffffff' }}
             >
               <Play size={16} aria-hidden="true" />
-              {examClientLaunching ? '启动中...' : <span style={{ color: '#ffffff' }}>开始使用</span>}
+              {examClientLaunching ? '启动中...' : '开始使用'}
             </button>
             <button
               onClick={handleLogout}
