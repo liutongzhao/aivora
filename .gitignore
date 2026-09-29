@@ -12,9 +12,9 @@ AGENT.md
 .env
 .env.*
 !.env.example
-backend/.conda/
-backend/.venv/
-backend/*.egg-info/
+services/backend/.conda/
+services/backend/.venv/
+services/backend/*.egg-info/
 web/.next/
 apps/web/.next*/
 apps/web/node_modules/

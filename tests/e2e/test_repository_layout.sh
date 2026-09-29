@@ -8,7 +8,8 @@ required_paths=(
   "apps/web/app"
   "apps/web/components"
   "apps/web/package.json"
-  "services/backend"
+  "services/backend/app"
+  "services/backend/db/migrations"
   "deploy/compose.dev.yml"
 )
 

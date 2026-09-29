@@ -157,7 +157,7 @@ git diff
 - MinIO 是文件存储唯一入口，应用不使用本地目录保存截图。
 - 后端模块必须保持低耦合，路由、服务、仓储、Provider 和基础设施分层。
 - Aivora 后端开发 API 使用 `screen` 会话 `aivora-backend`，地址为 `http://127.0.0.1:18000`。
-- 后端 API 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件/backend" && export PYTHONPATH="$PWD" && /Users/liutongzhao/miniconda3/envs/aivora-backend/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000`。
+- 后端 API 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件/services/backend" && export PYTHONPATH="$PWD" && /Users/liutongzhao/miniconda3/envs/aivora-backend/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000`。
 - 后端 Worker 以 `scripts/start-aivora.sh` 为准，使用 `--pool=threads --concurrency=4 --queues=aivora`。
 - 后端 API、Worker、Electron、Web 管理端均使用当前项目专属 screen 会话；启动前先检查会话是否已存在，避免重复启动。
 - Web 管理端开发服务运行期间不要同时执行 `npm run build --prefix apps/web`，两者共用 `apps/web/.next` 缓存，可能导致开发页出现 `Cannot find module '/833.js'`。需要构建时先停止 `aivora-web`，构建完成后再按记录重新启动。

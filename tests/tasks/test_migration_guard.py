@@ -10,7 +10,7 @@ from app.modules.tasks.service import TaskService  # Loads the task's related OR
 
 
 USER = UUID("00000000-0000-0000-0000-000000000001")
-MIGRATION = Path(__file__).resolve().parents[2] / "backend/db/migrations/V016__remove_task_dispatch_fields.sql"
+MIGRATION = Path(__file__).resolve().parents[2] / "services/backend/db/migrations/V016__remove_task_dispatch_fields.sql"
 
 
 @pytest.mark.asyncio

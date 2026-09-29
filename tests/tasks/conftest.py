@@ -26,7 +26,7 @@ def isolated_infrastructure():
     client = Minio("127.0.0.1:19000", access_key="aivora", secret_key="change-me", secure=False)
     try:
         flyway = [
-            "docker", "run", "--rm", "-v", f"{root / 'backend/db/migrations'}:/flyway/sql:ro",
+            "docker", "run", "--rm", "-v", f"{root / 'services/backend/db/migrations'}:/flyway/sql:ro",
             "flyway/flyway:latest",
             f"-url=jdbc:postgresql://host.docker.internal:15439/{database}",
             "-user=aivora", "-password=aivora",
