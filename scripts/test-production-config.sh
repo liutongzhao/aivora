@@ -22,4 +22,7 @@ for path in /api/ /health/ /socket.io/; do
 done
 grep -q 'proxy_buffering off' "$ROOT_DIR/deploy/nginx/default.conf"
 grep -q 'proxy_set_header Upgrade' "$ROOT_DIR/deploy/nginx/default.conf"
+grep -q 'up -d postgres redis minio' "$ROOT_DIR/deploy/scripts/deploy.sh"
+printf '%s\n' "$COMPOSE_OUTPUT" | grep -A15 '^  api:' | grep -q 'minio:'
+printf '%s\n' "$COMPOSE_OUTPUT" | grep -A15 '^  worker:' | grep -q 'minio:'
 echo "生产配置校验通过"

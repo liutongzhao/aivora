@@ -9,6 +9,7 @@ fi
 cd "$DEPLOY_ROOT"
 [[ -f .env ]] || { echo "缺少 $DEPLOY_ROOT/.env" >&2; exit 1; }
 export AIVORA_IMAGE_TAG="$IMAGE_TAG"
+docker compose --env-file .env -f compose.prod.yml up -d postgres redis minio
 docker compose --env-file .env -f compose.prod.yml pull api worker web
 docker compose --env-file .env -f compose.prod.yml up -d api worker web nginx
 curl --fail --silent --show-error --max-time 10 http://127.0.0.1/health/live >/dev/null
