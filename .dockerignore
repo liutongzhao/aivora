@@ -1,0 +1,16 @@
+.git
+.github
+.superpowers
+.playwright-cli
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/dist-electron
+**/__pycache__
+**/.pytest_cache
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+minio-data

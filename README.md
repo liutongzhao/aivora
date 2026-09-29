@@ -206,7 +206,59 @@ Web 开发服务和 `npm --prefix apps/web run build` 共用 `.next` 缓存，�
 - Caddy 或 Nginx 负责 HTTPS、Web/API 反向代理、SSE 和 WebSocket 连接。
 - PostgreSQL 和 MinIO 定期备份；保留上一个镜像 SHA，以便快速回滚。
 
-生产 Dockerfile、Compose、反向代理和 GitHub Actions 会在域名、镜像权限与发布规则确认后加入仓库。
+生产 Dockerfile、Compose、反向代理和 GitHub Actions 已加入仓库；域名、TLS 和客户端下载地址将在正式发布阶段补充。
+
+### 首次服务器部署
+
+当前服务器使用 Ubuntu 24.04 x86_64，部署目录固定为 `/home/ubuntu/service-deploy`，入口为 `http://43.133.80.249`。首次部署前，在服务器上准备 Docker Engine、Docker Compose v2，并创建生产环境文件：
+
+```bash
+mkdir -p /home/ubuntu/service-deploy
+cp deploy/.env.prod.example /home/ubuntu/service-deploy/.env
+chmod 600 /home/ubuntu/service-deploy/.env
+```
+
+将示例密码、`AIVORA_MASTER_KEY`、管理员邮箱和管理员密码替换为真实值。生产 `.env` 不上传 GitHub。服务器还需要使用只读权限的 GHCR Token 登录：
+
+```bash
+echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u liutongzhao --password-stdin
+```
+
+部署文件和迁移文件由 Release workflow 同步到 `/home/ubuntu/service-deploy`，然后执行：
+
+```bash
+/home/ubuntu/service-deploy/scripts/deploy.sh <git-commit-sha>
+```
+
+部署完成后检查：
+
+```bash
+curl http://127.0.0.1/health/live
+curl http://43.133.80.249/health/ready
+```
+
+### GitHub Actions Secrets
+
+在 GitHub 仓库的 `Settings -> Secrets and variables -> Actions` 中配置：
+
+| Secret | 用途 |
+| --- | --- |
+| `DEPLOY_HOST` | `43.133.80.249` |
+| `DEPLOY_USER` | `root` |
+| `DEPLOY_PORT` | `22` |
+| `DEPLOY_SSH_KEY` | 仅用于部署的 SSH 私钥，不使用个人登录私钥 |
+
+GHCR 镜像由 workflow 的 `GITHUB_TOKEN` 推送。服务器需要单独的只读 GHCR Token，不能把它写入 workflow、README 或镜像。
+
+### 发布与回滚
+
+推送版本 Tag（例如 `v0.1.0`）或在 Actions 手动运行 Release workflow，会构建 Web/Backend 的 `linux/amd64` 镜像，使用 Git commit SHA 作为不可变版本并通过 SSH 发布。回滚时在服务器执行：
+
+```bash
+/home/ubuntu/service-deploy/scripts/rollback.sh <上一个已验证的git-commit-sha>
+```
+
+当前 IP + HTTP 仅适合内部测试。正式对外服务必须配置域名和 HTTPS，否则登录凭据、会话和截图会以明文传输。
 
 ## 生产配置与安全
 

@@ -5,6 +5,9 @@ const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 export function getApiBase(): string {
   if (configuredApiBase) return configuredApiBase;
   if (typeof window !== "undefined") {
+    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      return window.location.origin;
+    }
     return `${window.location.protocol}//${window.location.hostname}:18000`;
   }
   return "http://127.0.0.1:18000";
