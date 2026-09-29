@@ -11,7 +11,7 @@
 | 服务器操作系统 | Ubuntu 24.04 LTS |
 | 服务器架构 | x86_64 / amd64 |
 | 服务器 IP | `43.133.80.249` |
-| SSH 用户 | `root` |
+| SSH 用户 | `ubuntu` |
 | SSH 端口 | `22` |
 | 反向代理 | Nginx |
 | 部署根目录 | `/home/ubuntu/service-deploy` |

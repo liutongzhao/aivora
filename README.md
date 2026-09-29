@@ -244,7 +244,7 @@ curl http://43.133.80.249/health/ready
 | Secret | 用途 |
 | --- | --- |
 | `DEPLOY_HOST` | `43.133.80.249` |
-| `DEPLOY_USER` | `root` |
+| `DEPLOY_USER` | `ubuntu` |
 | `DEPLOY_PORT` | `22` |
 | `DEPLOY_SSH_KEY` | 仅用于部署的 SSH 私钥，不使用个人登录私钥 |
 
