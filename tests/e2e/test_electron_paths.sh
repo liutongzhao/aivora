@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-SHORTCUTS="$ROOT_DIR/dist-electron/electron/shortcuts.js"
+DESKTOP_DIR="$ROOT_DIR/apps/desktop"
+SHORTCUTS="$DESKTOP_DIR/dist-electron/electron/shortcuts.js"
 test -f "$SHORTCUTS"
 grep -q "require('../../config.json')" "$SHORTCUTS"
-node -e "require('./dist-electron/electron/shortcuts.js')" >/dev/null 2>&1 || true
+test -f "$DESKTOP_DIR/dist-electron/electron/preload.js"
+test -f "$DESKTOP_DIR/dist/index.html"
+test -f "$DESKTOP_DIR/assets/icons/win/aivora.ico"
+grep -q 'path.join(__dirname, "../../dist/index.html")' "$DESKTOP_DIR/electron/main.ts"
+grep -q "'electron', 'native', 'SystemAudioCapture'" "$DESKTOP_DIR/electron/AudioManager.ts"
+(cd "$DESKTOP_DIR" && node -e "require('./dist-electron/electron/shortcuts.js')" >/dev/null 2>&1 || true)
 echo 'electron config path: ok'
