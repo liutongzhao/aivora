@@ -16,9 +16,9 @@ backend/.conda/
 backend/.venv/
 backend/*.egg-info/
 web/.next/
-web/.next*/
-web/node_modules/
-web/output/
+apps/web/.next*/
+apps/web/node_modules/
+apps/web/output/
 output/
 .playwright-cli/
 minio-data/

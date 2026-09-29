@@ -116,7 +116,7 @@ git diff
 - 分离会话：按 `Ctrl-A`，再按 `D`
 - 停止本项目服务：`screen -S aivora-dev -X quit`
 - `screen` 会话名称：`aivora-web`
-- 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件" && npm run dev --prefix web -- --hostname 127.0.0.1 --port 3000`
+- 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件" && npm run dev --prefix apps/web -- --hostname 127.0.0.1 --port 3000`
 - Web 管理端地址：`http://127.0.0.1:3000`
 - 查看会话：`screen -r aivora-web`
 - 分离会话：按 `Ctrl-A`，再按 `D`
@@ -135,7 +135,7 @@ git diff
 - 完成后端代码修改后，自动重启 `aivora-backend` 和 `aivora-worker`，再检查 API `/health/ready` 与 Worker 进程。仅重启相关应用层 screen，不重启 PostgreSQL、Redis、MinIO。
 - 涉及数据库迁移时，先检查迁移历史、在途任务及 Redis 队列；符合迁移前置条件后执行迁移和校验，再重启相关应用服务。遇到在途任务或迁移失败，不强行绕过保护，也不擅自删除任务，应说明阻塞原因。
 - 重启前后检查本项目端口和进程。退出 screen 后若留下本项目的孤儿子进程，先确认 PID/命令归属再清理，避免旧进程占端口或两个 Worker 同时消费。
-- Web 开发服务运行期间不可并行执行 `npm run build --prefix web`；需要构建时先停 `aivora-web`，构建后再启动并验证页面。报告最终运行态和未完成的迁移。
+- Web 开发服务运行期间不可并行执行 `npm run build --prefix apps/web`；需要构建时先停 `aivora-web`，构建后再启动并验证页面。报告最终运行态和未完成的迁移。
 
 ## 当前工程状态
 
@@ -160,4 +160,4 @@ git diff
 - 后端 API 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件/backend" && export PYTHONPATH="$PWD" && /Users/liutongzhao/miniconda3/envs/aivora-backend/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000`。
 - 后端 Worker 以 `scripts/start-aivora.sh` 为准，使用 `--pool=threads --concurrency=4 --queues=aivora`。
 - 后端 API、Worker、Electron、Web 管理端均使用当前项目专属 screen 会话；启动前先检查会话是否已存在，避免重复启动。
-- Web 管理端开发服务运行期间不要同时执行 `npm run build --prefix web`，两者共用 `web/.next` 缓存，可能导致开发页出现 `Cannot find module '/833.js'`。需要构建时先停止 `aivora-web`，构建完成后再按记录重新启动。
+- Web 管理端开发服务运行期间不要同时执行 `npm run build --prefix apps/web`，两者共用 `apps/web/.next` 缓存，可能导致开发页出现 `Cannot find module '/833.js'`。需要构建时先停止 `aivora-web`，构建完成后再按记录重新启动。

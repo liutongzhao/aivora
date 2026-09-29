@@ -5,7 +5,9 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 required_paths=(
   "apps/desktop"
-  "apps/web"
+  "apps/web/app"
+  "apps/web/components"
+  "apps/web/package.json"
   "services/backend"
   "deploy/compose.dev.yml"
 )
