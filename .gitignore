@@ -15,7 +15,6 @@ AGENT.md
 services/backend/.conda/
 services/backend/.venv/
 services/backend/*.egg-info/
-web/.next/
 apps/web/.next*/
 apps/web/node_modules/
 apps/web/output/

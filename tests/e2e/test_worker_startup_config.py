@@ -23,7 +23,12 @@ def test_stop_and_check_do_not_require_removed_services():
 
 
 def test_compose_uses_one_celery_worker_after_migration():
-    services = yaml.safe_load((ROOT / "docker-compose.yml").read_text())["services"]
+    compose = yaml.safe_load((ROOT / "deploy/compose.dev.yml").read_text())
+    services = compose["services"]
+    assert services["api"]["working_dir"] == "/workspace/services/backend"
+    assert services["worker"]["working_dir"] == "/workspace/services/backend"
+    assert services["web"]["working_dir"] == "/workspace/apps/web"
+    assert "services/backend/db/migrations" in services["flyway"]["volumes"][0]
     assert "beat" not in services
     assert "maintenance" not in services
     assert "worker" in services

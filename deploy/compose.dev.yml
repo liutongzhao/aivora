@@ -59,12 +59,12 @@ services:
       FLYWAY_LOCATIONS: filesystem:/flyway/sql
     command: migrate
     volumes:
-      - ./backend/db/migrations:/flyway/sql:ro
+      - ./services/backend/db/migrations:/flyway/sql:ro
 
   api:
     image: python:3.12-slim
     container_name: aivora-api
-    working_dir: /workspace/backend
+    working_dir: /workspace/services/backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,9 +75,9 @@ services:
       flyway:
         condition: service_completed_successfully
     env_file:
-      - backend/.env.local
+      - services/backend/.env.local
     environment:
-      PYTHONPATH: /workspace/backend
+      PYTHONPATH: /workspace/services/backend
       DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
@@ -91,7 +91,7 @@ services:
   worker:
     image: python:3.12-slim
     container_name: aivora-worker
-    working_dir: /workspace/backend
+    working_dir: /workspace/services/backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,9 +102,9 @@ services:
       flyway:
         condition: service_completed_successfully
     env_file:
-      - backend/.env.local
+      - services/backend/.env.local
     environment:
-      PYTHONPATH: /workspace/backend
+      PYTHONPATH: /workspace/services/backend
       DATABASE_URL: postgresql+asyncpg://aivora:aivora@postgres:5432/aivora
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
@@ -116,7 +116,7 @@ services:
   web:
     image: node:22-alpine
     container_name: aivora-web
-    working_dir: /workspace/web
+    working_dir: /workspace/apps/web
     depends_on:
       - api
     environment:

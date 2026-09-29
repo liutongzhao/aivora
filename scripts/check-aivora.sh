@@ -16,4 +16,4 @@ echo
 curl --max-time 5 -fsS http://127.0.0.1:18000/health/ready || true
 echo
 echo "== Docker dependencies =="
-if command -v docker >/dev/null 2>&1; then docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'aivora-(postgres|redis|minio)' || true; fi
+if command -v docker >/dev/null 2>&1; then docker compose -p aivora --project-directory "$ROOT_DIR" -f "$ROOT_DIR/deploy/compose.dev.yml" ps --format '{{.Name}}\t{{.Status}}' 2>/dev/null || true; fi
