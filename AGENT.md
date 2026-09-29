@@ -12,38 +12,41 @@
 
 ## 主要目录
 
-- `src/`：React Renderer 页面、组件、Hooks、服务和工具。
-- `electron/`：Electron Main、Preload、本地系统能力和 IPC。
-- `electron/native/`：macOS 原生能力，目前包含 Swift 音频采集代码。
-- `shared/`：前端和 Electron 共用的类型及快捷键定义。
-- `assets/`：运行时静态资源和图标。
-- `assets/branding/`：Aivora Logo 母版、应用图标、小尺寸图标和单色图标资源。
+- `apps/desktop/src/`：React Renderer 页面、组件、Hooks、服务和工具。
+- `apps/desktop/electron/`：Electron Main、Preload、本地系统能力和 IPC。
+- `apps/desktop/electron/native/`：macOS 原生能力，目前包含 Swift 音频采集代码。
+- `apps/desktop/shared/`：前端和 Electron 共用的类型及快捷键定义。
+- `apps/desktop/assets/`：运行时静态资源和图标。
+- `apps/desktop/assets/branding/`：Aivora Logo 母版、应用图标、小尺寸图标和单色图标资源。
+- `apps/web/`：Next.js 用户端、管理端和远程控制。
+- `services/backend/`：FastAPI API、Celery Worker、提示词、Provider 和 Flyway 迁移。
+- `deploy/`：Docker Compose 开发配置；生产部署配置后续单独维护。
 - `docs/`：架构设计和开发计划。
-- `dist/`、`dist-electron/`：构建产物，不进入 Git。
+- `apps/desktop/dist/`、`apps/desktop/dist-electron/`、`apps/web/.next/`：构建产物，不进入 Git。
 
 ## 开发命令
 
 ```bash
-npm install
-npm run dev
-npm run typecheck
-npm run build
-npm run start
+npm install --prefix apps/desktop
+npm --prefix apps/desktop run dev
+npm --prefix apps/desktop run typecheck
+npm --prefix apps/desktop run build
+npm --prefix apps/desktop run start
 ```
 
-- `npm run dev`：启动 Vite 和 Electron 开发模式；Vite 使用 `127.0.0.1:54321`。
-- `npm run typecheck`：检查 Renderer 和 Electron TypeScript。
-- `npm run build`：构建 `dist/` 和 `dist-electron/`。
-- `npm run start`：启动构建后的 Electron 应用。
-- 修改 `src/` 通常由 Vite 热更新；修改 `electron/` 后重启 `npm run dev`。
+- `npm --prefix apps/desktop run dev`：启动 Vite 和 Electron 开发模式；Vite 使用 `127.0.0.1:54321`。
+- `npm --prefix apps/desktop run typecheck`：检查 Renderer 和 Electron TypeScript。
+- `npm --prefix apps/desktop run build`：构建桌面端 `dist/` 和 `dist-electron/`。
+- `npm --prefix apps/desktop run start`：启动构建后的 Electron 应用。
+- 修改 `apps/desktop/src/` 通常由 Vite 热更新；修改 `apps/desktop/electron/` 后重启桌面端开发命令。
 
 ## 修改约定
 
 1. 保持现有业务逻辑、远程接口协议、认证流程和窗口行为，除非用户明确要求改变。
-2. 修改 IPC 时同时检查 `electron/preload.ts`、`electron/ipcHandlers.ts` 和对应 Renderer 调用方。
-3. 修改 AI 请求时同时检查 `src/services/aiService.ts`、`src/services/sseService.ts` 和 `src/hooks/useAIProcessing.ts`。
-4. 新增跨层数据结构时优先放在 `src/types/` 或 `shared/`，不要在多个文件中重复定义。
-5. 不要把 `node_modules/`、`dist/`、`dist-electron/`、日志和本地缓存提交到 Git。
+2. 修改 IPC 时同时检查 `apps/desktop/electron/preload.ts`、`apps/desktop/electron/ipcHandlers.ts` 和对应 Renderer 调用方。
+3. 修改 AI 请求时同时检查 `apps/desktop/src/services/aiService.ts`、`apps/desktop/src/services/sseService.ts` 和 `apps/desktop/src/hooks/useAIProcessing.ts`。
+4. 新增跨层数据结构时优先放在 `apps/desktop/src/types/` 或 `apps/desktop/shared/`，不要在多个文件中重复定义。
+5. 不要把 `node_modules/`、`apps/desktop/dist/`、`apps/desktop/dist-electron/`、`apps/web/.next/`、日志和本地缓存提交到 Git。
 6. 处理恢复源码时优先做兼容性修复和最小改动，避免无关的大规模重构。
 7. 需要删除文件或目录时先确认其是否被源码、构建脚本或运行时路径引用。
 
@@ -110,7 +113,7 @@ git diff
 ### 当前项目服务会话
 
 - `screen` 会话名称：`aivora-dev`
-- 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件" && npm run dev`
+- 启动命令：`cd "/Users/liutongzhao/WorkBuddy项目/笔试软件" && npm run dev --prefix apps/desktop`
 - Renderer 地址：`http://127.0.0.1:54321`
 - 查看会话：`screen -r aivora-dev`
 - 分离会话：按 `Ctrl-A`，再按 `D`
@@ -126,7 +129,7 @@ git diff
 
 - 统一启停脚本：`scripts/start-aivora.sh`、`scripts/stop-aivora.sh`、`scripts/check-aivora.sh`。
 - 详细验收流程记录在 `docs/本地开发与验收.md`。
-- 题型提示词位于 `backend/app/prompts/`，答案解析位于 `backend/app/modules/tasks/parser.py`。
+- 题型提示词位于 `services/backend/app/prompts/`，答案解析位于 `services/backend/app/modules/tasks/parser.py`。
 - 任务结果同时保存原文、结构化 JSON、解析状态和 warning。
 
 ### 修改后同步运行服务

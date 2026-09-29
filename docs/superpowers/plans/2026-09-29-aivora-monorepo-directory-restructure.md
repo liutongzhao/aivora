@@ -248,6 +248,8 @@ git commit -m "chore: 统一单仓开发与部署入口"
 - Consumes: 前四个任务产生的新目录和命令。
 - Produces: 无旧操作入口、可复现验证结果和干净 Git 状态的完整单仓。
 
+执行状态：已完成。由于任务 2 收尾时旧 Web 进程重新生成了被忽略的 `web/.next`，先停止孤儿 `next-server` 并清理旧缓存，再按 `apps/web` 重新构建；Compose 校验使用项目名 `aivora`，以兼容当前 Docker Compose 版本。
+
 - [ ] **Step 1: 搜索仍会被执行的旧路径引用**
 
 Run: `rg -n "(^|[ ./])(backend|web|electron|src|shared|assets)/|docker-compose\\.yml" AGENT.md README.md scripts tests deploy apps services docs/本地开发与验收.md`  

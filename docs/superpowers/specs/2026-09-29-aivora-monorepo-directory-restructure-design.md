@@ -137,22 +137,22 @@ API、Worker、Flyway 迁移文件的内部模块名保持不变。
 以下内容是本地生成物，不迁移、不提交：
 
 ```text
-node_modules/
-dist/
-dist-electron/
-web/node_modules/
-web/.next*/
-web/output/
+apps/desktop/node_modules/
+apps/desktop/dist/
+apps/desktop/dist-electron/
+apps/web/node_modules/
+apps/web/.next*/
+apps/web/output/
 output/
 .playwright-cli/
 .pytest_cache/
 **/__pycache__/
-backend/*.egg-info/
+services/backend/*.egg-info/
 *.tsbuildinfo
 .DS_Store
 ```
 
-本地 `backend/.env.local` 含运行环境配置，不能提交。迁移时复制到 `services/backend/.env.local` 供本机继续使用，并保持 Git 忽略；Git 只追踪 `.env.example`。
+本地 `services/backend/.env.local` 含运行环境配置，不能提交，并保持 Git 忽略；Git 只追踪 `.env.example`。
 
 ## 8. 兼容性与风险控制
 
