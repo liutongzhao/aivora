@@ -12,18 +12,20 @@ interface ModelEditorProps {
 export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEditorProps) {
   const [name, setName] = useState(model?.name ?? '')
   const [displayName, setDisplayName] = useState(model?.display_name ?? '')
-  const [supportsVision, setSupportsVision] = useState(model?.supports_vision ?? true)
+  const [supportsVision, setSupportsVision] = useState(model?.supports_vision ?? false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setName(model?.name ?? '')
     setDisplayName(model?.display_name ?? '')
-    setSupportsVision(model?.supports_vision ?? true)
+    setSupportsVision(model?.supports_vision ?? false)
   }, [model])
 
   async function save() {
     if (!name.trim() || !connectionId) return
     setSaving(true)
+    setError(null)
     try {
       if (model) {
         await userConfigService.updateModel(model.id, {
@@ -42,6 +44,8 @@ export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEdit
       }
       await onSaved()
       onClose()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '模型保存失败')
     } finally {
       setSaving(false)
     }
@@ -49,6 +53,7 @@ export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEdit
 
   return (
     <div className="model-editor" role="dialog" aria-label={model ? '编辑模型' : '添加模型'}>
+      {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
       <div className="model-editor-grid">
         <label>
           模型 ID

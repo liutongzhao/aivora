@@ -9,13 +9,14 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
   const [selectedConnection, setSelectedConnection] = useState(enabledConnections[0]?.id ?? '')
   const [selectedModelId, setSelectedModelId] = useState(models[0]?.id ?? '')
   const [discoveredModels, setDiscoveredModels] = useState<string[]>([])
+  const [visionModels, setVisionModels] = useState<string[]>([])
   const [editingModel, setEditingModel] = useState<UserModel | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   const selectedModels = models.filter((model) => model.connection_id === selectedConnection)
-  const selectedModel = models.find((model) => model.id === selectedModelId) ?? selectedModels[0] ?? null
+  const selectedModel = selectedModels.find((model) => model.id === selectedModelId) ?? selectedModels[0] ?? null
   const importedNames = new Set(selectedModels.map((model) => model.name))
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
         connection_id: selectedConnection,
         name,
         display_name: name,
-        supports_vision: true,
+        supports_vision: visionModels.includes(name),
       })
       setDiscoveredModels((current) => current.filter((item) => item !== name))
       await onRefresh?.()
@@ -150,6 +151,7 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
               {discoveredModels.map((name) => (
                 <div className="discovered-model-row" key={name}>
                   <span>{name}</span>
+                  <label><input type="checkbox" checked={visionModels.includes(name)} onChange={(event) => setVisionModels((current) => event.target.checked ? [...current, name] : current.filter((item) => item !== name))} /> 支持图片</label>
                   <button type="button" className="client-icon-text-button" aria-label={`添加 ${name}`} onClick={() => void addDiscoveredModel(name)} disabled={importedNames.has(name) || busy}>
                     {importedNames.has(name) ? '已添加' : '添加'}
                   </button>

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ConfigPage from './ConfigPage'
 
@@ -35,5 +35,14 @@ describe('ConfigPage overview', () => {
     expect(screen.getByText('客户端服务正常')).toBeTruthy()
     expect(screen.queryByText(/使用前可简单看一下常见快捷键/)).toBeNull()
     expect(screen.queryByRole('button', { name: '使用视频教程' })).toBeNull()
+    expect(screen.getByRole('main').querySelector('header[data-client-page="overview"]')?.textContent).not.toContain('退出登录')
+    fireEvent.click(screen.getByRole('button', { name: '连接' }))
+    expect(screen.getByRole('button', { name: '检测更新' })).toBeTruthy()
+  })
+
+  it('opens the shortcuts page from workbench actions', () => {
+    render(<ConfigPage />)
+    fireEvent.click(screen.getByRole('button', { name: '快捷键管理' }))
+    expect(screen.getByRole('main').getAttribute('data-active-section')).toBe('shortcuts')
   })
 })

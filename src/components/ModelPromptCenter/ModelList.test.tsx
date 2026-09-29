@@ -46,7 +46,7 @@ describe('ModelList', () => {
       connection_id: 'connection-1',
       name: 'new-model',
       display_name: 'new-model',
-      supports_vision: true,
+      supports_vision: false,
     }))
   })
 
@@ -58,5 +58,14 @@ describe('ModelList', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '停用模型' }))
     await waitFor(() => expect(userConfigService.disableModel).toHaveBeenCalledWith('model-1'))
+  })
+
+  it('only shows and acts on models of the selected connection', async () => {
+    const other = { ...model, id: 'model-2', connection_id: 'connection-2', display_name: '另一个模型' }
+    render(<ModelList connections={[connection, { ...connection, id: 'connection-2', name: '第二连接' }]} models={[model, other]} />)
+    fireEvent.change(screen.getByRole('combobox', { name: '连接' }), { target: { value: 'connection-2' } })
+    expect(screen.getByRole('heading', { name: '另一个模型' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '测试模型' }))
+    await waitFor(() => expect(userConfigService.testModel).toHaveBeenCalledWith('model-2'))
   })
 })

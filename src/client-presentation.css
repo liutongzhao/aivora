@@ -133,6 +133,10 @@
   display: block;
 }
 
+.client-settings-content[data-active-section="overview"] > header[data-client-page~="overview"] {
+  display: flex;
+}
+
 .client-page-heading {
   align-items: center;
   display: flex;
@@ -413,7 +417,27 @@
 .discovered-model-row {
   border-bottom: 1px solid var(--client-border);
   font-size: 12px;
+  gap: 12px;
   padding: 9px 0;
+}
+
+.discovered-model-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.discovered-model-row label {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.prompt-version-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .client-icon-text-button {

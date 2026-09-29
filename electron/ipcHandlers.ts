@@ -50,8 +50,8 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     return { success: true }
   })
 
-  ipcMain.handle('window-recover', (event) => {
-    const targetWindow = BrowserWindow.fromWebContents(event.sender)
+  ipcMain.handle('window-recover', () => {
+    const targetWindow = deps.getMainWindow()
     if (!targetWindow || targetWindow.isDestroyed()) {
       return { success: false, error: '无法获取窗口实例' }
     }
@@ -487,16 +487,14 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
 
   ipcMain.handle("set-opacity", (event, opacity: number) => {
     try {
-      const targetWindow = BrowserWindow.fromWebContents(event.sender)
-      if (!targetWindow || targetWindow.isDestroyed()) {
-        return { success: false, error: "Window not available" }
-      }
-      
+      const targetWindow = deps.getMainWindow()
       const clampedOpacity = Math.max(0, Math.min(1.0, opacity))
       console.log(`IPC设置背景透明度: ${clampedOpacity}`)
       
       // 发送CSS透明度更新事件到前端
-      targetWindow.webContents.send("background-opacity-changed", clampedOpacity)
+      if (targetWindow && !targetWindow.isDestroyed()) {
+        targetWindow.webContents.send("background-opacity-changed", clampedOpacity)
+      }
       
       // 保存背景透明度到配置文件
       configHelper.updateClientSettings({ backgroundOpacity: clampedOpacity })

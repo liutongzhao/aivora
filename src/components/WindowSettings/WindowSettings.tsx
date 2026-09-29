@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 export function WindowSettings() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [opacity, setOpacityValue] = useState(1)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -20,13 +21,20 @@ export function WindowSettings() {
   }
 
   async function updateOpacity(value: number) {
-    setOpacityValue(value)
-    await window.electronAPI?.setOpacity?.(value)
+    try {
+      const result = await window.electronAPI?.setOpacity?.(value)
+      if (!result?.success) throw new Error(result?.error || '透明度设置失败')
+      setOpacityValue(result.opacity ?? value)
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '透明度设置失败')
+    }
   }
 
   return (
     <section className="window-settings-panel">
       <h2>窗口显示</h2>
+      {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
       <div className="window-setting-row">
         <div><strong>主题</strong><span>考试窗口的显示主题</span></div>
         <div className="window-theme-buttons">

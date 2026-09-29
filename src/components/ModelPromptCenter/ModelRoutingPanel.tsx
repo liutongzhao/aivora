@@ -36,6 +36,10 @@ export function ModelRoutingPanel() {
   )
 
   async function updateDefault(mode: PromptMode, modelId: string, language: string) {
+    if (!selectableModels.some((model) => model.id === modelId)) {
+      setNotice('请选择可用且支持图片的模型')
+      return
+    }
     try {
       const updated = await userConfigService.setModelDefault(mode, modelId, language)
       setDefaults((current) => ({ ...current, [mode]: updated }))
@@ -51,16 +55,17 @@ export function ModelRoutingPanel() {
       <div className="routing-list">
         {modes.map(([mode, label]) => {
           const current = defaults[mode]
+          const invalid = Boolean(current?.model_id && !selectableModels.some((model) => model.id === current.model_id))
           const language = current?.language || 'python'
           return (
             <div className="routing-row" data-testid={`routing-${mode}`} key={mode}>
               <strong>{label}</strong>
               <select
                 aria-label={`${label}模型`}
-                value={current?.model_id || ''}
+                value={invalid ? '' : current?.model_id || ''}
                 onChange={(event) => void updateDefault(mode, event.target.value, language)}
               >
-                <option value="">选择模型</option>
+                <option value="">{invalid ? '当前模型不可用，请重新选择' : '选择模型'}</option>
                 {selectableModels.map((model) => <option key={model.id} value={model.id}>{model.display_name}</option>)}
               </select>
               {(mode === 'programming' || mode === 'debug') && (

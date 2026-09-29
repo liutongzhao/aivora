@@ -9,6 +9,7 @@ vi.mock('../../services/userConfigService', () => ({
     listConnections: vi.fn(),
     createConnection: vi.fn(),
     updateConnection: vi.fn(),
+    disableConnection: vi.fn(),
     testNewConnection: vi.fn(),
     syncConnection: vi.fn(),
   },
@@ -51,5 +52,21 @@ describe('ConnectionSettings', () => {
       base_url: 'https://api.example.com',
       api_key: 'secret-api-key',
     }))
+  })
+
+  it('switches editor fields when choosing another connection and can disable one', async () => {
+    vi.mocked(userConfigService.listConnections).mockResolvedValue([
+      { id: 'a', name: '第一连接', base_url: 'https://a.example.com', enabled: true },
+      { id: 'b', name: '第二连接', base_url: 'https://b.example.com', enabled: true },
+    ])
+    vi.mocked(userConfigService.disableConnection).mockResolvedValue({ success: true })
+    render(<ConnectionSettings />)
+    await screen.findByText('第一连接')
+    fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0])
+    expect((screen.getByLabelText('连接名称') as HTMLInputElement).value).toBe('第一连接')
+    fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[1])
+    expect((screen.getByLabelText('连接名称') as HTMLInputElement).value).toBe('第二连接')
+    fireEvent.click(screen.getAllByRole('button', { name: '停用连接' })[1])
+    await waitFor(() => expect(userConfigService.disableConnection).toHaveBeenCalledWith('b'))
   })
 })

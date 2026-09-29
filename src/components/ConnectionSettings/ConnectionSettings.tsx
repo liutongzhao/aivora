@@ -31,6 +31,19 @@ export function ConnectionSettings() {
     }
   }
 
+  async function toggleConnection(connection: Connection) {
+    try {
+      if (connection.enabled) {
+        await userConfigService.disableConnection(connection.id)
+      } else {
+        await userConfigService.updateConnection(connection.id, { enabled: true })
+      }
+      await refresh()
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : '连接状态更新失败')
+    }
+  }
+
   return (
     <section className="connection-settings-panel">
       <div className="connection-panel-heading">
@@ -49,10 +62,11 @@ export function ConnectionSettings() {
           <div className="connection-row-actions">
             <button type="button" className="client-button client-button-secondary" onClick={() => void testConnection(connection)}>测试连接</button>
             <button type="button" className="client-button client-button-secondary" onClick={() => setEditing(connection)}>编辑</button>
+            <button type="button" className="client-button client-button-secondary" aria-label={connection.enabled ? '停用连接' : '启用连接'} onClick={() => void toggleConnection(connection)}>{connection.enabled ? '停用' : '启用'}</button>
           </div>
         </div>
       ))}
-      {editing !== undefined && <ConnectionEditor connection={editing} onSaved={refresh} onClose={() => setEditing(undefined)} />}
+      {editing !== undefined && <ConnectionEditor key={editing?.id ?? 'new'} connection={editing} onSaved={refresh} onClose={() => setEditing(undefined)} />}
     </section>
   )
 }

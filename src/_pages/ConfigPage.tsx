@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, RefreshCw, Smartphone, Play, LogOut } from 'lucide-react'
+import { Loader2, RefreshCw, Smartphone, Play } from 'lucide-react'
 import {
   ShortcutAction,
   shortcutDefinitions,
@@ -69,7 +69,6 @@ export function ConfigPage() {
   const [testResult, setTestResult] = useState<ShortcutTestResult | null>(null)
   const [isTestingMode, setIsTestingMode] = useState(false)
   const [examClientLaunching, setExamClientLaunching] = useState(false)
-  const [logoutLoading, setLogoutLoading] = useState(false)
   const [updateChecking, setUpdateChecking] = useState(false)
   const [preferredTheme, setPreferredTheme] = useState<'dark' | 'light'>('dark')
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false)
@@ -79,6 +78,7 @@ export function ConfigPage() {
   const [pairingLoading, setPairingLoading] = useState(false)
   const [pairingRemaining, setPairingRemaining] = useState(0)
   const [activeSection, setActiveSection] = useState<ClientSection>('overview')
+  const [promptDirty, setPromptDirty] = useState(false)
   const centerNoticeTimer = useRef<NodeJS.Timeout | null>(null)
 
   const showCenterNotice = useCallback((message: string) => {
@@ -289,21 +289,6 @@ export function ConfigPage() {
     window.addEventListener('pointerdown', handlePointerDown, true)
     return () => window.removeEventListener('pointerdown', handlePointerDown, true)
   }, [recordingAction, handleUpdateBinding])
-
-  const handleLogout = async () => {
-    if (logoutLoading) return
-    setLogoutLoading(true)
-    try {
-      const result = await window.electronAPI.webAuthLogout()
-      if (!result.success) {
-        console.error('登出失败:', result.error)
-      }
-    } catch (error) {
-      console.error('登出失败:', error)
-    } finally {
-      setLogoutLoading(false)
-    }
-  }
 
   const handleLaunchExamClient = () => {
     if (examClientLaunching) return
@@ -533,6 +518,9 @@ export function ConfigPage() {
   }
 
   const scrollToSection = (section: ClientSection) => {
+    if (section === activeSection) return
+    if (activeSection === 'models' && promptDirty && !window.confirm('提示词尚未保存，确定放弃修改吗？')) return
+    setPromptDirty(false)
     setActiveSection(section)
   }
 
@@ -560,26 +548,11 @@ export function ConfigPage() {
 
         <header ref={overviewRef} data-client-page="overview" className="client-account rounded-3xl bg-white border border-slate-100 p-8 shadow-[0_12px_50px_rgba(15,23,42,0.05)] flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
-            <p className="text-xs text-slate-500">账户与设置</p>
             <h1 className="text-2xl font-semibold text-slate-900">
               {user?.username || user?.email || '未登录'}
             </h1>
-            <p className="text-sm text-slate-500">准备好后即可开始使用。</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleCheckUpdate}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
-              disabled={updateChecking}
-            >
-              <RefreshCw size={16} className={updateChecking ? 'animate-spin' : ''} aria-hidden="true" />
-              {versionInfo?.needsUpdate ? (
-                <span className="flex items-center gap-2 text-orange-500">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
-                  {updateChecking ? '检测中...' : '发现新版本'}
-                </span>
-              ) : updateChecking ? '检测中...' : '检测更新'}
-            </button>
             <button
               className="client-button client-button-primary"
               onClick={handleLaunchExamClient}
@@ -588,16 +561,15 @@ export function ConfigPage() {
               <Play size={16} aria-hidden="true" />
               {examClientLaunching ? '启动中...' : '开始使用'}
             </button>
-            <button
-              onClick={handleLogout}
-              className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600 hover:border-rose-200"
-              disabled={logoutLoading}
-            >
-              <LogOut size={16} aria-hidden="true" />
-              {logoutLoading ? '退出中...' : '退出登录'}
-            </button>
           </div>
         </header>
+
+        <section data-client-page="connection" className="client-update-action">
+          <button type="button" className="client-button client-button-secondary" onClick={handleCheckUpdate} disabled={updateChecking}>
+            <RefreshCw size={16} className={updateChecking ? 'animate-spin' : ''} aria-hidden="true" />
+            {updateChecking ? '检测中...' : '检测更新'}
+          </button>
+        </section>
 
         {versionInfo?.needsUpdate && (
           <div data-client-page="connection" className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
@@ -694,13 +666,16 @@ export function ConfigPage() {
           <div className="flex flex-wrap gap-3">
             <button
               className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
-              onClick={() => shortcutsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => scrollToSection('shortcuts')}
             >
               快捷键管理
             </button>
             <button
               className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
-              onClick={() => testingRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => {
+                scrollToSection('shortcuts')
+                requestAnimationFrame(() => testingRef.current?.scrollIntoView?.({ behavior: 'smooth' }))
+              }}
             >
               快捷键测试
             </button>
@@ -917,7 +892,7 @@ export function ConfigPage() {
         </section>
 
         <section data-client-page="models" className="client-placeholder-panel">
-          <ModelPromptCenter />
+          <ModelPromptCenter visible={activeSection === 'models'} onDirtyChange={setPromptDirty} />
         </section>
 
         <section data-client-page="window" className="client-placeholder-panel">

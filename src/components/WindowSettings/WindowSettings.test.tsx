@@ -27,4 +27,20 @@ describe('WindowSettings', () => {
     fireEvent.click(screen.getByRole('button', { name: '恢复位置' }))
     await waitFor(() => expect(recoverWindow).toHaveBeenCalled())
   })
+
+  it('keeps the saved opacity when IPC rejects the update', async () => {
+    Object.assign(window, {
+      electronAPI: {
+        getClientTheme: vi.fn().mockResolvedValue({ theme: 'dark' }),
+        getOpacity: vi.fn().mockResolvedValue({ opacity: 1 }),
+        setOpacity: vi.fn().mockResolvedValue({ success: false, error: '设置失败' }),
+      },
+    })
+    render(<WindowSettings />)
+    const slider = await screen.findByLabelText('窗口透明度') as HTMLInputElement
+    await waitFor(() => expect(slider.value).toBe('1'))
+    fireEvent.change(slider, { target: { value: '0.6' } })
+    expect((await screen.findByRole('alert')).textContent).toContain('设置失败')
+    expect(slider.value).toBe('1')
+  })
 })

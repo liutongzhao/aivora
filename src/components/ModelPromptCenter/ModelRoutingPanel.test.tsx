@@ -37,4 +37,20 @@ describe('ModelRoutingPanel', () => {
     fireEvent.change(programmingRow.querySelector('select')!, { target: { value: 'model-1' } })
     await waitFor(() => expect(userConfigService.setModelDefault).toHaveBeenCalledWith('programming', 'model-1', 'python'))
   })
+
+  it('marks an invalid existing assignment and does not save an empty choice', async () => {
+    vi.mocked(userConfigService.listConnections).mockResolvedValue([
+      { id: 'connection-1', name: '停用连接', base_url: 'https://example.com', enabled: false },
+    ])
+    vi.mocked(userConfigService.listModels).mockResolvedValue([
+      { id: 'model-1', connection_id: 'connection-1', name: 'old', display_name: '旧模型', supports_vision: true, enabled: true },
+    ])
+    vi.mocked(userConfigService.listDefaults).mockResolvedValue([
+      { mode: 'programming', model_id: 'model-1', language: 'python' },
+    ])
+    render(<ModelRoutingPanel />)
+    expect((await screen.findByTestId('routing-programming')).textContent).toContain('当前模型不可用')
+    fireEvent.change(screen.getByRole('combobox', { name: '编程题模型' }), { target: { value: '' } })
+    expect(userConfigService.setModelDefault).not.toHaveBeenCalled()
+  })
 })
