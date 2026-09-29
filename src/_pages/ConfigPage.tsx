@@ -77,7 +77,7 @@ export function ConfigPage() {
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number; remoteUrl: string } | null>(null)
   const [pairingLoading, setPairingLoading] = useState(false)
   const [pairingRemaining, setPairingRemaining] = useState(0)
-  const [activeSection, setActiveSection] = useState<ClientSection>('overview')
+  const [activeSection, setActiveSection] = useState<ClientSection>('models')
   const [promptDirty, setPromptDirty] = useState(false)
   const centerNoticeTimer = useRef<NodeJS.Timeout | null>(null)
 
@@ -111,9 +111,12 @@ export function ConfigPage() {
         if (status.user) {
           setUser(status.user)
         }
-        if (status.version) {
-          setVersionInfo(status.version)
-        }
+        const appVersion = await window.electronAPI.getAppVersion?.()
+        setVersionInfo(status.version || {
+          current: appVersion?.version || '开发版',
+          latest: appVersion?.version || '开发版',
+          needsUpdate: false,
+        })
       } catch (error) {
         console.error('获取认证信息失败:', error)
       }
@@ -393,7 +396,6 @@ export function ConfigPage() {
   const testingRef = useRef<HTMLDivElement>(null)
   const commonSectionRef = useRef<HTMLDivElement>(null)
   const advancedSectionRef = useRef<HTMLDivElement>(null)
-  const overviewRef = useRef<HTMLElement>(null)
   const remoteRef = useRef<HTMLElement>(null)
 
   const shortcutGroups = useMemo(() => {
@@ -525,11 +527,10 @@ export function ConfigPage() {
   }
 
   const sectionTitles: Record<ClientSection, { title: string; eyebrow: string }> = {
-    overview: { title: '工作台', eyebrow: '开始使用' },
     shortcuts: { title: '快捷键', eyebrow: '操作方式' },
     models: { title: '模型与提示词', eyebrow: 'AI 配置' },
-    window: { title: '窗口', eyebrow: '显示设置' },
-    connection: { title: '连接', eyebrow: '服务与设备' },
+    window: { title: '窗口显示', eyebrow: '显示设置' },
+    connection: { title: '服务连接', eyebrow: '服务与设备' },
     account: { title: '账户', eyebrow: '账户信息' },
   }
 
@@ -543,26 +544,13 @@ export function ConfigPage() {
             <p className="client-eyebrow">{sectionTitles[activeSection].eyebrow}</p>
             <h1>{sectionTitles[activeSection].title}</h1>
           </div>
-          {activeSection === 'overview' && <span className="client-status-dot">客户端服务正常</span>}
-        </div>
-
-        <header ref={overviewRef} data-client-page="overview" className="client-account rounded-3xl bg-white border border-slate-100 p-8 shadow-[0_12px_50px_rgba(15,23,42,0.05)] flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {user?.username || user?.email || '未登录'}
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              className="client-button client-button-primary"
-              onClick={handleLaunchExamClient}
-              disabled={examClientLaunching}
-            >
+          {activeSection === 'models' && (
+            <button className="client-button client-button-primary" onClick={handleLaunchExamClient} disabled={examClientLaunching}>
               <Play size={16} aria-hidden="true" />
               {examClientLaunching ? '启动中...' : '开始使用'}
             </button>
-          </div>
-        </header>
+          )}
+        </div>
 
         <section data-client-page="connection" className="client-update-action">
           <button type="button" className="client-button client-button-secondary" onClick={handleCheckUpdate} disabled={updateChecking}>
@@ -660,26 +648,6 @@ export function ConfigPage() {
               </div>
             </div>
           )}
-        </section>
-
-        <section data-client-page="overview" className="client-section-nav rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
-          <div className="flex flex-wrap gap-3">
-            <button
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
-              onClick={() => scrollToSection('shortcuts')}
-            >
-              快捷键管理
-            </button>
-            <button
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
-              onClick={() => {
-                scrollToSection('shortcuts')
-                requestAnimationFrame(() => testingRef.current?.scrollIntoView?.({ behavior: 'smooth' }))
-              }}
-            >
-              快捷键测试
-            </button>
-          </div>
         </section>
 
         <section ref={shortcutsRef} data-client-page="shortcuts" className="rounded-3xl border border-slate-100 bg-white p-6 space-y-5 shadow-sm">

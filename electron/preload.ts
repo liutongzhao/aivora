@@ -37,6 +37,7 @@ const electronAPI = {
     return ipcRenderer.invoke("open-subscription-portal", authData)
   },
   openSettingsPortal: () => ipcRenderer.invoke("open-settings-portal"),
+  getAppVersion: () => ipcRenderer.invoke('app-version'),
   updateContentDimensions: (dimensions: { width: number; height: number }) =>
     ipcRenderer.invoke("update-content-dimensions", dimensions),
   clearStore: () => ipcRenderer.invoke("clear-store"),
@@ -270,6 +271,7 @@ const electronAPI = {
     }
   },
   startUpdate: () => ipcRenderer.invoke("start-update"),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   installUpdate: () => ipcRenderer.invoke("install-update"),
   onUpdateAvailable: (callback: (info: any) => void) => {
     const subscription = (_: any, info: any) => callback(info)

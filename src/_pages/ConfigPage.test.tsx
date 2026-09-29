@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ConfigPage from './ConfigPage'
 
-describe('ConfigPage overview', () => {
+describe('ConfigPage', () => {
   beforeEach(() => {
     Object.assign(window, {
       electronAPI: {
@@ -25,24 +25,19 @@ describe('ConfigPage overview', () => {
     })
   })
 
-  it('keeps the overview focused on core actions without tutorial copy', async () => {
+  it('opens directly on the dense model configuration page', async () => {
     render(<ConfigPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '测试用户' })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: '模型与提示词' })).toBeTruthy()
     })
-    expect(screen.getByRole('button', { name: /开始使用/ })).toBeTruthy()
-    expect(screen.getByText('客户端服务正常')).toBeTruthy()
-    expect(screen.queryByText(/使用前可简单看一下常见快捷键/)).toBeNull()
-    expect(screen.queryByRole('button', { name: '使用视频教程' })).toBeNull()
-    expect(screen.getByRole('main').querySelector('header[data-client-page="overview"]')?.textContent).not.toContain('退出登录')
-    fireEvent.click(screen.getByRole('button', { name: '连接' }))
-    expect(screen.getByRole('button', { name: '检测更新' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '题型分配' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '提示词' })).toBeTruthy()
   })
 
-  it('opens the shortcuts page from workbench actions', () => {
+  it('opens the shortcuts page from the sidebar', () => {
     render(<ConfigPage />)
-    fireEvent.click(screen.getByRole('button', { name: '快捷键管理' }))
+    fireEvent.click(screen.getByRole('button', { name: '快捷键' }))
     expect(screen.getByRole('main').getAttribute('data-active-section')).toBe('shortcuts')
   })
 })

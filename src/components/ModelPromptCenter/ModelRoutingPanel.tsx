@@ -51,7 +51,13 @@ export function ModelRoutingPanel() {
 
   return (
     <section className="routing-panel">
-      <div className="routing-header"><div><h2>题型分配</h2><p>为不同题型选择默认模型。</p></div>{notice && <span role="status">{notice}</span>}</div>
+      <div className="routing-header">
+        <div><h2>题型分配</h2><p>为不同题型指定默认模型与输出语言。</p></div>
+        {notice && <span className="routing-notice" role="status">{notice}</span>}
+      </div>
+      <div className="routing-table-head" aria-hidden="true">
+        <span>题型</span><span>可用模型</span><span>输出语言</span><span>图片输入</span>
+      </div>
       <div className="routing-list">
         {modes.map(([mode, label]) => {
           const current = defaults[mode]
@@ -59,24 +65,26 @@ export function ModelRoutingPanel() {
           const language = current?.language || 'python'
           return (
             <div className="routing-row" data-testid={`routing-${mode}`} key={mode}>
-              <strong>{label}</strong>
-              <select
-                aria-label={`${label}模型`}
-                value={invalid ? '' : current?.model_id || ''}
-                onChange={(event) => void updateDefault(mode, event.target.value, language)}
-              >
-                <option value="">{invalid ? '当前模型不可用，请重新选择' : '选择模型'}</option>
-                {selectableModels.map((model) => <option key={model.id} value={model.id}>{model.display_name}</option>)}
-              </select>
-              {(mode === 'programming' || mode === 'debug') && (
-                <select
-                  aria-label={`${label}输出语言`}
-                  value={language}
-                  onChange={(event) => current?.model_id && void updateDefault(mode, current.model_id, event.target.value)}
+              <div className="routing-mode"><strong>{label}</strong><span>{mode.replace('_', ' ')}</span></div>
+              <label className="routing-field"><span>模型</span><select
+                  aria-label={`${label}模型`}
+                  value={invalid ? '' : current?.model_id || ''}
+                  onChange={(event) => void updateDefault(mode, event.target.value, language)}
                 >
-                  {languages.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
+                  <option value="">{invalid ? '当前模型不可用，请重新选择' : '选择模型'}</option>
+                  {selectableModels.map((model) => <option key={model.id} value={model.id}>{model.display_name}</option>)}
+                </select></label>
+              {(mode === 'programming' || mode === 'debug') && (
+                <label className="routing-field"><span>语言</span><select
+                    aria-label={`${label}输出语言`}
+                    value={language}
+                    onChange={(event) => current?.model_id && void updateDefault(mode, current.model_id, event.target.value)}
+                  >
+                    {languages.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select></label>
               )}
+              {mode !== 'programming' && mode !== 'debug' && <span className="routing-empty">不适用</span>}
+              <span className="routing-capability">支持</span>
             </div>
           )
         })}

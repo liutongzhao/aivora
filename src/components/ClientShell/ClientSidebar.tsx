@@ -1,14 +1,12 @@
 import {
   Cable,
   Keyboard,
-  LayoutDashboard,
   Monitor,
   SlidersHorizontal,
   UserRound,
 } from 'lucide-react'
 
 export type ClientSection =
-  | 'overview'
   | 'shortcuts'
   | 'models'
   | 'window'
@@ -23,13 +21,12 @@ interface ClientSidebarProps {
 const navigationItems: Array<{
   section: ClientSection
   label: string
-  icon: typeof LayoutDashboard
+  icon: typeof Keyboard
 }> = [
-  { section: 'overview', label: '工作台', icon: LayoutDashboard },
+  { section: 'models', label: '模型配置', icon: SlidersHorizontal },
   { section: 'shortcuts', label: '快捷键', icon: Keyboard },
-  { section: 'models', label: '模型与提示词', icon: SlidersHorizontal },
-  { section: 'window', label: '窗口', icon: Monitor },
-  { section: 'connection', label: '连接', icon: Cable },
+  { section: 'window', label: '窗口显示', icon: Monitor },
+  { section: 'connection', label: '服务连接', icon: Cable },
   { section: 'account', label: '账户', icon: UserRound },
 ]
 

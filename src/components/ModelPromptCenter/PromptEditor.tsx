@@ -69,23 +69,26 @@ export function PromptEditor({ onDirtyChange }: { onDirtyChange?: (dirty: boolea
 
   return (
     <section className="prompt-editor-panel">
-      <div className="prompt-mode-tabs" role="tablist" aria-label="提示词题型">
-        {modes.map(([key, label]) => <button type="button" role="tab" key={key} onClick={() => selectMode(key)} aria-selected={mode === key}>{label}</button>)}
+      <aside className="prompt-mode-list" role="tablist" aria-label="提示词题型">
+        <div className="prompt-mode-heading">题型</div>
+        {modes.map(([key, label]) => <button className={mode === key ? 'is-active' : ''} type="button" role="tab" aria-label={label} key={key} onClick={() => selectMode(key)} aria-selected={mode === key}><strong>{label}</strong><span>{key.replace('_', ' ')}</span></button>)}
+      </aside>
+      <div className="prompt-editor-main">
+        <div className="prompt-editor-toolbar">
+          <div><h2>{modes.find(([key]) => key === mode)?.[1]}提示词</h2><span>{currentVersion ? `当前版本 v${currentVersion}` : '尚未保存'}{dirty ? ' · 有未保存修改' : ''}</span></div>
+          <button type="button" className="client-button client-button-primary" aria-label="保存提示词" onClick={() => void save()} disabled={loading || saving}>{saving ? '保存中...' : '保存新版本'}</button>
+        </div>
+        {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
+        <textarea aria-label="提示词内容" placeholder="输入该题型的系统提示词..." value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={18} disabled={loading || saving} />
+        <div className="prompt-editor-footer">
+          <span className="prompt-saved-state">{savedVersion !== null ? `已保存 v${savedVersion}` : `${prompt.length} 字符`}</span>
+          {versions.length > 1 && <div className="prompt-version-list" aria-label="历史版本">
+            {versions.slice(1).map((version) => (
+              <button type="button" className="client-button client-button-secondary" key={version.id} onClick={() => setPrompt(version.content)} disabled={saving}>恢复 v{version.version}</button>
+            ))}
+          </div>}
+        </div>
       </div>
-      <div className="prompt-editor-toolbar">
-        <div><h2>提示词</h2><span>{currentVersion ? `当前版本 v${currentVersion}` : '尚未保存'}</span></div>
-        <button type="button" className="client-button client-button-primary" aria-label="保存提示词" onClick={() => void save()} disabled={loading || saving}>{saving ? '保存中...' : '保存'}</button>
-      </div>
-      {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
-      <textarea aria-label="提示词内容" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={14} disabled={loading || saving} />
-      {savedVersion !== null && <span className="prompt-saved-state">已保存 v{savedVersion}</span>}
-      {versions.length > 1 && <div className="prompt-version-list" aria-label="历史版本">
-        {versions.slice(1).map((version) => (
-          <button type="button" className="client-button client-button-secondary" key={version.id} onClick={() => setPrompt(version.content)} disabled={saving}>
-            恢复 v{version.version}
-          </button>
-        ))}
-      </div>}
       {pendingMode && (
         <div className="prompt-unsaved-dialog" role="dialog" aria-label="未保存修改">
           <strong>未保存修改</strong>

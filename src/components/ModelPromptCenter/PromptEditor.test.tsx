@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PromptEditor } from './PromptEditor'
 import { userConfigService } from '../../services/userConfigService'
 
@@ -12,6 +12,7 @@ vi.mock('../../services/userConfigService', () => ({
 }))
 
 describe('PromptEditor', () => {
+  beforeEach(() => vi.clearAllMocks())
   it('loads the newest prompt, saves a new version, and guards unsaved mode changes', async () => {
     vi.mocked(userConfigService.listPromptVersions).mockImplementation(async (mode) => [{
       id: `${mode}-latest`,

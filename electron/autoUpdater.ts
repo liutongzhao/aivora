@@ -5,6 +5,18 @@ import log from "electron-log"
 export function initAutoUpdater() {
   console.log("Initializing auto-updater...")
 
+  if (!ipcMain.listeners('check-for-updates').length) {
+    ipcMain.handle('check-for-updates', async () => {
+      if (!app.isPackaged) return { success: false, error: '开发环境不执行线上更新检查' }
+      try {
+        const result = await autoUpdater.checkForUpdates()
+        return { success: true, updateInfo: result?.updateInfo ?? null }
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : '检查更新失败' }
+      }
+    })
+  }
+
   // Skip update checks in development
   if (!app.isPackaged) {
     console.log("Skipping auto-updater in development mode")
@@ -17,7 +29,7 @@ export function initAutoUpdater() {
   }
 
   // Configure auto updater
-  autoUpdater.autoDownload = true
+  autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowDowngrade = true
   autoUpdater.allowPrerelease = true

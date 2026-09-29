@@ -18,7 +18,7 @@ describe('ConfigPage visual structure', () => {
 
   it('uses a compact page heading and shared primary control style', async () => {
     const { container } = render(<ConfigPage />)
-    await waitFor(() => expect(screen.getByRole('heading', { name: '工作台' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: '模型与提示词' })).toBeTruthy())
     expect(container.querySelector('.client-page-heading')).toBeTruthy()
     expect(container.querySelector('.client-button-primary')).toBeTruthy()
     expect(screen.queryByText(/使用前可简单看一下/)).toBeNull()

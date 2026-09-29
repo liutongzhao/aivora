@@ -124,17 +124,12 @@
   display: none;
 }
 
-.client-settings-content[data-active-section="overview"] > [data-client-page~="overview"],
 .client-settings-content[data-active-section="shortcuts"] > [data-client-page~="shortcuts"],
 .client-settings-content[data-active-section="models"] > [data-client-page~="models"],
 .client-settings-content[data-active-section="window"] > [data-client-page~="window"],
 .client-settings-content[data-active-section="connection"] > [data-client-page~="connection"],
 .client-settings-content[data-active-section="account"] > [data-client-page~="account"] {
   display: block;
-}
-
-.client-settings-content[data-active-section="overview"] > header[data-client-page~="overview"] {
-  display: flex;
 }
 
 .client-page-heading {
@@ -252,6 +247,218 @@
   border-bottom-color: var(--client-accent);
   color: var(--client-accent);
   font-weight: 650;
+}
+
+.routing-panel,
+.prompt-editor-panel {
+  min-width: 0;
+}
+
+.routing-header,
+.prompt-editor-toolbar,
+.prompt-editor-footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.routing-header {
+  margin-bottom: 18px;
+}
+
+.routing-header h2,
+.prompt-editor-toolbar h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.routing-header p,
+.prompt-editor-toolbar span {
+  color: var(--client-text-muted);
+  font-size: 12px;
+  margin: 5px 0 0;
+}
+
+.routing-notice {
+  color: #16805b;
+  font-size: 12px;
+}
+
+.routing-table-head,
+.routing-row {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(120px, .7fr) minmax(210px, 1.5fr) minmax(140px, .8fr) 90px;
+}
+
+.routing-table-head {
+  border-bottom: 1px solid var(--client-border-strong);
+  color: var(--client-text-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  padding: 0 14px 9px;
+}
+
+.routing-row {
+  align-items: center;
+  border-bottom: 1px solid var(--client-border);
+  min-height: 62px;
+  padding: 10px 14px;
+}
+
+.routing-row:hover {
+  background: #fafbfc;
+}
+
+.routing-mode {
+  display: grid;
+  gap: 3px;
+}
+
+.routing-mode strong {
+  font-size: 13px;
+}
+
+.routing-mode span,
+.routing-field > span {
+  color: var(--client-text-subtle);
+  font-size: 10px;
+}
+
+.routing-field > span {
+  display: none;
+}
+
+.routing-field select {
+  appearance: auto;
+  background: var(--client-surface-elevated);
+  border: 1px solid var(--client-border-strong);
+  border-radius: 6px;
+  color: var(--client-text);
+  font-size: 13px;
+  height: 36px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.routing-empty,
+.routing-capability {
+  color: var(--client-text-muted);
+  font-size: 12px;
+}
+
+.routing-capability {
+  color: #16805b;
+}
+
+.prompt-editor-panel {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 168px minmax(0, 1fr);
+}
+
+.prompt-mode-list {
+  border-right: 1px solid var(--client-border);
+  padding-right: 14px;
+}
+
+.prompt-mode-heading {
+  color: var(--client-text-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  padding: 0 10px 8px;
+}
+
+.prompt-mode-list button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--client-text-muted);
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.prompt-mode-list button:hover {
+  background: var(--client-surface-muted);
+}
+
+.prompt-mode-list button.is-active {
+  background: var(--client-accent-soft);
+  border-color: #c6d9ff;
+  color: var(--client-accent);
+}
+
+.prompt-mode-list button strong {
+  font-size: 13px;
+}
+
+.prompt-mode-list button span {
+  color: var(--client-text-subtle);
+  font-size: 10px;
+}
+
+.prompt-editor-main {
+  min-width: 0;
+}
+
+.prompt-editor-toolbar {
+  margin-bottom: 12px;
+}
+
+.prompt-editor-main textarea {
+  background: #fbfcfd;
+  border: 1px solid var(--client-border-strong);
+  border-radius: 6px;
+  color: var(--client-text);
+  font: 13px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-height: 360px;
+  padding: 14px;
+  resize: vertical;
+  width: 100%;
+}
+
+.prompt-editor-main textarea:focus {
+  border-color: var(--client-accent);
+  box-shadow: 0 0 0 3px var(--client-accent-soft);
+  outline: none;
+}
+
+.prompt-editor-footer {
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+.prompt-saved-state {
+  color: var(--client-text-subtle);
+  font-size: 11px;
+}
+
+.prompt-unsaved-dialog {
+  background: var(--client-surface-elevated);
+  border: 1px solid var(--client-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(31, 41, 55, .14);
+  left: 50%;
+  padding: 18px;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 32px));
+  z-index: 60;
+}
+
+.prompt-unsaved-dialog p {
+  color: var(--client-text-muted);
+  font-size: 12px;
+}
+
+.prompt-unsaved-dialog > div {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .model-toolbar,
@@ -640,7 +847,64 @@
   padding-top: 16px;
 }
 
+.account-version-panel {
+  align-items: center;
+  border-top: 1px solid var(--client-border);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.account-version-panel > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.account-version-panel span {
+  color: var(--client-text-muted);
+  font-size: 12px;
+}
+
+.account-version-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 720px) {
+  .routing-table-head {
+    display: none;
+  }
+
+  .routing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .routing-field > span {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .prompt-editor-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .prompt-mode-list {
+    border-bottom: 1px solid var(--client-border);
+    border-right: 0;
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 0 12px;
+  }
+
+  .prompt-mode-heading {
+    grid-column: 1 / -1;
+  }
+
   .model-toolbar,
   .model-toolbar-actions {
     align-items: stretch;
@@ -680,7 +944,8 @@
   }
 
   .window-setting-row,
-  .account-setting-row {
+  .account-setting-row,
+  .account-version-panel {
     align-items: flex-start;
     flex-direction: column;
     padding: 12px 0;

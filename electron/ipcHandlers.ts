@@ -70,6 +70,8 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     return configHelper.loadConfig();
   })
 
+  ipcMain.handle('app-version', () => ({ version: packageJson.version }))
+
   ipcMain.handle("update-config", (_event, updates) => {
     return configHelper.updateConfig(updates);
   })

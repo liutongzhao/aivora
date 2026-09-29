@@ -9,6 +9,9 @@ describe('AccountSettings', () => {
     Object.assign(window, {
       electronAPI: {
         webAuthLogout: logout,
+        checkForUpdates: vi.fn().mockResolvedValue({ success: true }),
+        onUpdateAvailable: vi.fn().mockReturnValue(() => {}),
+        onUpdateDownloaded: vi.fn().mockReturnValue(() => {}),
       },
     })
     render(<AccountSettings user={{ username: '测试用户', email: 'test@example.com' }} version={{ current: '1.0.0', latest: '1.0.0', needsUpdate: false }} />)

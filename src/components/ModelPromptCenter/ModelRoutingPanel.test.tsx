@@ -30,6 +30,8 @@ describe('ModelRoutingPanel', () => {
     expect(await screen.findByText('编程题')).toBeTruthy()
     expect(screen.getByText('单选题')).toBeTruthy()
     expect(screen.getByText('调试题')).toBeTruthy()
+    expect(screen.getByText('可用模型')).toBeTruthy()
+    expect(screen.getByText('图片输入')).toBeTruthy()
     expect(screen.getAllByRole('option', { name: 'GPT-4o' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('option', { name: 'Text Only' })).toBeNull()
 
