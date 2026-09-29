@@ -293,6 +293,16 @@ export const defaultShortcutBindings: Record<ShortcutAction, string> = {
   increaseWindowHeight: 'CommandOrControl+Shift+6'
 }
 
+export function getMissingShortcutActions(
+  bindings: Record<ShortcutAction, string>,
+  isRegistered: (accelerator: string) => boolean,
+): ShortcutAction[] {
+  return (Object.keys(bindings) as ShortcutAction[]).filter((action) => {
+    const accelerator = bindings[action]
+    return Boolean(accelerator) && !accelerator.includes('MouseButton4') && !accelerator.includes('MouseButton5') && !isRegistered(accelerator)
+  })
+}
+
 export function mergeShortcutBindings(
   custom?: Partial<Record<ShortcutAction, string>>
 ): Record<ShortcutAction, string> {

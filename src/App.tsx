@@ -693,6 +693,13 @@ function App() {
       </ShortcutProvider>
     </QueryClientProvider>
   )
+
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onShortcutRuntimeStatus?.((status: { type: 'success' | 'error'; message: string }) => {
+      showToast(status.type === 'success' ? '快捷键已恢复' : '快捷键异常', status.message, status.type)
+    })
+    return () => unsubscribe?.()
+  }, [showToast])
 }
 
 export default App

@@ -75,6 +75,11 @@ const electronAPI = {
     ipcRenderer.on('shortcuts-updated', subscription)
     return () => ipcRenderer.removeListener('shortcuts-updated', subscription)
   },
+  onShortcutRuntimeStatus: (callback: (status: { type: 'success' | 'error'; message: string }) => void) => {
+    const subscription = (_: Electron.IpcRendererEvent, status: { type: 'success' | 'error'; message: string }) => callback(status)
+    ipcRenderer.on('shortcut-runtime-status', subscription)
+    return () => ipcRenderer.removeListener('shortcut-runtime-status', subscription)
+  },
   downloadLatestVersion: (url: string) => ipcRenderer.invoke('updates:download-latest', url),
   windowControl: (action: 'minimize' | 'close' | 'toggle-maximize') => ipcRenderer.invoke('window-control', action),
   recoverWindow: () => ipcRenderer.invoke('window-recover'),

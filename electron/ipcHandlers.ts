@@ -394,7 +394,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
         return { success: true }
       } catch (error) {
         console.error("Error triggering screenshot:", error)
-        return { error: "Failed to trigger screenshot" }
+        return { error: error instanceof Error ? error.message : "截图失败，请检查屏幕录制权限" }
       }
     }
     return { error: "No main window available" }

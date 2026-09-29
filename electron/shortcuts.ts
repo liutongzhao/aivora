@@ -5,7 +5,8 @@ import { configHelper } from "./ConfigHelper"
 import {
   defaultShortcutBindings,
   mergeShortcutBindings,
-  ShortcutAction
+  ShortcutAction,
+  getMissingShortcutActions
 } from "../shared/shortcuts"
 
 const configData = require('../../config.json')
@@ -165,6 +166,9 @@ export class ShortcutsHelper {
   private mouseHookProcess: ChildProcessWithoutNullStreams | null = null
   private mouseHookBuffer = ''
   private mouseAcceleratorMap = new Map<string, ShortcutAction>()
+  private shortcutWatchdog: NodeJS.Timeout | null = null
+  private quitHandlerRegistered = false
+  private lastShortcutRecoveryAt = 0
 
   constructor(deps: IShortcutsHelperDeps) {
     this.deps = deps
@@ -268,6 +272,12 @@ export class ShortcutsHelper {
 
     if (!registered) {
       console.warn(`⚠️ Failed to register shortcut ${accelerator} for action ${action}`)
+      if (action === 'screenshot') {
+        this.deps.getMainWindow()?.webContents.send('shortcut-runtime-status', {
+          type: 'error',
+          message: `截图快捷键 ${accelerator} 注册失败，请换一个快捷键`
+        })
+      }
     } else {
       console.log(`✅ Registered shortcut ${accelerator} for action ${action}`)
     }
@@ -632,6 +642,10 @@ export class ShortcutsHelper {
           })
         } catch (error) {
           console.error("Error capturing screenshot:", error)
+          mainWindow.webContents.send('shortcut-runtime-status', {
+            type: 'error',
+            message: error instanceof Error ? error.message : '截图失败，请稍后重试'
+          })
           throw error
         }
       }
@@ -1149,11 +1163,40 @@ export class ShortcutsHelper {
     })
 
     this.setupMouseButtonShortcuts(bindings)
+    this.startShortcutWatchdog()
 
     // Unregister shortcuts when quitting
-    app.on("will-quit", () => {
-      globalShortcut.unregisterAll()
-      this.stopMouseHook()
-    })
+    if (!this.quitHandlerRegistered) {
+      this.quitHandlerRegistered = true
+      app.on("will-quit", () => {
+        globalShortcut.unregisterAll()
+        this.stopMouseHook()
+        this.stopShortcutWatchdog()
+      })
+    }
+  }
+
+  private startShortcutWatchdog(): void {
+    if (this.shortcutWatchdog) return
+    this.shortcutWatchdog = setInterval(() => {
+      const bindings = this.getBindings()
+      const missing = getMissingShortcutActions(bindings, (accelerator) => globalShortcut.isRegistered(accelerator))
+      if (missing.length === 0) return
+      const now = Date.now()
+      if (now - this.lastShortcutRecoveryAt < 10000) return
+      this.lastShortcutRecoveryAt = now
+      console.warn(`⚠️ 检测到快捷键失效，正在自动恢复: ${missing.join(', ')}`)
+      this.registerGlobalShortcuts()
+      this.deps.getMainWindow()?.webContents.send('shortcut-runtime-status', {
+        type: 'success',
+        message: '快捷键已自动恢复'
+      })
+    }, 2000)
+  }
+
+  private stopShortcutWatchdog(): void {
+    if (!this.shortcutWatchdog) return
+    clearInterval(this.shortcutWatchdog)
+    this.shortcutWatchdog = null
   }
 }
