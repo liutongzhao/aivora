@@ -26,8 +26,8 @@ export function initAutoUpdater() {
   // Configure auto updater
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
-  autoUpdater.allowDowngrade = true
-  autoUpdater.allowPrerelease = true
+  autoUpdater.allowDowngrade = false
+  autoUpdater.allowPrerelease = false
 
   // Enable more verbose logging
   autoUpdater.logger = log

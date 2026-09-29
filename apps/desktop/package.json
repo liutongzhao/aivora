@@ -1,6 +1,6 @@
 {
   "name": "aivora-2026.9.19",
-  "version": "2026.9.19",
+  "version": "0.1.0",
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "concurrently -k -s first \"npm:dev:renderer\" \"npm:dev:electron\"",
@@ -10,6 +10,9 @@
     "build:renderer": "vite build",
     "build:electron": "tsc -p electron/tsconfig.json",
     "build": "npm run build:renderer && npm run build:electron",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
     "start": "cross-env NODE_ENV=production electron .",
     "test": "vitest run"
   },
@@ -55,11 +58,50 @@
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^37.2.1",
+    "electron-builder": "^26.15.3",
     "jsdom": "^28.1.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "vitest": "^5.0.1",
     "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.aivora.desktop",
+    "productName": "Aivora",
+    "artifactName": "Aivora-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "publish": {
+      "provider": "github",
+      "owner": "liutongzhao",
+      "repo": "aivora",
+      "releaseType": "release"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
   },
   "browserslist": {
     "production": [

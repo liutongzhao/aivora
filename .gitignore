@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+release/
 recovered-build/
 .superpowers/
 .DS_Store
