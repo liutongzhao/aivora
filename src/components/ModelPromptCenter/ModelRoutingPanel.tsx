@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { userConfigService } from '../../services/userConfigService'
 import type { PromptMode, QuestionModelDefault, UserModel } from '../../types/userConfig'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
 const modes: Array<[PromptMode, string]> = [
   ['programming', '编程题'],
@@ -12,11 +13,10 @@ const modes: Array<[PromptMode, string]> = [
 
 const languages = ['python', 'typescript', 'javascript', 'java', 'cpp', 'go', 'rust']
 
-export function ModelRoutingPanel() {
+export function ModelRoutingPanel({ onNotify }: { onNotify?: (message: string, variant?: ClientToastVariant) => void }) {
   const [models, setModels] = useState<UserModel[]>([])
   const [defaults, setDefaults] = useState<Record<string, QuestionModelDefault>>({})
   const [enabledConnectionIds, setEnabledConnectionIds] = useState<Set<string>>(new Set())
-  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -27,7 +27,7 @@ export function ModelRoutingPanel() {
       setEnabledConnectionIds(new Set(connections.filter((connection) => connection.enabled).map((connection) => connection.id)))
       setModels(nextModels)
       setDefaults(Object.fromEntries(nextDefaults.map((item) => [item.mode, item])))
-    }).catch((error) => setNotice(error instanceof Error ? error.message : '题型配置加载失败'))
+    }).catch((error) => onNotify?.(error instanceof Error ? error.message : '题型配置加载失败', 'error'))
   }, [])
 
   const selectableModels = useMemo(
@@ -37,15 +37,15 @@ export function ModelRoutingPanel() {
 
   async function updateDefault(mode: PromptMode, modelId: string, language: string) {
     if (!selectableModels.some((model) => model.id === modelId)) {
-      setNotice('请选择可用且支持图片的模型')
+      onNotify?.('请选择可用且支持图片的模型', 'warning')
       return
     }
     try {
       const updated = await userConfigService.setModelDefault(mode, modelId, language)
       setDefaults((current) => ({ ...current, [mode]: updated }))
-      setNotice(`${modes.find(([key]) => key === mode)?.[1]}已保存`)
+      onNotify?.(`${modes.find(([key]) => key === mode)?.[1]}已保存`, 'success')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '题型配置保存失败')
+      onNotify?.(error instanceof Error ? error.message : '题型配置保存失败', 'error')
     }
   }
 
@@ -53,7 +53,6 @@ export function ModelRoutingPanel() {
     <section className="routing-panel">
       <div className="routing-header">
         <div><h2>题型分配</h2><p>为不同题型指定默认模型与输出语言。</p></div>
-        {notice && <span className="routing-notice" role="status">{notice}</span>}
       </div>
       <div className="routing-table-head" aria-hidden="true">
         <span>题型</span><span>可用模型</span><span>输出语言</span><span>图片输入</span>

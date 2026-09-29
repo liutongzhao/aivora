@@ -31,7 +31,7 @@ describe('ModelPromptCenter', () => {
 
     render(<ModelPromptCenter />)
 
-    expect(await screen.findByRole('heading', { name: '模型' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: '模型' })).toBeTruthy()
     expect(screen.getByRole('option', { name: 'OpenAI' })).toBeTruthy()
     expect(screen.queryByRole('option', { name: '停用连接' })).toBeNull()
     expect(screen.getAllByText('GPT-4o')).toHaveLength(2)

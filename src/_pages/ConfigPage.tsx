@@ -14,31 +14,9 @@ import { ModelPromptCenter } from '../components/ModelPromptCenter/ModelPromptCe
 import { ConnectionSettings } from '../components/ConnectionSettings/ConnectionSettings'
 import { WindowSettings } from '../components/WindowSettings/WindowSettings'
 import { AccountSettings } from '../components/AccountSettings/AccountSettings'
+import { ClientToast, ClientToastVariant } from '../components/ClientShell/ClientToast'
 
 type ShortcutMap = Record<ShortcutAction, string>
-
-const HIGHLIGHT_ADVANCED_ACTIONS: ShortcutAction[] = [
-  'reset',
-  'toggleWindow',
-  'moveWindowLeft',
-  'moveWindowRight',
-  'moveWindowUp',
-  'moveWindowDown',
-  'scrollCodeLeft',
-  'scrollCodeRight',
-  'scrollCodeUp',
-  'scrollCodeDown',
-  'decreaseWindowWidth',
-  'increaseWindowWidth',
-  'decreaseWindowHeight',
-  'increaseWindowHeight',
-  'decreaseOpacity',
-  'increaseOpacity',
-  'decreaseOpacityAlt',
-  'increaseOpacityAlt',
-  'copyCode',
-  'deleteLastScreenshot'
-]
 
 interface ShortcutTestResult {
   action: ShortcutAction
@@ -73,36 +51,33 @@ export function ConfigPage() {
   const [preferredTheme, setPreferredTheme] = useState<'dark' | 'light'>('dark')
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false)
   const [themeSelectionLoading, setThemeSelectionLoading] = useState<'dark' | 'light' | null>(null)
-  const [centerNotice, setCenterNotice] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; variant: ClientToastVariant } | null>(null)
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number; remoteUrl: string } | null>(null)
   const [pairingLoading, setPairingLoading] = useState(false)
   const [pairingRemaining, setPairingRemaining] = useState(0)
   const [activeSection, setActiveSection] = useState<ClientSection>('models')
   const [promptDirty, setPromptDirty] = useState(false)
-  const centerNoticeTimer = useRef<NodeJS.Timeout | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const showCenterNotice = useCallback((message: string) => {
-    setCenterNotice(message)
-    if (centerNoticeTimer.current) {
-      clearTimeout(centerNoticeTimer.current)
+  const showToast = useCallback((message: string, variant: ClientToastVariant = 'info') => {
+    setToast({ message, variant })
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current)
     }
-    centerNoticeTimer.current = setTimeout(() => {
-      setCenterNotice(null)
-      centerNoticeTimer.current = null
-    }, 2000)
+    toastTimer.current = setTimeout(() => setToast(null), 2800)
   }, [])
 
   useEffect(() => {
     return () => {
-      if (centerNoticeTimer.current) {
-        clearTimeout(centerNoticeTimer.current)
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current)
       }
     }
   }, [])
 
   const showToastMessage = useCallback((message: string, success: boolean) => {
-    showCenterNotice(message)
-  }, [showCenterNotice])
+    showToast(message, success ? 'success' : 'error')
+  }, [showToast])
 
   useEffect(() => {
     const init = async () => {
@@ -152,11 +127,11 @@ export function ConfigPage() {
         }))
       }
       if (state.error) {
-        showCenterNotice(state.error)
+        showToast(state.error, 'error')
       }
     })
     return () => unsubscribeRemote?.()
-  }, [showCenterNotice])
+  }, [showToast])
 
   useEffect(() => {
     if (!pairing) {
@@ -239,12 +214,12 @@ export function ConfigPage() {
       )
       const latest = results.find(result => result.success && result.bindings)?.bindings
       setShortcuts(latest || { ...defaultShortcutBindings })
-      showCenterNotice('已恢复默认快捷键')
+      showToast('已恢复默认快捷键', 'success')
     } catch (error) {
       console.error('恢复默认快捷键失败:', error)
       setRecordingHint('恢复默认快捷键失败，请重试')
     }
-  }, [showCenterNotice])
+  }, [showToast])
 
   useEffect(() => {
     if (!recordingAction) return
@@ -349,12 +324,12 @@ export function ConfigPage() {
         setVersionInfo(status.version)
 
         if (!status.version.needsUpdate) {
-          showCenterNotice('您已是最新版本')
+          showToast('您已是最新版本', 'success')
         }
       }
     } catch (error) {
       console.error('检测更新失败:', error)
-      showCenterNotice('检测更新失败，请稍后再试')
+      showToast('检测更新失败，请稍后再试', 'error')
     } finally {
       setUpdateChecking(false)
     }
@@ -369,9 +344,9 @@ export function ConfigPage() {
         throw new Error(result?.error || '生成手机连接码失败')
       }
       setPairing({ code: result.code, expiresAt: result.expiresAt, remoteUrl: result.remoteUrl })
-      showCenterNotice('连接码已生成，有效期 2 分钟')
+      showToast('连接码已生成，有效期 2 分钟', 'success')
     } catch (error: any) {
-      showCenterNotice(error?.message || '生成手机连接码失败')
+      showToast(error?.message || '生成手机连接码失败', 'error')
     } finally {
       setPairingLoading(false)
     }
@@ -380,144 +355,34 @@ export function ConfigPage() {
   const handleCopyPairingPart = async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value)
-      showCenterNotice(`${label}已复制`)
+      showToast(`${label}已复制`, 'success')
     } catch (_) {
-      showCenterNotice('复制失败，请手动记录')
+      showToast('复制失败，请手动记录', 'error')
     }
   }
 
   const handleDisconnectPairing = async () => {
     await window.electronAPI.remoteControl?.disconnect()
     setPairing(null)
-    showCenterNotice('手机远程控制已结束')
+    showToast('手机远程控制已结束', 'success')
   }
 
   const shortcutsRef = useRef<HTMLDivElement>(null)
   const testingRef = useRef<HTMLDivElement>(null)
-  const commonSectionRef = useRef<HTMLDivElement>(null)
-  const advancedSectionRef = useRef<HTMLDivElement>(null)
   const remoteRef = useRef<HTMLElement>(null)
 
   const shortcutGroups = useMemo(() => {
-    const groups: Record<'common' | 'advanced', ShortcutDefinition[]> = {
-      common: [],
-      advanced: []
-    }
+    const groups: Array<{ key: string; label: string; categories: ShortcutDefinition['category'][]; definitions: ShortcutDefinition[] }> = [
+      { key: 'capture', label: '截屏与识别', categories: ['capture', 'process'], definitions: [] },
+      { key: 'window', label: '窗口与显示', categories: ['window', 'view'], definitions: [] },
+      { key: 'content', label: '内容与辅助', categories: ['system', 'scroll'], definitions: [] },
+      { key: 'utility', label: '账户与连接', categories: ['utility'], definitions: [] },
+    ]
     shortcutDefinitions.forEach((definition) => {
-      if (['capture', 'process'].includes(definition.category) || definition.action === 'createRemotePairing') {
-        groups.common.push(definition)
-      } else {
-        groups.advanced.push(definition)
-      }
+      groups.find((group) => group.categories.includes(definition.category))?.definitions.push(definition)
     })
     return groups
   }, [])
-
-  const highlightActionSet = useMemo(() => new Set<ShortcutAction>(HIGHLIGHT_ADVANCED_ACTIONS), [])
-
-  const advancedHighlightShortcuts = useMemo(() => [
-    {
-      key: 'exit-app',
-      title: '退出软件',
-      combo: 'Ctrl + Q',
-      description: '快捷退出客户端，重新打开即可刷新配置页',
-      tag: '通用操作'
-    },
-    {
-      key: 'clear-queue',
-      title: '清空当前截图',
-      combo: formatShortcut(shortcuts.reset) || 'Ctrl + R',
-      description: '重置并删除当前所有截图',
-      tag: '系统固定'
-    },
-    {
-      key: 'toggle-window',
-      title: '显示/隐藏考试窗口',
-      combo: formatShortcut(shortcuts.toggleWindow) || 'Ctrl + B',
-      description: '黑色考试窗口的显示开关',
-      tag: '系统固定'
-    },
-    {
-      key: 'move-window',
-      title: '移动窗口',
-      combo: 'Ctrl + ↑ / ↓ / ← / →',
-      description: '微调窗口位置，方向键控制移动方向',
-      tag: '系统固定'
-    },
-    {
-      key: 'move-content',
-      title: '移动窗口内部内容',
-      combo: 'Ctrl + Shift + ↑ / ↓ / ← / →',
-      description: '滚动窗口内的代码或答案内容',
-      tag: '系统固定'
-    },
-    {
-      key: 'resize-window',
-      title: '调整窗口大小',
-      combo: 'Ctrl + Shift + 3 / 4 / 5 / 6',
-      note: '3/4 控制宽度，5/6 控制高度',
-      tag: '系统固定'
-    },
-    {
-      key: 'opacity-main',
-      title: '调整窗口透明度',
-      combo: 'Ctrl + Shift + 1 / 2',
-      note: '1 = 调亮，2 = 调暗',
-      tag: '系统固定'
-    },
-    {
-      key: 'opacity-backup',
-      title: '透明度备用按键',
-      combo: 'Ctrl + [ / Ctrl + ]',
-      description: '备用键位，与上方效果一致',
-      tag: '系统固定'
-    },
-    {
-      key: 'copy-code',
-      title: '复制答题内容',
-      combo: formatShortcut(shortcuts.copyCode) || 'Ctrl + J',
-      description: '复制当前窗口内容，方便粘贴',
-      tag: '系统固定'
-    },
-    {
-      key: 'delete-screenshot',
-      title: '删除最新截图',
-      combo: formatShortcut(shortcuts.deleteLastScreenshot) || 'Ctrl + D',
-      description: '误截时可快速删除队列中最新截图',
-      tag: '系统固定'
-    }
-  ], [shortcuts])
-
-  const remainingAdvancedShortcuts = useMemo(
-    () => shortcutGroups.advanced.filter((definition) => !highlightActionSet.has(definition.action)),
-    [shortcutGroups, highlightActionSet]
-  )
-
-  const [expandedSections, setExpandedSections] = useState({
-    common: true,
-    advanced: false
-  })
-
-  const scrollToShortcutSection = (section: 'common' | 'advanced') => {
-    const targetRef = section === 'common' ? commonSectionRef : advancedSectionRef
-    if (!targetRef.current) return
-    requestAnimationFrame(() => {
-      targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
-
-  const toggleSection = (section: 'common' | 'advanced') => {
-    setExpandedSections((prev) => {
-      const nextState = {
-        ...prev,
-        [section]: !prev[section]
-      }
-      if (!prev[section]) {
-        scrollToShortcutSection(section)
-      }
-      return nextState
-    })
-  }
 
   const scrollToSection = (section: ClientSection) => {
     if (section === activeSection) return
@@ -526,24 +391,12 @@ export function ConfigPage() {
     setActiveSection(section)
   }
 
-  const sectionTitles: Record<ClientSection, { title: string; eyebrow: string }> = {
-    shortcuts: { title: '快捷键', eyebrow: '操作方式' },
-    models: { title: '模型与提示词', eyebrow: 'AI 配置' },
-    window: { title: '窗口显示', eyebrow: '显示设置' },
-    connection: { title: '服务连接', eyebrow: '服务与设备' },
-    account: { title: '账户', eyebrow: '账户信息' },
-  }
-
   return (
     <div className="client-settings">
       <ClientTitleBar />
       <ClientSidebar activeSection={activeSection} onSelect={scrollToSection} />
       <main className="client-settings-content space-y-8" data-active-section={activeSection}>
-        <div className="client-page-heading">
-          <div>
-            <p className="client-eyebrow">{sectionTitles[activeSection].eyebrow}</p>
-            <h1>{sectionTitles[activeSection].title}</h1>
-          </div>
+        <div className="client-page-actions">
           {activeSection === 'models' && (
             <button className="client-button client-button-primary" onClick={handleLaunchExamClient} disabled={examClientLaunching}>
               <Play size={16} aria-hidden="true" />
@@ -580,7 +433,7 @@ export function ConfigPage() {
         )}
 
         <section data-client-page="connection" className="client-placeholder-panel">
-          <ConnectionSettings />
+          <ConnectionSettings onNotify={showToast} />
         </section>
 
         <section ref={remoteRef} data-client-page="connection" className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
@@ -657,37 +510,7 @@ export function ConfigPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {([
-              { key: 'common', label: '常用快捷键', description: '截屏、搜题与远程控制' },
-              { key: 'advanced', label: '答题窗口调整等快捷键', description: '窗口与调试' }
-            ] as const).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => toggleSection(tab.key)}
-                className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium transition ${
-                  expandedSections[tab.key]
-                    ? 'border-blue-400 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-600'
-                }`}
-              >
-                <div className="text-left leading-tight">
-                  <div>{tab.label}</div>
-                  <div className="text-[11px] text-slate-400">{tab.description}</div>
-                </div>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`h-4 w-4 transition-transform ${expandedSections[tab.key] ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            ))}
-          </div>
+
           <button
             type="button"
             onClick={handleRestoreDefaults}
@@ -696,93 +519,42 @@ export function ConfigPage() {
             恢复默认快捷键
           </button>
 
-          <div ref={commonSectionRef}>
-            {expandedSections.common && (
-              <div className="space-y-3">
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">常用快捷键默认展开，主要覆盖截屏、搜题、重置与手机远程控制。</div>
-                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white">
-                  {shortcutGroups.common.map((definition) => (
-                    <div key={definition.action} className="grid gap-3 p-4 md:grid-cols-4 md:items-center">
+          <div className="shortcut-groups">
+            {shortcutGroups.map((group) => (
+              <section className="shortcut-group" key={group.key} aria-labelledby={`shortcut-group-${group.key}`}>
+                <h3 id={`shortcut-group-${group.key}`}>{group.label}</h3>
+                <div className="shortcut-group-list">
+                  {group.definitions.map((definition) => (
+                    <div key={definition.action} className="shortcut-row">
                       <div>
                         <p className="font-medium text-slate-900">{definition.label}</p>
                         <p className="text-xs text-slate-500">{definition.description}</p>
                       </div>
-                      <div className="col-span-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-slate-800">
+                      <div className="shortcut-combo">
                         {recordingAction === definition.action ? (
                           <span className="text-rose-500 font-semibold">按下新快捷键...</span>
                         ) : (
                           formatShortcut(shortcuts[definition.action])
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="shortcut-row-action">
                         <button
-                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:border-blue-400 hover:text-blue-600"
+                          className="client-button client-button-secondary"
                           onClick={() => handleStartRecording(definition.action)}
                         >
                           更改
                         </button>
                       </div>
                       {shortcutConflict?.action === definition.action && (
-                        <p className="text-xs font-medium text-rose-600 md:col-span-4" role="alert">
+                        <p className="shortcut-conflict" role="alert">
                           {shortcutConflict.message}
                         </p>
                       )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-
-          <div ref={advancedSectionRef}>
-            {expandedSections.advanced && (
-              <div className="space-y-3">
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                  配置类快捷键涵盖窗口移动、透明度、滚动、复制等辅助操作，默认由系统固定。
-                </div>
-
-                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white">
-                  {advancedHighlightShortcuts.map(item => (
-                    <div key={item.key} className="grid gap-3 p-4 md:grid-cols-4 md:items-center">
-                      <div className="space-y-1">
-                        <p className="font-medium text-slate-900">{item.title}</p>
-                        {item.description && (
-                          <p className="text-xs text-slate-500">{item.description}</p>
-                        )}
-                      </div>
-                      <div className="col-span-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-slate-800">
-                        <div>{item.combo}</div>
-                        {item.note && (
-                          <p className="mt-1 text-xs text-slate-400">{item.note}</p>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {item.tag || '系统固定'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {remainingAdvancedShortcuts.length > 0 && (
-                  <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white">
-                    {remainingAdvancedShortcuts.map((definition) => (
-                      <div key={definition.action} className="grid gap-3 p-4 md:grid-cols-4 md:items-center">
-                        <div>
-                          <p className="font-medium text-slate-900">{definition.label}</p>
-                          <p className="text-xs text-slate-500">{definition.description}</p>
-                        </div>
-                        <div className="col-span-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-slate-800">
-                          {formatShortcut(shortcuts[definition.action]) || '—'}
-                        </div>
-                        <div className="flex items-center text-xs text-slate-400">
-                          系统固定
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              </section>
+            ))}
           </div>
 
           {recordingHint && (
@@ -808,12 +580,15 @@ export function ConfigPage() {
                     if (result?.success) {
                       setIsTestingMode(true)
                       setTestResult({ action: 'programming', success: true, message: '已进入测试模式，请在黑色窗口中尝试快捷键' })
+                      showToast('已进入测试模式，请在考试窗口中尝试快捷键', 'success')
                     } else {
                       setTestResult({ action: 'programming', success: false, message: result?.error || '无法开启测试模式' })
+                      showToast(result?.error || '无法开启测试模式', 'error')
                     }
                   } catch (error) {
                     console.error('启动测试模式失败:', error)
                     setTestResult({ action: 'programming', success: false, message: '无法开启测试模式' })
+                    showToast('无法开启测试模式', 'error')
                   }
                 }}
                 disabled={isTestingMode}
@@ -828,12 +603,15 @@ export function ConfigPage() {
                     if (result?.success) {
                       setIsTestingMode(false)
                       setTestResult({ action: 'programming', success: true, message: '已退出测试模式' })
+                      showToast('已退出测试模式', 'success')
                     } else {
                       setTestResult({ action: 'programming', success: false, message: result?.error || '无法退出测试模式' })
+                      showToast(result?.error || '无法退出测试模式', 'error')
                     }
                   } catch (error) {
                     console.error('退出测试模式失败:', error)
                     setTestResult({ action: 'programming', success: false, message: '无法退出测试模式' })
+                    showToast('无法退出测试模式', 'error')
                   }
                 }}
                 disabled={!isTestingMode}
@@ -842,33 +620,18 @@ export function ConfigPage() {
               </button>
             </div>
           </div>
-        {testResult && (
-          <div
-            className={`rounded-2xl border px-4 py-3 text-base font-medium ${
-              testResult.success
-                ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                : 'border-rose-100 bg-rose-50 text-rose-700'
-            }`}
-          >
-            {testResult.message || (
-              testResult.success
-                ? '快捷键是否正常？检测结果显示正常'
-                : '快捷键是否正常？当前未捕获到快捷键，请检查是否与其他软件冲突'
-            )}
-          </div>
-        )}
         </section>
 
         <section data-client-page="models" className="client-placeholder-panel">
-          <ModelPromptCenter visible={activeSection === 'models'} onDirtyChange={setPromptDirty} />
+          <ModelPromptCenter visible={activeSection === 'models'} onDirtyChange={setPromptDirty} onNotify={showToast} />
         </section>
 
         <section data-client-page="window" className="client-placeholder-panel">
-          <WindowSettings />
+          <WindowSettings onNotify={showToast} />
         </section>
 
         <section data-client-page="account" className="client-placeholder-panel">
-          <AccountSettings user={user} version={versionInfo} />
+          <AccountSettings user={user} version={versionInfo} onNotify={showToast} />
         </section>
 
       {isThemeDialogOpen && (
@@ -935,13 +698,7 @@ export function ConfigPage() {
 
       </main>
 
-      {centerNotice && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
-            <div className="client-center-notice rounded-2xl bg-slate-900/90 px-6 py-3 text-white text-sm shadow-2xl">
-              {centerNotice}
-            </div>
-          </div>
-      )}
+      {toast && <ClientToast message={toast.message} variant={toast.variant} />}
     </div>
   )
 }

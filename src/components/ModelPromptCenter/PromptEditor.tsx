@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { userConfigService } from '../../services/userConfigService'
 import type { PromptMode, PromptVersion } from '../../types/userConfig'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
 const modes: Array<[PromptMode, string]> = [
   ['programming', '编程题'],
@@ -10,7 +11,7 @@ const modes: Array<[PromptMode, string]> = [
   ['debug', '调试题'],
 ]
 
-export function PromptEditor({ onDirtyChange }: { onDirtyChange?: (dirty: boolean) => void }) {
+export function PromptEditor({ onDirtyChange, onNotify }: { onDirtyChange?: (dirty: boolean) => void; onNotify?: (message: string, variant?: ClientToastVariant) => void }) {
   const [mode, setMode] = useState<PromptMode>('programming')
   const [prompt, setPrompt] = useState('')
   const [versions, setVersions] = useState<PromptVersion[]>([])
@@ -31,7 +32,9 @@ export function PromptEditor({ onDirtyChange }: { onDirtyChange?: (dirty: boolea
       setSavedVersion(nextVersions[0]?.version ?? null)
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '提示词加载失败')
+      const message = reason instanceof Error ? reason.message : '提示词加载失败'
+      setError(message)
+      onNotify?.(message, 'error')
     } finally {
       setLoading(false)
     }
@@ -61,7 +64,9 @@ export function PromptEditor({ onDirtyChange }: { onDirtyChange?: (dirty: boolea
       setSavedVersion(saved.version)
       setSavedContent(saved.content)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '提示词保存失败')
+      const message = reason instanceof Error ? reason.message : '提示词保存失败'
+      setError(message)
+      onNotify?.(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -78,7 +83,7 @@ export function PromptEditor({ onDirtyChange }: { onDirtyChange?: (dirty: boolea
           <div><h2>{modes.find(([key]) => key === mode)?.[1]}提示词</h2><span>{currentVersion ? `当前版本 v${currentVersion}` : '尚未保存'}{dirty ? ' · 有未保存修改' : ''}</span></div>
           <button type="button" className="client-button client-button-primary" aria-label="保存提示词" onClick={() => void save()} disabled={loading || saving}>{saving ? '保存中...' : '保存新版本'}</button>
         </div>
-        {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
+        {error && !onNotify && <div className="model-inline-notice is-error" role="alert">{error}</div>}
         <textarea aria-label="提示词内容" placeholder="输入该题型的系统提示词..." value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={18} disabled={loading || saving} />
         <div className="prompt-editor-footer">
           <span className="prompt-saved-state">{savedVersion !== null ? `已保存 v${savedVersion}` : `${prompt.length} 字符`}</span>

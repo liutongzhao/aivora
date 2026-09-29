@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { userConfigService } from '../../services/userConfigService'
 import type { Connection } from '../../types/userConfig'
 import { ConnectionEditor } from './ConnectionEditor'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
-export function ConnectionSettings() {
+export function ConnectionSettings({ onNotify }: { onNotify?: (message: string, variant?: ClientToastVariant) => void }) {
   const [connections, setConnections] = useState<Connection[]>([])
   const [editing, setEditing] = useState<Connection | null | undefined>(undefined)
-  const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   async function refresh() {
@@ -14,7 +14,7 @@ export function ConnectionSettings() {
     try {
       setConnections(await userConfigService.listConnections())
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : '连接加载失败')
+      onNotify?.(reason instanceof Error ? reason.message : '连接加载失败', 'error')
     } finally {
       setLoading(false)
     }
@@ -25,9 +25,9 @@ export function ConnectionSettings() {
   async function testConnection(connection: Connection) {
     try {
       const models = await userConfigService.syncConnection(connection.id)
-      setNotice(`连接正常，发现 ${models.length} 个模型`)
+      onNotify?.(`连接正常，发现 ${models.length} 个模型`, 'success')
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : '连接测试失败')
+      onNotify?.(reason instanceof Error ? reason.message : '连接测试失败', 'error')
     }
   }
 
@@ -40,7 +40,7 @@ export function ConnectionSettings() {
       }
       await refresh()
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : '连接状态更新失败')
+      onNotify?.(reason instanceof Error ? reason.message : '连接状态更新失败', 'error')
     }
   }
 
@@ -50,7 +50,6 @@ export function ConnectionSettings() {
         <div><h2>API 连接</h2><p>连接保存后，密钥只用于服务端调用。</p></div>
         <button type="button" className="client-button client-button-primary" onClick={() => setEditing(null)}>新增连接</button>
       </div>
-      {notice && <div className="model-inline-notice" role="status">{notice}</div>}
       {loading && <div className="model-empty">加载中...</div>}
       {!loading && connections.length === 0 && <div className="model-empty">暂无连接</div>}
       {!loading && connections.map((connection) => (
@@ -66,7 +65,7 @@ export function ConnectionSettings() {
           </div>
         </div>
       ))}
-      {editing !== undefined && <ConnectionEditor key={editing?.id ?? 'new'} connection={editing} onSaved={refresh} onClose={() => setEditing(undefined)} />}
+      {editing !== undefined && <ConnectionEditor key={editing?.id ?? 'new'} connection={editing} onSaved={refresh} onClose={() => setEditing(undefined)} onNotify={onNotify} />}
     </section>
   )
 }

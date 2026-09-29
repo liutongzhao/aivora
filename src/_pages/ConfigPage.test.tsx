@@ -28,9 +28,8 @@ describe('ConfigPage', () => {
   it('opens directly on the dense model configuration page', async () => {
     render(<ConfigPage />)
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '模型与提示词' })).toBeTruthy()
-    })
+    await waitFor(() => expect(screen.getByRole('tab', { name: '模型' })).toBeTruthy())
+    expect(screen.queryByRole('heading', { name: '模型与提示词' })).toBeNull()
     expect(screen.getByRole('tab', { name: '题型分配' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: '提示词' })).toBeTruthy()
   })

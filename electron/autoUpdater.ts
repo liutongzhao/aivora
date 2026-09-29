@@ -23,11 +23,6 @@ export function initAutoUpdater() {
     return
   }
 
-  if (!process.env.GH_TOKEN) {
-    console.error("GH_TOKEN environment variable is not set")
-    return
-  }
-
   // Configure auto updater
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true

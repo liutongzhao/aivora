@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
-export function WindowSettings() {
+export function WindowSettings({ onNotify }: { onNotify?: (message: string, variant?: ClientToastVariant) => void }) {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [opacity, setOpacityValue] = useState(1)
   const [error, setError] = useState<string | null>(null)
@@ -27,14 +28,16 @@ export function WindowSettings() {
       setOpacityValue(result.opacity ?? value)
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '透明度设置失败')
+      const message = reason instanceof Error ? reason.message : '透明度设置失败'
+      setError(message)
+      onNotify?.(message, 'error')
     }
   }
 
   return (
     <section className="window-settings-panel">
       <h2>窗口显示</h2>
-      {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
+      {error && !onNotify && <div className="model-inline-notice is-error" role="alert">{error}</div>}
       <div className="window-setting-row">
         <div><strong>主题</strong><span>考试窗口的显示主题</span></div>
         <div className="window-theme-buttons">

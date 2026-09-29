@@ -16,10 +16,10 @@ describe('ConfigPage visual structure', () => {
     })
   })
 
-  it('uses a compact page heading and shared primary control style', async () => {
+  it('uses tab content without a redundant page heading', async () => {
     const { container } = render(<ConfigPage />)
-    await waitFor(() => expect(screen.getByRole('heading', { name: '模型与提示词' })).toBeTruthy())
-    expect(container.querySelector('.client-page-heading')).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('tab', { name: '模型' })).toBeTruthy())
+    expect(container.querySelector('.client-page-heading')).toBeNull()
     expect(container.querySelector('.client-button-primary')).toBeTruthy()
     expect(screen.queryByText(/使用前可简单看一下/)).toBeNull()
   })

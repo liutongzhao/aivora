@@ -9,6 +9,13 @@ vi.mock('../../services/userConfigService', () => ({
 }))
 
 describe('ModelEditor', () => {
+  it('explains image routing and the current API protocol', () => {
+    render(<ModelEditor model={null} connectionId="connection-1" onSaved={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText('Chat Completions')).toBeTruthy()
+    expect(screen.getByText(/勾选后可用于截图题型/)).toBeTruthy()
+  })
+
   it('shows a save failure and retains the form', async () => {
     vi.mocked(userConfigService.createModel).mockRejectedValueOnce(new Error('服务暂不可用'))
     const onClose = vi.fn()

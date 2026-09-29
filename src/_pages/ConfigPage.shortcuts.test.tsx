@@ -26,13 +26,16 @@ describe('ConfigPage shortcut management', () => {
     })
   })
 
-  it('shows common shortcuts and keeps advanced shortcuts collapsed by default', async () => {
+  it('shows all shortcuts in fixed groups without an accordion', async () => {
     render(<ConfigPage />)
 
     await waitFor(() => expect(screen.getByText('截图')).toBeTruthy())
     expect(screen.getByText('局部截图')).toBeTruthy()
-    expect(screen.queryByText('窗口左移')).toBeNull()
-    expect(screen.getByRole('button', { name: /答题窗口调整等快捷键/ })).toBeTruthy()
+    expect(screen.getByText('窗口左移')).toBeTruthy()
+    expect(screen.getByText('截屏与识别')).toBeTruthy()
+    expect(screen.getByText('窗口与显示')).toBeTruthy()
+    expect(screen.getByText('内容与辅助')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /答题窗口调整等快捷键/ })).toBeNull()
     expect(screen.getByRole('button', { name: '恢复默认快捷键' })).toBeTruthy()
   })
 

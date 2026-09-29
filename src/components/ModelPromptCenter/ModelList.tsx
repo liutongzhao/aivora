@@ -4,7 +4,7 @@ import { userConfigService } from '../../services/userConfigService'
 import { ModelEditor } from './ModelEditor'
 import type { ModelListProps } from './modelPromptTypes'
 
-export function ModelList({ connections, models, onRefresh }: ModelListProps) {
+export function ModelList({ connections, models, onRefresh, onNotify }: ModelListProps) {
   const enabledConnections = useMemo(() => connections.filter((connection) => connection.enabled), [connections])
   const [selectedConnection, setSelectedConnection] = useState(enabledConnections[0]?.id ?? '')
   const [selectedModelId, setSelectedModelId] = useState(models[0]?.id ?? '')
@@ -13,7 +13,6 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
   const [editingModel, setEditingModel] = useState<UserModel | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
 
   const selectedModels = models.filter((model) => model.connection_id === selectedConnection)
   const selectedModel = selectedModels.find((model) => model.id === selectedModelId) ?? selectedModels[0] ?? null
@@ -37,9 +36,9 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
     setBusy(true)
     try {
       setDiscoveredModels(await userConfigService.syncConnection(selectedConnection))
-      setNotice('模型列表已同步')
+      onNotify?.('模型列表已同步', 'success')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '模型同步失败')
+      onNotify?.(error instanceof Error ? error.message : '模型同步失败', 'error')
     } finally {
       setBusy(false)
     }
@@ -57,9 +56,9 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
       })
       setDiscoveredModels((current) => current.filter((item) => item !== name))
       await onRefresh?.()
-      setNotice(`${name} 已添加`)
+      onNotify?.(`${name} 已添加`, 'success')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '添加模型失败')
+      onNotify?.(error instanceof Error ? error.message : '添加模型失败', 'error')
     } finally {
       setBusy(false)
     }
@@ -70,9 +69,9 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
     setBusy(true)
     try {
       await userConfigService.testModel(selectedModel.id)
-      setNotice('模型调用测试成功')
+      onNotify?.('模型调用测试成功', 'success')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '模型测试失败')
+      onNotify?.(error instanceof Error ? error.message : '模型测试失败', 'error')
     } finally {
       setBusy(false)
     }
@@ -84,9 +83,9 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
     try {
       await userConfigService.disableModel(selectedModel.id)
       await onRefresh?.()
-      setNotice('模型已停用')
+      onNotify?.('模型已停用', 'success')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '模型停用失败')
+      onNotify?.(error instanceof Error ? error.message : '模型停用失败', 'error')
     } finally {
       setBusy(false)
     }
@@ -98,9 +97,9 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
     try {
       await userConfigService.updateModel(selectedModel.id, { enabled: !selectedModel.enabled })
       await onRefresh?.()
-      setNotice(selectedModel.enabled ? '模型已停用' : '模型已启用')
+      onNotify?.(selectedModel.enabled ? '模型已停用' : '模型已启用', 'success')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '模型状态更新失败')
+      onNotify?.(error instanceof Error ? error.message : '模型状态更新失败', 'error')
     } finally {
       setBusy(false)
     }
@@ -124,8 +123,6 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
           </button>
         </div>
       </div>
-
-      {notice && <div className="model-inline-notice" role="status">{notice}</div>}
 
       <div className="model-workspace-grid">
         <div className="model-list-pane">
@@ -173,6 +170,7 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
               </div>
               <dl className="model-detail-list">
                 <div><dt>模型 ID</dt><dd>{selectedModel.name}</dd></div>
+                <div><dt>接口协议</dt><dd>Chat Completions</dd></div>
                 <div><dt>图片输入</dt><dd>{selectedModel.supports_vision ? '支持' : '不支持'}</dd></div>
                 <div><dt>连接</dt><dd>{connections.find((connection) => connection.id === selectedModel.connection_id)?.name ?? '未知连接'}</dd></div>
               </dl>
@@ -192,6 +190,7 @@ export function ModelList({ connections, models, onRefresh }: ModelListProps) {
           connectionId={selectedConnection}
           onSaved={async () => { await onRefresh?.() }}
           onClose={() => setEditorOpen(false)}
+          onNotify={onNotify}
         />
       )}
     </section>

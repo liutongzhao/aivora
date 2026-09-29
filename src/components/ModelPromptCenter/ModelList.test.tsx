@@ -25,6 +25,13 @@ const model = {
 }
 
 describe('ModelList', () => {
+  it('shows the protocol and image capability in model details', () => {
+    render(<ModelList connections={[connection]} models={[model]} />)
+
+    expect(screen.getByText('Chat Completions')).toBeTruthy()
+    expect(screen.getByText('图片输入')).toBeTruthy()
+  })
+
   beforeEach(() => {
     vi.mocked(userConfigService.syncConnection).mockResolvedValue(['gpt-4o', 'new-model'])
     vi.mocked(userConfigService.createModel).mockResolvedValue(model)

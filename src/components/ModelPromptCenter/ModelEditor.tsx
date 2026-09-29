@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { UserModel } from '../../types/userConfig'
 import { userConfigService } from '../../services/userConfigService'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
 interface ModelEditorProps {
   model: UserModel | null
   connectionId: string
   onSaved: () => Promise<void> | void
   onClose: () => void
+  onNotify?: (message: string, variant?: ClientToastVariant) => void
 }
 
-export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEditorProps) {
+export function ModelEditor({ model, connectionId, onSaved, onClose, onNotify }: ModelEditorProps) {
   const [name, setName] = useState(model?.name ?? '')
   const [displayName, setDisplayName] = useState(model?.display_name ?? '')
   const [supportsVision, setSupportsVision] = useState(model?.supports_vision ?? false)
@@ -45,7 +47,9 @@ export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEdit
       await onSaved()
       onClose()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '模型保存失败')
+      const message = reason instanceof Error ? reason.message : '模型保存失败'
+      setError(message)
+      onNotify?.(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -53,7 +57,7 @@ export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEdit
 
   return (
     <div className="model-editor" role="dialog" aria-label={model ? '编辑模型' : '添加模型'}>
-      {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
+      {error && !onNotify && <div className="model-inline-notice is-error" role="alert">{error}</div>}
       <div className="model-editor-grid">
         <label>
           模型 ID
@@ -66,8 +70,9 @@ export function ModelEditor({ model, connectionId, onSaved, onClose }: ModelEdit
       </div>
       <label className="model-editor-checkbox">
         <input type="checkbox" checked={supportsVision} onChange={(event) => setSupportsVision(event.target.checked)} />
-        支持图片输入
+        <span><strong>支持图片输入</strong><small>勾选后可用于截图题型；这是能力声明，不会改变模型本身能力。</small></span>
       </label>
+      <div className="model-protocol-row"><span>接口协议</span><strong>Chat Completions</strong></div>
       <div className="model-editor-actions">
         <button type="button" className="client-button client-button-secondary" onClick={onClose}>取消</button>
         <button type="button" className="client-button client-button-primary" onClick={() => void save()} disabled={saving || !name.trim()}>

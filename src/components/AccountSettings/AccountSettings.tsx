@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
 interface AccountSettingsProps {
   user: { username?: string; email?: string } | null
   version: { current: string; latest: string; needsUpdate: boolean } | null
+  onNotify?: (message: string, variant?: ClientToastVariant) => void
 }
 
-export function AccountSettings({ user, version }: AccountSettingsProps) {
+export function AccountSettings({ user, version, onNotify }: AccountSettingsProps) {
   const [loading, setLoading] = useState(false)
   const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'downloaded'>('idle')
   const [updateMessage, setUpdateMessage] = useState('')
@@ -13,11 +15,11 @@ export function AccountSettings({ user, version }: AccountSettingsProps) {
   useEffect(() => {
     const onAvailable = window.electronAPI?.onUpdateAvailable?.(() => {
       setUpdateState('available')
-      setUpdateMessage('发现新版本')
+      onNotify?.('发现新版本', 'info')
     })
     const onDownloaded = window.electronAPI?.onUpdateDownloaded?.(() => {
       setUpdateState('downloaded')
-      setUpdateMessage('更新已下载，重启后生效')
+      onNotify?.('更新已下载，重启后生效', 'success')
     })
     return () => { onAvailable?.(); onDownloaded?.() }
   }, [])
@@ -27,9 +29,11 @@ export function AccountSettings({ user, version }: AccountSettingsProps) {
     const result = await window.electronAPI?.checkForUpdates?.()
     if (result?.success) {
       setUpdateMessage('已是最新版本')
+      onNotify?.('已是最新版本', 'success')
       setUpdateState('idle')
     } else {
       setUpdateMessage(result?.error || '暂时无法检查更新')
+      onNotify?.(result?.error || '暂时无法检查更新', 'error')
       setUpdateState('idle')
     }
   }
@@ -40,6 +44,7 @@ export function AccountSettings({ user, version }: AccountSettingsProps) {
     if (!result?.success) {
       setUpdateState('available')
       setUpdateMessage(result?.error || '下载更新失败')
+      onNotify?.(result?.error || '下载更新失败', 'error')
     }
   }
 
@@ -61,7 +66,7 @@ export function AccountSettings({ user, version }: AccountSettingsProps) {
       <div className="account-version-panel">
         <div><strong>客户端版本</strong><span>{version?.current || '未知'}</span></div>
         <div className="account-version-actions">
-          {updateMessage && <span role="status">{updateMessage}</span>}
+          {updateMessage && !onNotify && <span role="status">{updateMessage}</span>}
           {updateState === 'available' && <button type="button" className="client-button client-button-primary" onClick={() => void downloadUpdate()}>下载更新</button>}
           {updateState === 'downloaded' && <button type="button" className="client-button client-button-primary" onClick={() => void window.electronAPI?.installUpdate?.()}>立即重启更新</button>}
           {updateState !== 'available' && updateState !== 'downloaded' && <button type="button" className="client-button client-button-secondary" onClick={() => void checkForUpdates()} disabled={updateState === 'checking'}>{updateState === 'checking' ? '检查中...' : '检查更新'}</button>}

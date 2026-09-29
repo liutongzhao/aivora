@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { userConfigService } from '../../services/userConfigService'
 import type { Connection } from '../../types/userConfig'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
 interface ConnectionEditorProps {
   connection?: Connection | null
   onSaved: () => Promise<void> | void
   onClose: () => void
+  onNotify?: (message: string, variant?: ClientToastVariant) => void
 }
 
-export function ConnectionEditor({ connection, onSaved, onClose }: ConnectionEditorProps) {
+export function ConnectionEditor({ connection, onSaved, onClose, onNotify }: ConnectionEditorProps) {
   const [name, setName] = useState(connection?.name ?? '')
   const [baseUrl, setBaseUrl] = useState(connection?.base_url ?? '')
   const [apiKey, setApiKey] = useState('')
@@ -36,7 +38,9 @@ export function ConnectionEditor({ connection, onSaved, onClose }: ConnectionEdi
       await onSaved()
       onClose()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '连接保存失败')
+      const message = reason instanceof Error ? reason.message : '连接保存失败'
+      setError(message)
+      onNotify?.(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -44,7 +48,7 @@ export function ConnectionEditor({ connection, onSaved, onClose }: ConnectionEdi
 
   return (
     <div className="connection-editor" role="dialog" aria-label={connection ? '编辑连接' : '新增连接'}>
-      {error && <div className="model-inline-notice is-error" role="alert">{error}</div>}
+      {error && !onNotify && <div className="model-inline-notice is-error" role="alert">{error}</div>}
       <div className="connection-editor-grid">
         <label>连接名称<input aria-label="连接名称" value={name} onChange={(event) => setName(event.target.value)} /></label>
         <label>API 地址<input aria-label="API 地址" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} /></label>

@@ -4,6 +4,7 @@ import type { Connection, UserModel } from '../../types/userConfig'
 import { ModelList } from './ModelList'
 import { ModelRoutingPanel } from './ModelRoutingPanel'
 import { PromptEditor } from './PromptEditor'
+import type { ClientToastVariant } from '../ClientShell/ClientToast'
 
 const tabs = [
   ['models', '模型'],
@@ -11,9 +12,10 @@ const tabs = [
   ['prompts', '提示词'],
 ] as const
 
-export function ModelPromptCenter({ visible = true, onDirtyChange }: {
+export function ModelPromptCenter({ visible = true, onDirtyChange, onNotify }: {
   visible?: boolean
   onDirtyChange?: (dirty: boolean) => void
+  onNotify?: (message: string, variant?: ClientToastVariant) => void
 }) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number][0]>('models')
   const [connections, setConnections] = useState<Connection[]>([])
@@ -35,7 +37,9 @@ export function ModelPromptCenter({ visible = true, onDirtyChange }: {
       setError(null)
       setSessionExpired(false)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '模型配置加载失败')
+      const message = reason instanceof Error ? reason.message : '模型配置加载失败'
+      setError(message)
+      onNotify?.(message, 'error')
       setSessionExpired(typeof reason === 'object' && reason !== null && 'status' in reason && reason.status === 401)
     } finally {
       setLoading(false)
@@ -59,7 +63,6 @@ export function ModelPromptCenter({ visible = true, onDirtyChange }: {
 
   return (
     <section className="model-prompt-center" aria-label="模型与提示词">
-      <h2 className="model-prompt-title">{tabs.find(([key]) => key === activeTab)?.[1]}</h2>
       <div className="model-prompt-tabs" role="tablist" aria-label="模型配置">
         {tabs.map(([key, label]) => (
           <button
@@ -75,15 +78,15 @@ export function ModelPromptCenter({ visible = true, onDirtyChange }: {
         ))}
       </div>
       {loading && <div className="model-empty">加载中...</div>}
-      {error && <div className="model-inline-notice is-error" role="alert">
+      {error && !onNotify && <div className="model-inline-notice is-error" role="alert">
         {error}
         {sessionExpired && <button type="button" className="client-button client-button-secondary" onClick={() => void window.electronAPI?.webAuthLogin?.()}>重新登录</button>}
       </div>}
       {!loading && !error && activeTab === 'models' && (
-        <ModelList connections={connections} models={models} onRefresh={refresh} />
+        <ModelList connections={connections} models={models} onRefresh={refresh} onNotify={onNotify} />
       )}
-      {!loading && !error && activeTab === 'routing' && <ModelRoutingPanel />}
-      {!loading && !error && activeTab === 'prompts' && <PromptEditor onDirtyChange={handlePromptDirty} />}
+      {!loading && !error && activeTab === 'routing' && <ModelRoutingPanel onNotify={onNotify} />}
+      {!loading && !error && activeTab === 'prompts' && <PromptEditor onDirtyChange={handlePromptDirty} onNotify={onNotify} />}
     </section>
   )
 }
