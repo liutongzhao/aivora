@@ -80,8 +80,8 @@
     ],
     "extraResources": [
       {
-        "from": "assets/icons",
-        "to": "assets/icons",
+        "from": "assets",
+        "to": "assets",
         "filter": [
           "**/*"
         ]
@@ -104,7 +104,7 @@
       "identity": null
     },
     "win": {
-      "icon": "assets/icons/win/aivora.ico",
+      "icon": "assets/branding/aivora-app-icon-256.png",
       "target": [
         "nsis"
       ]

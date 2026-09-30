@@ -190,11 +190,15 @@ function getAssetPath(...segments: string[]) {
 }
 
 function getAppIconPath() {
-  const iconPath = getAssetPath("assets", "icons", "win", "aivora.ico")
-  if (fs.existsSync(iconPath)) {
+  const iconPaths = [
+    getAssetPath("assets", "icons", "win", "aivora.ico"),
+    getAssetPath("assets", "branding", "aivora-app-icon-256.png"),
+  ]
+  const iconPath = iconPaths.find((candidate) => fs.existsSync(candidate))
+  if (iconPath) {
     return iconPath
   }
-  console.warn("⚠️ 找不到客户端图标，使用默认图标:", iconPath)
+  console.warn("⚠️ 找不到客户端图标，使用默认图标:", iconPaths)
   return undefined
 }
 
