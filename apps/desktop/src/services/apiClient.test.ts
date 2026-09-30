@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiFetch } from './apiClient'
+import { apiFetch, getApiBaseUrl } from './apiClient'
 
 describe('apiFetch', () => {
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe('apiFetch', () => {
     })
 
     expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:18000/api/test',
+      `${getApiBaseUrl()}/api/test`,
       expect.objectContaining({
         credentials: 'include',
         headers: expect.any(Headers),
