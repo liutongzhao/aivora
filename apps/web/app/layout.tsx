@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Aivora",
   description: "Aivora AI workspace",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
