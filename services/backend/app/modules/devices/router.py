@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database import get_db_session
 from app.modules.devices.models import DesktopDevice, PairingCode
+from app.modules.devices.models import RemoteCommand, RemoteSession
+from app.modules.devices.service import close_active_sessions, create_pairing
 from app.modules.identity.dependencies import get_current_user
 from app.modules.identity.models import User
 
@@ -64,30 +66,8 @@ async def create_pairing(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    result = await db.execute(
-        select(DesktopDevice).where(
-            DesktopDevice.user_id == user.id, DesktopDevice.device_id == request.deviceId
-        )
-    )
-    device = result.scalar_one_or_none()
-    if not device:
-        device = DesktopDevice(
-            user_id=user.id,
-            device_id=request.deviceId,
-            name="Aivora Desktop",
-            platform="desktop",
-            last_seen_at=datetime.now(timezone.utc),
-        )
-        db.add(device)
-        await db.flush()
-    code = secrets.token_hex(4).upper()
-    pairing = PairingCode(
-        user_id=user.id,
-        device_id=device.id,
-        code_hash=hashlib.sha256(code.encode()).hexdigest(),
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
-    )
-    db.add(pairing)
+    pairing, _device = await create_pairing(db, user.id, request.deviceId)
+    code = pairing._plain_code  # type: ignore[attr-defined]
     await db.commit()
     return {"success": True, "code": code, "expiresAt": int(pairing.expires_at.timestamp() * 1000)}
 
@@ -133,3 +113,91 @@ async def list_devices(
         }
         for device in result.scalars().all()
     ]
+
+
+@router.get("/session/current")
+async def current_session(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict | None:
+    result = await db.execute(
+        select(RemoteSession).where(
+            RemoteSession.user_id == user.id,
+            RemoteSession.status.in_(("pending", "connecting", "active", "closing")),
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        return None
+    return {
+        "id": str(session.id),
+        "deviceId": str(session.device_id),
+        "status": session.status,
+        "connectedAt": session.connected_at,
+        "lastSeenAt": session.last_seen_at,
+    }
+
+
+@router.get("/sessions")
+async def list_sessions(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    result = await db.execute(
+        select(RemoteSession)
+        .where(RemoteSession.user_id == user.id)
+        .order_by(RemoteSession.created_at.desc())
+        .limit(50)
+    )
+    return [
+        {
+            "id": str(session.id),
+            "status": session.status,
+            "connectedAt": session.connected_at,
+            "disconnectedAt": session.disconnected_at,
+            "durationSeconds": session.duration_seconds,
+            "disconnectReason": session.disconnect_reason,
+        }
+        for session in result.scalars().all()
+    ]
+
+
+@router.get("/commands")
+async def list_commands(
+    session_id: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    query = (
+        select(RemoteCommand)
+        .join(RemoteSession, RemoteSession.id == RemoteCommand.session_id)
+        .where(RemoteSession.user_id == user.id)
+        .order_by(RemoteCommand.created_at.desc())
+        .limit(100)
+    )
+    if session_id:
+        query = query.where(RemoteCommand.session_id == session_id)
+    result = await db.execute(query)
+    return [
+        {
+            "id": str(command.id),
+            "requestId": command.request_id,
+            "action": command.action,
+            "status": command.status,
+            "createdAt": command.created_at,
+            "finishedAt": command.finished_at,
+            "durationMs": command.duration_ms,
+            "errorMessage": command.error_message,
+        }
+        for command in result.scalars().all()
+    ]
+
+
+@router.post("/session/close")
+async def close_session(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    sessions = await close_active_sessions(db, user.id, "user_closed")
+    await db.commit()
+    return {"success": True, "closed": len(sessions)}

@@ -9,7 +9,20 @@ import configData from './runtimeConfig'
 type RemoteClientDeps = {
   shortcutsHelper: ShortcutsHelper
   quitApp?: () => void
-  onState?: (state: { connected: boolean; code?: string; expiresAt?: number; remoteUrl?: string; pairingLoading?: boolean; error?: string }) => void
+  onState?: (state: RemoteClientState) => void
+}
+
+export type RemoteClientState = {
+  connected: boolean
+  status?: string
+  sessionId?: string
+  connectedAt?: number
+  reason?: string
+  code?: string
+  expiresAt?: number
+  remoteUrl?: string
+  pairingLoading?: boolean
+  error?: string
 }
 
 const packageJson = require('../../package.json')
@@ -162,12 +175,13 @@ export class RemoteControlClient {
       socket.on('remote:execute', (data: { token?: string; requestId?: string; action?: string }) => {
         const run = async () => {
           if (!data?.action || !this.isShortcutAction(data.action)) {
-            socket.emit('remote:result', { token: data?.token, requestId: data?.requestId, success: false, error: '客户端不支持该动作' })
+            socket.emit('remote:command_status', { requestId: data?.requestId, action: data?.action, status: 'rejected', errorCode: 'UNSUPPORTED_ACTION', errorMessage: '客户端不支持该动作' })
             return
           }
+          socket.emit('remote:command_status', { requestId: data.requestId, action: data.action, status: 'running' })
           try {
             if (data.action === 'quitApp') {
-              socket.emit('remote:result', { token: data.token, requestId: data.requestId, success: true })
+              socket.emit('remote:command_status', { requestId: data.requestId, action: data.action, status: 'success' })
               this.deps.quitApp?.()
               return
             }
@@ -176,9 +190,9 @@ export class RemoteControlClient {
               : RemoteControlClient.DEFAULT_ACTION_TIMEOUT_MS
             const executed = await this.executeActionWithTimeout(data.action, timeoutMs)
             if (!executed) throw new Error('动作未执行')
-            socket.emit('remote:result', { token: data.token, requestId: data.requestId, success: true })
+            socket.emit('remote:command_status', { requestId: data.requestId, action: data.action, status: 'success' })
           } catch (error: any) {
-            socket.emit('remote:result', { token: data.token, requestId: data.requestId, success: false, error: error?.message || '动作执行失败' })
+            socket.emit('remote:command_status', { requestId: data.requestId, action: data.action, status: error?.message?.includes('超时') ? 'timeout' : 'failed', errorCode: error?.message?.includes('超时') ? 'ACTION_TIMEOUT' : 'ACTION_FAILED', errorMessage: error?.message || '动作执行失败' })
           }
         }
         const expensive = ['screenshot', 'partialScreenshot', 'programming', 'singleChoice', 'singleChoiceAlt', 'multipleChoice', 'universal', 'reset', 'refreshConfig'].includes(data?.action || '')
@@ -204,20 +218,26 @@ export class RemoteControlClient {
       socket.on('remote:paired', () => {
         this.paired = true
         this.pairing = null
-        this.deps.onState?.({ connected: true })
+        this.deps.onState?.({ connected: true, status: 'connected' })
+      })
+      socket.on('remote:session_state', (state: RemoteClientState) => {
+        const connected = state.status === 'active' || state.status === 'connected'
+        this.paired = connected
+        if (connected) this.pairing = null
+        this.deps.onState?.({ connected, ...state })
       })
       socket.on('remote:peer_state', (state) => {
         this.paired = state?.connected === true
-        this.deps.onState?.({ connected: this.paired, ...(!this.paired && this.pairing ? this.pairing : {}) })
+        this.deps.onState?.({ connected: this.paired, status: this.paired ? 'connected' : 'disconnected', ...(!this.paired && this.pairing ? this.pairing : {}) })
       })
       socket.on('remote:revoked', (data) => {
-        this.deps.onState?.({ connected: false, error: data?.reason || '远程会话已结束' })
+        this.deps.onState?.({ connected: false, status: 'replaced', reason: data?.reason, error: data?.reason || '远程会话已结束' })
         this.disconnect()
       })
       socket.on('disconnect', (reason) => {
         console.info('[remote] desktop disconnected:', reason)
         if (this.enabled) this.deps.onState?.({
-          connected: false,
+          connected: false, status: 'disconnected',
           ...(!this.paired && this.pairing ? this.pairing : {})
         })
       })

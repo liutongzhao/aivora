@@ -25,6 +25,8 @@ export default function RemotePage() {
   const [code, setCode] = useState("");
   const [connected, setConnected] = useState(false);
   const [message, setMessage] = useState("");
+  const [session, setSession] = useState<{ sessionId?: string; connectedAt?: number; status?: string }>({});
+  const [commandStates, setCommandStates] = useState<Record<string, { status: string; errorMessage?: string }>>({});
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => () => { socketRef.current?.disconnect(); }, []);
@@ -43,15 +45,33 @@ export default function RemotePage() {
       setConnected(true);
       setMessage("已连接到桌面客户端");
     }));
-    socket.on("remote:result", (result: { success?: boolean; error?: string }) => setMessage(result.success ? "操作已完成" : result.error ?? "操作失败"));
+    socket.on("remote:session_state", (next: { status?: string; sessionId?: string; connectedAt?: number; reason?: string }) => {
+      setSession(next);
+      const active = next.status === "active";
+      setConnected(active);
+      setMessage(active ? "已连接到桌面客户端" : next.reason ?? "远程连接已结束");
+    });
+    socket.on("remote:command_status", (result: { requestId: string; status: string; errorMessage?: string }) => {
+      setCommandStates((current) => ({ ...current, [result.requestId]: result }));
+      setMessage(result.status === "success" ? "操作已完成" : result.errorMessage ?? `操作${result.status}`);
+    });
+    socket.on("remote:result", (result: { success?: boolean; error?: string; requestId?: string }) => {
+      if (result.requestId) {
+        setCommandStates((current) => ({ ...current, [result.requestId!]: { status: result.success ? "success" : "failed", errorMessage: result.error } }));
+      }
+      setMessage(result.success ? "操作已完成" : result.error ?? "操作失败");
+    });
     socket.on("connect_error", () => setMessage("无法连接远程服务"));
     socket.on("disconnect", () => { setConnected(false); setMessage("桌面端已断开"); });
   }
 
   function execute(action: string) {
-    socketRef.current?.emit("remote:execute", { action, requestId: crypto.randomUUID() }, (result: { success?: boolean; error?: string }) => {
+    const requestId = crypto.randomUUID();
+    setCommandStates((current) => ({ ...current, [requestId]: { status: "sending" } }));
+    socketRef.current?.emit("remote:command", { action, requestId }, (result: { success?: boolean; error?: string }) => {
       if (!result?.success) setMessage(result?.error ?? "操作发送失败");
     });
+    return requestId;
   }
 
   return (
@@ -60,7 +80,7 @@ export default function RemotePage() {
       <div className="card">
         <h2>{connected ? "桌面端已连接" : "连接桌面客户端"}</h2>
         <p className="muted">{connected ? "可以从下方选择操作。" : "打开桌面端远程控制，输入 8 位连接码。"}</p>
-        {!connected ? <div className="form-actions"><input style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 12, padding: 12 }} maxLength={8} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="请输入连接码" /><button className="button" disabled={code.length !== 8} onClick={connect}>连接</button></div> : <button className="button ghost" onClick={() => socketRef.current?.disconnect()}>断开连接</button>}
+        {!connected ? <div className="form-actions"><input style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 12, padding: 12 }} maxLength={8} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="请输入连接码" /><button className="button" disabled={code.length !== 8} onClick={connect}>连接</button></div> : <><p className="muted">已连接 {session.connectedAt ? new Date(session.connectedAt).toLocaleTimeString() : ""}</p><button className="button ghost" onClick={() => socketRef.current?.disconnect()}>断开连接</button></>}
         {message && <p className="muted" style={{ marginTop: 12 }}>{message}</p>}
       </div>
       {connected && <div className="card" style={{ marginTop: 18 }}><h2>截图与处理</h2><div className="remote-grid">{actions.map(([label, action]) => <button className="button remote-action" key={action} onClick={() => execute(action)}>{label}</button>)}</div></div>}

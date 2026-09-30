@@ -119,12 +119,19 @@ export function ConfigPage() {
 
   useEffect(() => {
     const unsubscribeRemote = window.electronAPI.remoteControl?.onState((state) => {
+      if (state.connected) {
+        setPairing((current) => current ? { ...current, expiresAt: Number.MAX_SAFE_INTEGER } : current)
+        showToast('手机已连接到桌面端', 'success')
+      }
       if (state.code && state.expiresAt) {
         setPairing((current) => ({
           code: state.code!,
           expiresAt: state.expiresAt!,
           remoteUrl: state.remoteUrl || current?.remoteUrl || `${config.web.baseUrl}/remote`
         }))
+      }
+      if (!state.connected && (state.status === 'replaced' || state.status === 'disconnected')) {
+        setPairing(null)
       }
       if (state.error) {
         showToast(state.error, 'error')

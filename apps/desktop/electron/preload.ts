@@ -91,7 +91,7 @@ const electronAPI = {
   remoteControl: {
     createPairing: () => ipcRenderer.invoke('remote:create-pairing'),
     disconnect: () => ipcRenderer.invoke('remote:disconnect'),
-    onState: (callback: (state: { connected: boolean; code?: string; expiresAt?: number; remoteUrl?: string; pairingLoading?: boolean; error?: string }) => void) => {
+    onState: (callback: (state: { connected: boolean; status?: string; sessionId?: string; connectedAt?: number; reason?: string; code?: string; expiresAt?: number; remoteUrl?: string; pairingLoading?: boolean; error?: string }) => void) => {
       const subscription = (_event: Electron.IpcRendererEvent, state: any) => callback(state)
       ipcRenderer.on('remote-control-state', subscription)
       return () => ipcRenderer.removeListener('remote-control-state', subscription)
