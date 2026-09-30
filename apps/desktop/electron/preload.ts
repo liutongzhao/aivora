@@ -1,6 +1,5 @@
 console.log("Preload script starting...")
 import { contextBridge, ipcRenderer } from "electron"
-const { shell } = require("electron")
 
 export const PROCESSING_EVENTS = {
   //global states
@@ -32,6 +31,12 @@ export const PROCESSING_EVENTS = {
 console.log("Preload script is running")
 
 const electronAPI = {
+  apiRequest: (request: {
+    path: string
+    method?: string
+    headers?: Record<string, string>
+    body?: string
+  }) => ipcRenderer.invoke('api:request', request),
   // Original methods
   openSubscriptionPortal: async (authData: { id: string; email: string }) => {
     return ipcRenderer.invoke("open-subscription-portal", authData)
@@ -236,7 +241,7 @@ const electronAPI = {
     }
   },
   // External URL handler
-  openLink: (url: string) => shell.openExternal(url),
+  openLink: (url: string) => ipcRenderer.invoke("openLink", url),
   triggerScreenshot: () => ipcRenderer.invoke("trigger-screenshot"),
   triggerProcessScreenshots: () =>
     ipcRenderer.invoke("trigger-process-screenshots"),

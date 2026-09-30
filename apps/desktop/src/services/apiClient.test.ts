@@ -58,4 +58,30 @@ describe('apiFetch', () => {
       status: 401,
     })
   })
+
+  it('uses the Electron API bridge instead of a renderer cross-origin request', async () => {
+    const webAuthStatus = vi.fn().mockResolvedValue({
+      authenticated: true,
+      sessionId: 'session-test',
+    })
+    const apiRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      body: JSON.stringify({ ok: true }),
+    })
+    window.electronAPI = {
+      webAuthStatus,
+      apiRequest,
+    }
+    const rendererFetch = vi.fn()
+    vi.stubGlobal('fetch', rendererFetch)
+
+    await expect(apiFetch('/api/test')).resolves.toEqual({ ok: true })
+
+    expect(apiRequest).toHaveBeenCalledWith(expect.objectContaining({
+      path: '/api/test',
+      method: 'GET',
+    }))
+    expect(webAuthStatus).not.toHaveBeenCalled()
+    expect(rendererFetch).not.toHaveBeenCalled()
+  })
 })

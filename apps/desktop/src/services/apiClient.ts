@@ -18,6 +18,12 @@ export function getApiBaseUrl(): string {
   return config.api.baseUrl.replace(/\/$/, '')
 }
 
+interface ElectronApiResponse {
+  status: number
+  body: string
+  headers?: Record<string, string>
+}
+
 async function getSessionId(): Promise<string | null> {
   try {
     const status = await window.electronAPI?.webAuthStatus?.()
@@ -50,24 +56,38 @@ export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const sessionId = await getSessionId()
   const headers = new Headers(init.headers)
 
   if (!headers.has('Content-Type') && init.body) {
     headers.set('Content-Type', 'application/json')
   }
-  if (sessionId) {
-    headers.set('X-Session-Id', sessionId)
-  }
   for (const [key, value] of Object.entries(getVersionHeaders())) {
     headers.set(key, value)
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers,
-  })
+  let response: Response
+  if (window.electronAPI?.apiRequest) {
+    const result = await window.electronAPI.apiRequest({
+      path,
+      method: init.method || 'GET',
+      headers: Object.fromEntries(headers.entries()),
+      body: typeof init.body === 'string' ? init.body : undefined,
+    }) as ElectronApiResponse
+    response = new Response(result.status === 204 ? null : result.body, {
+      status: result.status,
+      headers: result.headers,
+    })
+  } else {
+    const sessionId = await getSessionId()
+    if (sessionId) {
+      headers.set('X-Session-Id', sessionId)
+    }
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers,
+    })
+  }
 
   if (!response.ok) {
     throw new ApiRequestError(await parseError(response))

@@ -7,11 +7,19 @@ import { configHelper } from "./ConfigHelper"
 import { simpleAuthManager } from "./SimpleAuthManager"
 import { SimpleAuthManager } from './SimpleAuthManager'
 import { CompatibilityChecker, CompatibilityResult, CompatibilityReport } from './CompatibilityChecker'
+import { buildRequestHeaders, fetchWithNetworkRetry } from './apiRequest'
 // 使用 Electron 内置的 fetch API
 // 🆕 导入版本信息
 const packageJson = require('../../package.json');
 const configData = require('../../config.json');
 const API_BASE_URL = configData.api?.baseUrl || 'http://127.0.0.1:18000';
+let apiRequestQueue: Promise<void> = Promise.resolve()
+
+function enqueueApiRequest<T>(request: () => Promise<T>): Promise<T> {
+  const result = apiRequestQueue.then(request, request)
+  apiRequestQueue = result.then(() => undefined, () => undefined)
+  return result
+}
 
 // 🆕 创建带版本信息的fetch函数
 const fetchWithVersion = (url: string, options: RequestInit = {}) => {
@@ -24,16 +32,54 @@ const fetchWithVersion = (url: string, options: RequestInit = {}) => {
   
   return fetch(url, {
     ...options,
-    headers: {
-      ...versionHeaders,
-      ...options.headers
-    }
+    headers: buildRequestHeaders(options.headers, versionHeaders),
   });
 };
 
 export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
   console.log("Initializing standard IPC handlers")
   console.log("🔍 [IPC] 开始初始化IPC处理器，PROCESSING_EVENTS:", Object.keys(deps.PROCESSING_EVENTS))
+
+  ipcMain.handle('api:request', async (_event, request: {
+    path?: string
+    method?: string
+    headers?: Record<string, string>
+    body?: string
+  }) => {
+    const path = request?.path || ''
+    const method = (request?.method || 'GET').toUpperCase()
+    if (!path.startsWith('/api/') || path.startsWith('//')) {
+      throw new Error('不允许访问该 API 路径')
+    }
+    if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      throw new Error('不支持该请求方法')
+    }
+
+    return enqueueApiRequest(async () => {
+      const headers = new Headers(request.headers)
+      const sessionId = simpleAuthManager.getToken()
+      if (sessionId) {
+        headers.set('X-Session-Id', sessionId)
+      } else {
+        headers.delete('X-Session-Id')
+      }
+      const response = await fetchWithNetworkRetry(
+        fetchWithVersion,
+        `${API_BASE_URL}${path}`,
+        {
+          method,
+          headers,
+          body: method === 'GET' ? undefined : request.body,
+        },
+      )
+
+      return {
+        status: response.status,
+        body: await response.text(),
+        headers: Object.fromEntries(response.headers.entries()),
+      }
+    })
+  })
 
   ipcMain.handle('remote:create-pairing', async () => {
     try {
@@ -661,10 +707,14 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
   })
   
   // Open external URL handler
-  ipcMain.handle("openLink", (event, url: string) => {
+  ipcMain.handle("openLink", async (_event, url: string) => {
     try {
+      const parsedUrl = new URL(url)
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        throw new Error('不支持的链接协议')
+      }
       console.log(`Opening external URL: ${url}`);
-      shell.openExternal(url);
+      await shell.openExternal(url);
       return { success: true };
     } catch (error) {
       console.error(`Error opening URL ${url}:`, error);
