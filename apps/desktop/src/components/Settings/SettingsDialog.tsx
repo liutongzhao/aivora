@@ -40,6 +40,26 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [pairingLoading, setPairingLoading] = useState(false);
   const [pairingError, setPairingError] = useState<string | null>(null);
   const [pairingRemaining, setPairingRemaining] = useState(0);
+  const [remoteConnectedAt, setRemoteConnectedAt] = useState<number | null>(null);
+  const [remoteNow, setRemoteNow] = useState(Date.now());
+
+  useEffect(() => window.electronAPI?.remoteControl?.onState((state) => {
+    if (state.connected) {
+      setPairing(null);
+      setRemoteConnectedAt(state.connectedAt || Date.now());
+      setPairingError(null);
+    } else if (state.status === 'closed' || state.status === 'replaced' || state.status === 'disconnected') {
+      setPairing(null);
+      setRemoteConnectedAt(null);
+      if (state.status === 'replaced') setPairingError('当前账号已在其他设备建立远程连接');
+    }
+  }), []);
+
+  useEffect(() => {
+    if (!remoteConnectedAt) return;
+    const timer = window.setInterval(() => setRemoteNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [remoteConnectedAt]);
 
   useEffect(() => {
     if (authenticated && isOpen) {
@@ -100,6 +120,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         throw new Error(result?.error || '生成连接码失败');
       }
       setPairing({ code: result.code, expiresAt: result.expiresAt, remoteUrl: result.remoteUrl });
+      setRemoteConnectedAt(null);
     } catch (error: any) {
       setPairingError(error?.message || '生成连接码失败');
     } finally {
@@ -187,7 +208,15 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     <Smartphone className="h-4 w-4 text-blue-600" />
                     手机远程控制
                   </div>
-                  {pairing ? (
+                  {remoteConnectedAt ? (
+                    <div className="space-y-2 text-sm">
+                      <p>手机已连接 · 已连接 {Math.floor((remoteNow - remoteConnectedAt) / 60000)}分{String(Math.floor(((remoteNow - remoteConnectedAt) % 60000) / 1000)).padStart(2, '0')}秒</p>
+                      <Button size="sm" variant="outline" onClick={async () => {
+                        const result = await window.electronAPI?.remoteControl?.disconnect();
+                        if (result?.success === false) setPairingError(result.error || '结束失败');
+                      }}>结束远程控制</Button>
+                    </div>
+                  ) : pairing ? (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-right">
@@ -209,8 +238,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         </Button>
                         <Button size="sm" onClick={handleCreatePairing} disabled={pairingLoading}>{pairingLoading ? '生成中...' : '重新生成连接码'}</Button>
                       </div>
-                      <div className="text-xs text-gray-500">连接码有效期 2 分钟，配对后 1 小时无操作自动断开。</div>
-                      <Button size="sm" variant="ghost" onClick={() => { window.electronAPI?.remoteControl?.disconnect(); setPairing(null); }}>
+                      <div className="text-xs text-gray-500">连接码有效期 5 分钟。</div>
+                      <Button size="sm" variant="ghost" onClick={async () => { const result = await window.electronAPI?.remoteControl?.disconnect(); if (result?.success === false) setPairingError(result.error || '结束失败'); else setPairing(null); }}>
                         <X className="h-4 w-4 mr-1" />结束远程控制
                       </Button>
                     </div>

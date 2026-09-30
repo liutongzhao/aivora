@@ -107,13 +107,21 @@ async def close_active_sessions(
         session.disconnect_reason = reason
         if session.connected_at:
             session.duration_seconds = max(0, int((now - session.connected_at).total_seconds()))
+    if sessions:
+        await db.execute(
+            update(RemoteCommand)
+            .where(
+                RemoteCommand.session_id.in_([session.id for session in sessions]),
+                RemoteCommand.status.in_(("created", "accepted", "running")),
+            )
+            .values(status="cancelled", finished_at=now, error_code="SESSION_CLOSED", error_message="远程会话已结束")
+        )
     return sessions
 
 
 async def open_session(
     db: AsyncSession, user_id: UUID, device_id: UUID, pairing_id: UUID
 ) -> RemoteSession:
-    await close_active_sessions(db, user_id, "new_remote_session")
     session = RemoteSession(
         user_id=user_id,
         device_id=device_id,
@@ -160,6 +168,13 @@ async def update_command(
     error_code: str | None = None,
     error_message: str | None = None,
 ) -> RemoteCommand:
+    transitions = {
+        "created": {"accepted", "rejected"},
+        "accepted": {"running", "success", "failed", "timeout", "rejected", "cancelled"},
+        "running": {"success", "failed", "timeout", "rejected", "cancelled"},
+    }
+    if status not in transitions.get(command.status, set()):
+        raise ValueError("命令状态不可逆转")
     now = utcnow()
     command.status = status
     command.error_code = error_code

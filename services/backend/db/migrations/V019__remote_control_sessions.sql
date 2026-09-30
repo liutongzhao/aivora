@@ -5,6 +5,13 @@ ALTER TABLE remote_sessions
     ADD COLUMN IF NOT EXISTS disconnect_reason VARCHAR(80),
     ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;
 
+-- Earlier clients never managed server-side active sessions. Treat their rows as history.
+UPDATE remote_sessions
+SET status = 'closed',
+    disconnected_at = COALESCE(disconnected_at, last_seen_at, connected_at),
+    disconnect_reason = 'legacy_session'
+WHERE status IN ('pending', 'connecting', 'active', 'closing');
+
 CREATE INDEX IF NOT EXISTS idx_remote_sessions_user_created
     ON remote_sessions (user_id, connected_at DESC);
 

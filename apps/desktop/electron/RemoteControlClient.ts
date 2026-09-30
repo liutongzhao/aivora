@@ -92,9 +92,9 @@ export class RemoteControlClient {
         client_version: packageJson.version
       })
     })
-    const registrationData = await registrationResponse.json()
-    if (!registrationResponse.ok || !registrationData.success) {
-      throw new Error(registrationData.error || registrationData.detail?.message || '桌面设备注册失败')
+    const registrationData = await registrationResponse.json().catch(() => null)
+    if (!registrationResponse.ok || !registrationData?.success) {
+      throw new Error(registrationData?.error || registrationData?.detail?.message || `桌面设备注册失败（HTTP ${registrationResponse.status}）`)
     }
 
     // 先完成桌面端注册，再生成连接码，确保手机拿到连接码时服务端已能找到桌面端。
@@ -111,9 +111,9 @@ export class RemoteControlClient {
         signal: AbortSignal.timeout(15000),
         body: JSON.stringify({ deviceId: this.deviceId })
       })
-      data = await response.json()
+      data = await response.json().catch(() => null)
       if (this.socket !== pairingSocket || !this.enabled) throw new Error('连接码生成已取消')
-      if (!response.ok || !data.success) throw new Error(data.error || '生成连接码失败')
+      if (!response.ok || !data?.success) throw new Error(data?.error || data?.detail?.message || `生成连接码失败（HTTP ${response.status}）`)
     } catch (error) {
       this.disconnect()
       throw error
@@ -216,6 +216,7 @@ export class RemoteControlClient {
         })
       })
       socket.on('remote:paired', () => {
+        if (this.paired) return
         this.paired = true
         this.pairing = null
         this.deps.onState?.({ connected: true, status: 'connected' })
@@ -224,6 +225,7 @@ export class RemoteControlClient {
         const connected = state.status === 'active' || state.status === 'connected'
         this.paired = connected
         if (connected) this.pairing = null
+        if (state.status === 'replaced' || state.status === 'closed') this.pairing = null
         this.deps.onState?.({ connected, ...state })
       })
       socket.on('remote:peer_state', (state) => {
@@ -256,6 +258,19 @@ export class RemoteControlClient {
     this.socket = null
     this.activeExpensiveAction = null
     this.deps.onState?.({ connected: false })
+  }
+
+  async endSession(): Promise<void> {
+    const sessionId = simpleAuthManager.getToken()
+    if (sessionId) {
+      const response = await fetch(`${this.apiBase.replace(/\/$/, '')}/api/remote/session/close`, {
+        method: 'POST',
+        headers: { 'X-Session-Id': sessionId },
+        signal: AbortSignal.timeout(10000)
+      })
+      if (!response.ok) throw new Error(`结束远程会话失败（HTTP ${response.status}）`)
+    }
+    this.disconnect()
   }
 
   private isShortcutAction(value: string): value is ShortcutAction | 'quitApp' {

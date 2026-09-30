@@ -11,7 +11,7 @@ export default function RemotePairingPanel() {
     if (next.connected) {
       setNow(Date.now())
       setState(next)
-    } else if (next.code || next.pairingLoading || next.error) {
+    } else if (next.code || next.pairingLoading || next.error || next.status === 'closed' || next.status === 'replaced') {
       setNow(Date.now())
       setState(current => next.error && current?.code ? { ...current, ...next } : next)
     } else {
@@ -20,9 +20,9 @@ export default function RemotePairingPanel() {
   }), [])
 
   useEffect(() => {
-    if (!state?.expiresAt || state.connected) return
-    const timer = window.setTimeout(() => setNow(Date.now()), Math.max(0, state.expiresAt - Date.now()))
-    return () => window.clearTimeout(timer)
+    if (!state?.expiresAt && !state?.connectedAt) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
   }, [state])
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function RemotePairingPanel() {
         <h2 className="text-sm font-semibold">手机远程控制</h2>
       </div>
       <div role="status" className="mt-2 text-sm">
-        {state.connected ? <p>手机已连接{state.connectedAt ? `，连接于 ${new Date(state.connectedAt).toLocaleTimeString()}` : ''}</p> : state.pairingLoading ? <p>正在生成连接码...</p> : state.code ? (
+        {state.connected ? <p>手机已连接{state.connectedAt ? ` · 已连接时长 ${Math.floor((now - state.connectedAt) / 60000)}分${String(Math.floor(((now - state.connectedAt) % 60000) / 1000)).padStart(2, '0')}秒` : ''}</p> : state.pairingLoading ? <p>正在生成连接码...</p> : state.code ? (
           <>
             <code className={`block break-all text-2xl font-bold ${seconds ? '' : 'line-through opacity-60'}`} style={{ textShadow: 'none' }}>{state.code}</code>
             <p className="mt-1 text-xs">
@@ -48,7 +48,7 @@ export default function RemotePairingPanel() {
             </p>
             <p className="mt-3 break-all text-xs">{state.remoteUrl}</p>
           </>
-        ) : null}
+        ) : state.status === 'replaced' ? <p>当前账号已在其他设备建立远程连接</p> : state.status === 'closed' ? <p>远程连接已结束</p> : null}
         {state.error && <p className="mt-2 break-words">{state.error}</p>}
       </div>
     </aside>

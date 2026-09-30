@@ -91,9 +91,13 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     }
   })
 
-  ipcMain.handle('remote:disconnect', () => {
-    deps.remoteControlClient?.disconnect()
-    return { success: true }
+  ipcMain.handle('remote:disconnect', async () => {
+    try {
+      await deps.remoteControlClient?.endSession()
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || '结束远程会话失败' }
+    }
   })
 
   ipcMain.handle('window-recover', () => {

@@ -307,6 +307,71 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .remote-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
 .remote-action { min-height: 52px; border-color: var(--line); color: var(--ink); background: var(--surface-soft); }
 .remote-action:hover { border-color: #b8d0f5; color: var(--accent); background: var(--accent-soft); }
+
+.remote-workspace { width: min(100% - 40px, 980px); margin: 0 auto; padding: 36px 0 72px; }
+.remote-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 25px; }
+.remote-header h1 { margin: 5px 0 0; font-size: 28px; line-height: 1.25; }
+.remote-kicker { font-size: 11px; font-weight: 750; color: var(--accent); }
+.remote-presence { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 8px; color: var(--muted); font-size: 12px; }
+.remote-presence-dot { width: 8px; height: 8px; border-radius: 50%; background: #b5bdc8; }
+.remote-presence.is-online { color: var(--green); }
+.remote-presence.is-online .remote-presence-dot { background: #20a377; }
+.remote-connection { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.remote-connection-icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 7px; color: var(--accent); background: var(--accent-soft); }
+.remote-connection-main { flex: 1 1 190px; min-width: 0; }
+.remote-connection-main h2 { font-size: 15px; }
+.remote-connection-main p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.remote-separator { margin: 0 6px; }
+.remote-connect-form { display: flex; gap: 8px; flex: 1 1 300px; max-width: 390px; }
+.remote-connect-form input { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; font-size: 14px; letter-spacing: 0; }
+.remote-connect-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.remote-connect-form .button { flex: 0 0 72px; }
+.remote-disconnect { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-soft); background: white; font-size: 12px; }
+.remote-disconnect:hover { color: var(--red); border-color: #edc6cc; }
+.remote-message { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; }
+.remote-message.is-error { color: var(--red); }
+.remote-actions { margin-top: 29px; }
+.remote-section-head, .remote-records-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.remote-section-head h2, .remote-records-head h2 { font-size: 16px; }
+.remote-section-head span { font-size: 12px; color: var(--muted); }
+.remote-action-group { margin-top: 18px; }
+.remote-action-group h3 { margin-bottom: 8px; color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+.remote-control-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.remote-control-button { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 52px; padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); font-size: 13px; font-weight: 600; text-align: left; }
+.remote-control-button svg { flex: 0 0 auto; color: var(--accent); }
+.remote-control-button:hover:not(:disabled) { border-color: #a9c7f3; background: #f7faff; }
+.remote-control-button:active:not(:disabled) { background: var(--accent-soft); }
+.remote-control-button:disabled { cursor: wait; color: var(--muted); background: var(--surface-soft); }
+.remote-records { margin-top: 31px; }
+.remote-tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-muted); }
+.remote-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 29px; padding: 0 10px; border: 0; border-radius: 5px; color: var(--ink-soft); background: transparent; font-size: 12px; }
+.remote-tabs button[aria-selected="true"] { color: var(--accent); background: var(--surface); box-shadow: 0 1px 3px #10182818; }
+.remote-record-list { margin-top: 12px; border-top: 1px solid var(--line); }
+.remote-record { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.remote-record-icon { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border-radius: 5px; color: var(--green); background: var(--green-soft); }
+.remote-record-icon.is-error { color: var(--red); background: var(--red-soft); }
+.remote-record-icon.is-pending { color: var(--accent); background: var(--accent-soft); }
+.remote-record-description { display: grid; gap: 3px; flex: 1; min-width: 0; font-size: 12px; }
+.remote-record-description strong { font-size: 13px; font-weight: 600; }
+.remote-record-description small { overflow-wrap: anywhere; color: var(--muted); font-size: 11px; }
+.remote-record-state, .remote-record-duration { flex: 0 0 auto; color: var(--green); font-size: 12px; }
+.remote-record-state.is-error { color: var(--red); }
+.remote-record-state.is-pending { color: var(--accent); }
+.remote-record-duration { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.remote-empty { margin: 12px 0 0; padding: 22px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.remote-spin { animation: remote-rotate 1.4s linear infinite; }
+@keyframes remote-rotate { to { transform: rotate(360deg); } }
+@media (max-width: 680px) {
+  .remote-workspace { width: min(100% - 28px, 560px); padding: 24px 0 55px; }
+  .remote-header { align-items: center; margin-bottom: 20px; }
+  .remote-header h1 { font-size: 23px; }
+  .remote-connection { padding: 15px; }
+  .remote-connected-at { display: none; }
+  .remote-connect-form { flex: 1 1 100%; max-width: none; }
+  .remote-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .remote-control-button { min-height: 54px; padding: 0 11px; font-size: 12px; }
+  .remote-section-head span { display: none; }
+}
 .empty-inline { padding: 38px 0; color: var(--muted); font-size: 13px; text-align: center; }
 .empty-inline svg { margin: 0 auto 7px; color: var(--accent); }
 .history-summary { display: flex; align-items: baseline; gap: 9px; padding: 12px 0; color: var(--muted); font-size: 12px; }

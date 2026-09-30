@@ -55,6 +55,8 @@ export function ConfigPage() {
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number; remoteUrl: string } | null>(null)
   const [pairingLoading, setPairingLoading] = useState(false)
   const [pairingRemaining, setPairingRemaining] = useState(0)
+  const [remoteConnectedAt, setRemoteConnectedAt] = useState<number | null>(null)
+  const [remoteNow, setRemoteNow] = useState(Date.now())
   const [activeSection, setActiveSection] = useState<ClientSection>('models')
   const [promptDirty, setPromptDirty] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -120,7 +122,8 @@ export function ConfigPage() {
   useEffect(() => {
     const unsubscribeRemote = window.electronAPI.remoteControl?.onState((state) => {
       if (state.connected) {
-        setPairing((current) => current ? { ...current, expiresAt: Number.MAX_SAFE_INTEGER } : current)
+        setPairing(null)
+        setRemoteConnectedAt(state.connectedAt || Date.now())
         showToast('手机已连接到桌面端', 'success')
       }
       if (state.code && state.expiresAt) {
@@ -132,7 +135,9 @@ export function ConfigPage() {
       }
       if (!state.connected && (state.status === 'replaced' || state.status === 'disconnected')) {
         setPairing(null)
+        setRemoteConnectedAt(null)
       }
+      if (state.status === 'closed') setRemoteConnectedAt(null)
       if (state.error) {
         showToast(state.error, 'error')
       }
@@ -150,6 +155,11 @@ export function ConfigPage() {
     const timer = window.setInterval(updateRemaining, 1000)
     return () => window.clearInterval(timer)
   }, [pairing])
+  useEffect(() => {
+    if (!remoteConnectedAt) return
+    const timer = window.setInterval(() => setRemoteNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [remoteConnectedAt])
 
   const handleStartRecording = (action: ShortcutAction) => {
     setRecordingAction(action)
@@ -353,7 +363,8 @@ export function ConfigPage() {
         throw new Error(result?.error || '生成手机连接码失败')
       }
       setPairing({ code: result.code, expiresAt: result.expiresAt, remoteUrl: result.remoteUrl })
-      showToast('连接码已生成，有效期 2 分钟', 'success')
+      setRemoteConnectedAt(null)
+      showToast('连接码已生成，有效期 5 分钟', 'success')
     } catch (error: any) {
       showToast(error?.message || '生成手机连接码失败', 'error')
     } finally {
@@ -371,8 +382,10 @@ export function ConfigPage() {
   }
 
   const handleDisconnectPairing = async () => {
-    await window.electronAPI.remoteControl?.disconnect()
+    const result = await window.electronAPI.remoteControl?.disconnect()
+    if (result?.success === false) { showToast(result.error || '结束远程控制失败', 'error'); return }
     setPairing(null)
+    setRemoteConnectedAt(null)
     showToast('手机远程控制已结束', 'success')
   }
 
@@ -451,7 +464,7 @@ export function ConfigPage() {
               <h2 className="text-lg font-semibold text-slate-900">手机远程控制</h2>
               <p className="mt-1 text-sm text-slate-500">生成连接码后，在手机 Web 端输入连接码即可控制客户端。</p>
             </div>
-            {!pairing && (
+            {!pairing && !remoteConnectedAt && (
               <button
                 className="inline-flex h-10 w-44 max-w-full shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-blue-600 px-3 text-sm font-medium text-[#ffffff] shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 md:self-center"
                 onClick={handleCreatePairing}
@@ -462,6 +475,7 @@ export function ConfigPage() {
               </button>
             )}
           </div>
+          {remoteConnectedAt && <div className="mt-4 flex items-center justify-between gap-3 text-sm"><span>手机已连接 · 已连接 {Math.floor((remoteNow - remoteConnectedAt) / 60000)}分{String(Math.floor(((remoteNow - remoteConnectedAt) % 60000) / 1000)).padStart(2, '0')}秒</span><button className="text-rose-600" onClick={handleDisconnectPairing}>结束远程控制</button></div>}
           {pairing && (
             <div className="client-pairing-details mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

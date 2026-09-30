@@ -14,7 +14,7 @@ from app.modules.devices.router import router as devices_router
 from app.modules.byok.router import router as byok_router
 from app.infrastructure.health import router as health_router
 from app.infrastructure.bootstrap import bootstrap_initial_admin
-from app.infrastructure.socketio import sio
+from app.infrastructure.socketio import sio, retire_stale_sessions
 
 
 def create_app() -> FastAPI:
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
     @application.on_event("startup")
     async def bootstrap() -> None:
         await bootstrap_initial_admin()
+        await retire_stale_sessions()
 
     @application.get("/health", tags=["system"])
     async def health() -> dict[str, str]:

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database import get_db_session
 from app.modules.devices.models import DesktopDevice, PairingCode
 from app.modules.devices.models import RemoteCommand, RemoteSession
-from app.modules.devices.service import close_active_sessions, create_pairing
+from app.modules.devices.service import create_pairing as create_pairing_code
 from app.modules.identity.dependencies import get_current_user
 from app.modules.identity.models import User
 
@@ -66,7 +66,7 @@ async def create_pairing(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    pairing, _device = await create_pairing(db, user.id, request.deviceId)
+    pairing, _device = await create_pairing_code(db, user.id, request.deviceId)
     code = pairing._plain_code  # type: ignore[attr-defined]
     await db.commit()
     return {"success": True, "code": code, "expiresAt": int(pairing.expires_at.timestamp() * 1000)}
@@ -92,6 +92,7 @@ async def verify_pairing(
     if not pairing:
         raise HTTPException(status_code=400, detail="连接码无效或已过期")
     pairing.used_at = datetime.now(timezone.utc)
+    pairing.consumed_at = pairing.used_at
     await db.commit()
     return {"success": True, "device_id": str(pairing.device_id)}
 
@@ -196,8 +197,7 @@ async def list_commands(
 @router.post("/session/close")
 async def close_session(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    sessions = await close_active_sessions(db, user.id, "user_closed")
-    await db.commit()
-    return {"success": True, "closed": len(sessions)}
+    from app.infrastructure.socketio import close_user_sessions
+
+    return {"success": True, "closed": await close_user_sessions(user.id)}
