@@ -11,6 +11,7 @@ cd "$DEPLOY_ROOT"
 export AIVORA_IMAGE_TAG="$IMAGE_TAG"
 docker compose --env-file .env -f compose.prod.yml up -d postgres redis minio
 docker compose --env-file .env -f compose.prod.yml pull api worker web
-docker compose --env-file .env -f compose.prod.yml up -d api worker web nginx
+docker compose --env-file .env -f compose.prod.yml up -d api worker web
+docker compose --env-file .env -f compose.prod.yml up -d --no-deps --force-recreate nginx
 curl --fail --silent --show-error --max-time 10 http://127.0.0.1/health/live >/dev/null
 echo "已回滚到：$IMAGE_TAG"

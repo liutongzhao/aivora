@@ -12,7 +12,8 @@ export AIVORA_IMAGE_TAG="$IMAGE_TAG"
 docker compose --env-file .env -f compose.prod.yml up -d postgres redis minio
 docker compose --env-file .env -f compose.prod.yml pull api worker web
 docker compose --env-file .env -f compose.prod.yml run --rm flyway
-docker compose --env-file .env -f compose.prod.yml up -d api worker web nginx
+docker compose --env-file .env -f compose.prod.yml up -d api worker web
+docker compose --env-file .env -f compose.prod.yml up -d --no-deps --force-recreate nginx
 for attempt in {1..30}; do
   if curl --fail --silent --show-error --max-time 5 http://127.0.0.1/health/live >/dev/null; then
     echo "部署成功：$IMAGE_TAG"
