@@ -51,13 +51,15 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip
       - run: pip install services/backend -r services/backend/requirements-dev.txt
+      - name: 准备后端测试配置
+        run: cp services/backend/.env.example services/backend/.env.local
       - name: 启动后端测试基础设施
         run: |
           docker compose -p aivora-ci --project-directory "$GITHUB_WORKSPACE" -f deploy/compose.dev.yml up -d --wait postgres redis minio
       - run: pytest -q
       - name: 清理后端测试基础设施
         if: always()
-        run: docker compose -p aivora-ci --project-directory "$GITHUB_WORKSPACE" -f deploy/compose.dev.yml down -v
+        run: docker compose -p aivora-ci --project-directory "$GITHUB_WORKSPACE" -f deploy/compose.dev.yml down -v || true
 
   production-config:
     runs-on: ubuntu-latest
