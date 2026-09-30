@@ -10,20 +10,20 @@
 | --- | --- |
 | 服务器操作系统 | Ubuntu 24.04 LTS |
 | 服务器架构 | x86_64 / amd64 |
-| 服务器 IP | `43.133.80.249` |
-| SSH 用户 | `ubuntu` |
+| 服务器地址 | `<server-host>` |
+| SSH 用户 | `<deploy-user>` |
 | SSH 端口 | `22` |
 | 反向代理 | Nginx |
-| 部署根目录 | `/home/ubuntu/service-deploy` |
-| 当前入口 | `http://43.133.80.249` |
+| 部署根目录 | `/opt/aivora` |
+| 当前入口 | `http://<server-host>` |
 | 镜像架构 | `linux/amd64` |
 
 ## 3. 服务边界
 
 GitHub Actions 构建并推送两个自有镜像：
 
-- `ghcr.io/liutongzhao/aivora-web:<git-sha>`
-- `ghcr.io/liutongzhao/aivora-backend:<git-sha>`
+- `ghcr.io/<owner>/aivora-web:<git-sha>`
+- `ghcr.io/<owner>/aivora-backend:<git-sha>`
 
 Backend 镜像同时用于 API 和 Celery Worker，仅通过 Compose 的 `command` 区分启动方式。生产不在服务器上拉取源码或在容器启动时安装依赖。
 
@@ -41,7 +41,7 @@ PostgreSQL、Redis、MinIO 只加入 Compose 内部网络，不将数据库和�
 ## 4. 服务器文件布局
 
 ```text
-/home/ubuntu/service-deploy/
+/opt/aivora/
   compose.prod.yml
   .env
   nginx/

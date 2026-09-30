@@ -13,8 +13,8 @@
 ## Global Constraints
 
 - 服务器使用 Ubuntu 24.04 LTS `x86_64` / `amd64`。
-- 服务器地址为 `43.133.80.249`，SSH 用户为 `ubuntu`，端口按 `22`。
-- 生产部署根目录为 `/home/ubuntu/service-deploy`。
+- 服务器地址使用 `<server-host>`，SSH 用户使用最小权限的 `<deploy-user>`，端口默认为 `22`。
+- 示例生产部署根目录为 `/opt/aivora`。
 - 当前使用 IP + HTTP，Nginx 监听 `80`，不配置域名和 TLS。
 - PostgreSQL、Redis、MinIO 不对公网暴露端口。
 - `.env`、API Key、数据库密码、MinIO 密钥和 `AIVORA_MASTER_KEY` 不进入 Git、镜像或 Actions 日志。
@@ -54,7 +54,7 @@
 - Test: `scripts/test-production-config.sh`
 
 **Interfaces:**
-- Produces `/home/ubuntu/service-deploy/compose.prod.yml` 所需的同名服务、环境变量和持久卷。Nginx 为 `/` 、`/api/`、`/health/`、`/socket.io/` 提供反向代理。
+- Produces `/opt/aivora/compose.prod.yml` 所需的同名服务、环境变量和持久卷。Nginx 为 `/` 、`/api/`、`/health/`、`/socket.io/` 提供反向代理。
 
 - [ ] **Step 1:** 先写配置测试，验证服务名、图像版本变量、无源码挂载、数据库端口未公开和 Nginx 路由。
 - [ ] **Step 2:** 实现 Compose 生产配置：postgres、redis、minio、flyway、api、worker、web、nginx。
@@ -72,7 +72,7 @@
 - Test: `scripts/test-production-config.sh`
 
 **Interfaces:**
-- `install-layout.sh`: 创建 `/home/ubuntu/service-deploy` 及 `nginx/`、`scripts/`、`data/` 目录，不覆盖 `.env`。
+- `install-layout.sh`: 创建 `/opt/aivora` 及 `nginx/`、`scripts/`、`data/` 目录，不覆盖 `.env`。
 - `deploy.sh <image-tag>`: 以指定 SHA 拉取镜像，Flyway 成功后更新应用，执行健康检查。
 - `rollback.sh <image-tag>`: 切换到已验证 SHA 并重新运行应用。
 - `backup.sh`: 对 PostgreSQL 执行可恢复的备份，对 MinIO 提供备份目录约定，不影响正在运行的应用。
@@ -93,7 +93,7 @@
 
 **Interfaces:**
 - CI 在 PR 和 `main` push 上运行前端、后端和 Compose 检查。
-- Release 在 `v*` tag 或手动触发上构建 amd64 镜像、登录 GHCR 并通过 SSH 运行 `/home/ubuntu/service-deploy/scripts/deploy.sh`。
+- Release 在 `v*` tag 或手动触发上构建 amd64 镜像、登录 GHCR 并通过 SSH 运行 `/opt/aivora/scripts/deploy.sh`。
 - Actions Secrets 只包含 `DEPLOY_HOST`、`DEPLOY_USER`、`DEPLOY_PORT`、`DEPLOY_SSH_KEY`；生产密钥留在服务器 `.env`。
 
 - [ ] **Step 1:** 写 workflow 静态校验，确保只有 GHCR 登录步骤使用 `GITHUB_TOKEN`，部署步骤不输出秘密。
@@ -111,8 +111,8 @@
 
 - [ ] **Step 1:** 补充 GitHub 仓库 Secrets、GHCR 读取 Token、服务器 `.env`、Nginx 配置、首次部署、回滚和不使用密码的说明。
 - [ ] **Step 2:** 运行全套本地检查：`git diff --check`、前端测试与构建、后端测试、Compose config、production config test。
-- [ ] **Step 3:** 以 SSH 连接 `ubuntu@43.133.80.249`，创建 `/home/ubuntu/service-deploy`，同步非密钥部署文件，由用户在服务器上填写 `.env` 和 GHCR 只读 Token。
-- [ ] **Step 4:** 执行首次部署和 HTTP 健康检查，仅在服务器端口与防火墙条件满足时验证 `http://43.133.80.249`。
+- [ ] **Step 3:** 以 SSH 连接 `<deploy-user>@<server-host>`，创建 `/opt/aivora`，同步非密钥部署文件，由部署者在服务器上填写 `.env` 和 GHCR 只读 Token。
+- [ ] **Step 4:** 执行首次部署和 HTTP 健康检查，仅在服务器端口与防火墙条件满足时验证 `http://<server-host>`。
 - [ ] **Step 5:** 提交 `docs: 补充生产发布操作手册`。
 
 ## 验证标准
