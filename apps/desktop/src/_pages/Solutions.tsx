@@ -497,7 +497,10 @@ const Solutions: React.FC<SolutionsProps> = ({
     !!aiResult.parsed?.answer ||
     (Array.isArray(aiResult.parsed?.answers) && aiResult.parsed.answers.length > 0)
   ) ? aiResult : null
-  const choicePending = isStructuredAnswer && !choiceResult
+  const choicePending = isStructuredAnswer && isProcessing && !choiceResult && !error
+  const choiceFailure = isStructuredAnswer && !choiceResult && !isProcessing && (
+    error || aiResult?.parseWarning
+  )
 
   // 🔧 同步后端进度到本地的streamingProgress状态
   useEffect(() => {
@@ -1449,6 +1452,10 @@ const Solutions: React.FC<SolutionsProps> = ({
                   <p className="text-sm text-[color:var(--text-color)] opacity-75 py-3">
                     正在整理答案与解题原因...
                   </p>
+                ) : choiceFailure ? (
+                  <div className="text-sm text-red-400 py-3" role="alert">
+                    {error?.message || aiResult?.parseWarning || '题目图片无法识别，请重新截图后重试。'}
+                  </div>
                 ) : !solutionData && !multipleChoiceAnswers && !isStreaming && (
                   <>
                     <ContentSection

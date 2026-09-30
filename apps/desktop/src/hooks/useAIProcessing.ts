@@ -285,6 +285,20 @@ export function useAIProcessing(): UseAIProcessingReturn {
 
   // 🆕 处理完成后的格式化（从handleProcessingComplete调用）
   const performClientFormatting = useCallback(async (result: AIProcessResult) => {
+    if (!result) {
+      const message = '模型没有返回有效答案，请重新截图后重试'
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        isInitializing: false,
+        stage: 'error',
+        message,
+        error: { code: 'EMPTY_AI_RESULT', message }
+      }))
+      sseService.disconnect()
+      return
+    }
+
     console.log('🔚 [SSE-HOOK] 处理完成，检查后端解析结果:', result.parsed)
     console.log('🔚 [SSE-HOOK] 结果类型:', result.questionType, '内容预览:', result.content?.substring(0, 200))
     
@@ -344,15 +358,28 @@ export function useAIProcessing(): UseAIProcessingReturn {
       
     } catch (error) {
       console.error('❌ [SSE-HOOK] 格式化失败:', error)
+      const message = '答案解析失败，请重新截图后重试'
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        isInitializing: false,
+        stage: 'error',
+        message,
+        error: {
+          code: 'RESULT_FORMATTING_FAILED',
+          message
+        }
+      }))
+      sseService.disconnect()
     }
   }, [])
   
   // SSE处理完成处理函数
-  const handleProcessingComplete = useCallback(async (result: AIProcessResult) => {
+  const handleProcessingComplete = useCallback(async (result: AIProcessResult | null) => {
     console.log('🎉 [SSE] 处理完成，准备进行格式化')
     
     // 🆕 统一格式化处理，优先使用后端解析数据
-    await performClientFormatting(result)
+    await performClientFormatting(result as AIProcessResult)
     
     // 清理
     streamingContent.current = ''
@@ -360,11 +387,11 @@ export function useAIProcessing(): UseAIProcessingReturn {
   }, [performClientFormatting])
   
   // 🆕 SSE最终结果处理函数（用于选择题等不需要流式传输的结果）
-  const handleFinalResult = useCallback(async (result: AIProcessResult) => {
-    console.log('🎯 [SSE] 收到最终结果，直接显示:', result.questionType)
+  const handleFinalResult = useCallback(async (result: AIProcessResult | null) => {
+    console.log('🎯 [SSE] 收到最终结果，直接显示:', result?.questionType)
     
     // 直接格式化并显示结果
-    await performClientFormatting(result)
+    await performClientFormatting(result as AIProcessResult)
     
     // 清理
     streamingContent.current = ''

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -189,6 +189,37 @@ async def stream_task(
     )
 
 
+@router.get("/tasks/{task_id}/images/{file_id}")
+async def get_task_image(
+    task_id: UUID,
+    file_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    file = await db.scalar(
+        select(StoredFile)
+        .join(TaskImage, TaskImage.stored_file_id == StoredFile.id)
+        .join(AITask, AITask.id == TaskImage.task_id)
+        .where(
+            TaskImage.task_id == task_id,
+            StoredFile.id == file_id,
+            AITask.user_id == user.id,
+            StoredFile.deleted_at.is_(None),
+        )
+    )
+    if not file:
+        raise HTTPException(status_code=404, detail="题目截图不存在")
+    try:
+        content = await asyncio.to_thread(storage.get_bytes, file.object_key)
+    except Exception as error:
+        raise HTTPException(status_code=404, detail="题目截图读取失败") from error
+    return Response(
+        content=content,
+        media_type=file.content_type or "application/octet-stream",
+        headers={"Cache-Control": "private, max-age=300"},
+    )
+
+
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: UUID,
@@ -220,7 +251,7 @@ async def get_task(
         {
             "id": str(file.id),
             "contentType": file.content_type,
-            "url": storage.presigned_get(file.object_key),
+            "url": f"/api/ai/tasks/{task_id}/images/{file.id}",
         }
         for file in files
     ]

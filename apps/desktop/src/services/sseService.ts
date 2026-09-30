@@ -38,6 +38,7 @@ export class SSEService {
   // 当前任务状态
   private currentTaskId: string | null = null
   private processingStatus: ProcessingStatus | null = null
+  private reconnectFailureTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     console.log('🌊 SSE服务初始化')
@@ -134,6 +135,11 @@ export class SSEService {
    * 断开SSE连接（增强版，更彻底的清理）
    */
   disconnect() {
+    if (this.reconnectFailureTimer) {
+      clearTimeout(this.reconnectFailureTimer)
+      this.reconnectFailureTimer = null
+    }
+
     if (this.eventSource) {
       console.log('🔌 [SSE] 断开连接')
       
@@ -480,9 +486,19 @@ export class SSEService {
         console.log('🔌 [SSE] 连接已关闭')
         this.connectionStatus.connected = false
         this.connectionStatus.error = 'SSE连接已关闭'
+        this.emitEvent('error', '实时连接已断开，任务状态无法继续更新')
       } else if (this.eventSource?.readyState === EventSource.CONNECTING) {
         console.log('🔄 [SSE] 正在重连...')
         this.connectionStatus.connecting = true
+        if (!this.reconnectFailureTimer) {
+          this.reconnectFailureTimer = setTimeout(() => {
+            this.reconnectFailureTimer = null
+            if (this.eventSource?.readyState === EventSource.CONNECTING) {
+              this.emitEvent('error', '实时连接超时，请检查网络后重试')
+              this.disconnect()
+            }
+          }, 15000)
+        }
       }
     }
 

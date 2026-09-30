@@ -48,4 +48,15 @@ describe('useAIProcessing SSE results', () => {
     expect(result.current.result?.parsed?.answer).toBe('B')
     expect(result.current.result?.formatted?.code).not.toBe(raw)
   })
+
+  it('stops processing and exposes an error when SSE reports a failure', async () => {
+    const { result } = renderHook(() => useAIProcessing())
+
+    await act(async () => {
+      await listeners.get('error')?.('实时连接超时，请检查网络后重试')
+    })
+
+    expect(result.current.isProcessing).toBe(false)
+    expect(result.current.error?.message).toBe('实时连接超时，请检查网络后重试')
+  })
 })
