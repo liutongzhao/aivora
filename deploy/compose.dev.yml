@@ -33,8 +33,9 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio:latest
+    image: bitnamilegacy/minio@sha256:451fe6858cb770cc9d0e77ba811ce287420f781c7c1b806a386f6896471a349c
     container_name: aivora-minio
+    user: "0:0"
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: aivora
