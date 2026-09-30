@@ -78,6 +78,15 @@
       "config.json",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "assets/icons",
+        "to": "assets/icons",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "asar": true,
     "publish": {
       "provider": "github",
@@ -87,6 +96,7 @@
     },
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "assets/branding/aivora-app-icon-1024.png",
       "target": [
         "dmg",
         "zip"
@@ -94,6 +104,7 @@
       "identity": null
     },
     "win": {
+      "icon": "assets/icons/win/aivora.ico",
       "target": [
         "nsis"
       ]
