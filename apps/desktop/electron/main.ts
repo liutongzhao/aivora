@@ -978,6 +978,8 @@ async function returnToConfigWindow(): Promise<void> {
     })
   }
 
+  state.antiCapture?.restoreDock()
+  state.antiCapture = null
   state.skipRestoreOnClose = false
   createConfigWindow()
 }

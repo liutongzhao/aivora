@@ -16,6 +16,7 @@ function isIntelMac(): boolean {
 export class PerformantAntiCapture {
   private window: BrowserWindow
   private options: Required<AntiCaptureOptions>
+  private dockHideTimer: NodeJS.Timeout | null = null
   private protectionLevel: 'high' | 'medium' | 'low' = 'high'
   private isApplying: boolean = false
   private lastApplyTime: number = 0
@@ -157,8 +158,9 @@ export class PerformantAntiCapture {
           }, 200)
         }
         
-        // Dock隐藏最后执行
-        setTimeout(() => {
+        // Dock隐藏最后执行。保留定时器，避免返回配置页时延迟任务继续生效。
+        this.dockHideTimer = setTimeout(() => {
+          this.dockHideTimer = null
           try {
             app.dock?.hide()
           } catch (dockError) {
@@ -174,6 +176,24 @@ export class PerformantAntiCapture {
       }
     } catch (error) {
       console.error('❌ 平台特定保护失败:', error)
+    }
+  }
+
+  /**
+   * 退出考试窗口时恢复 macOS Dock，并取消尚未执行的隐藏任务。
+   */
+  restoreDock(): void {
+    if (this.dockHideTimer) {
+      clearTimeout(this.dockHideTimer)
+      this.dockHideTimer = null
+    }
+
+    if (process.platform === 'darwin') {
+      try {
+        app.dock?.show()
+      } catch (dockError) {
+        console.warn('⚠️ Dock恢复失败:', dockError)
+      }
     }
   }
 
