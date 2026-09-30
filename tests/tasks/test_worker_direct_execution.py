@@ -176,7 +176,10 @@ async def test_redelivered_running_task_fails_without_second_provider_call(
 
 
 @pytest.mark.asyncio
-async def test_redelivered_unclaimed_task_remains_queued(task_db, dispatch_boundary):
+async def test_redelivered_unclaimed_task_remains_queued(
+    task_db, dispatch_boundary, monkeypatch,
+):
+    monkeypatch.setattr(ai_tasks, "session_factory", task_db)
     async with task_db() as db:
         task = AITask(user_id=USER, mode="programming", status="queued", stage="queued")
         db.add(task)
