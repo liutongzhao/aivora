@@ -11,6 +11,7 @@ describe('ConfigPage', () => {
           user: { username: '测试用户' },
           version: { current: '1.0.0', latest: '1.0.0', needsUpdate: false }
         }),
+        checkForUpdates: vi.fn().mockResolvedValue({ success: true, updateInfo: null }),
         getShortcutBindings: vi.fn().mockResolvedValue({}),
         getClientTheme: vi.fn().mockResolvedValue({ theme: 'dark' }),
         onShortcutTestResult: vi.fn().mockReturnValue(() => {}),
@@ -38,5 +39,14 @@ describe('ConfigPage', () => {
     render(<ConfigPage />)
     fireEvent.click(screen.getByRole('button', { name: '快捷键' }))
     expect(screen.getByRole('main').getAttribute('data-active-section')).toBe('shortcuts')
+  })
+
+  it('checks updates through the Electron updater', async () => {
+    render(<ConfigPage />)
+    const checkForUpdates = window.electronAPI.checkForUpdates as ReturnType<typeof vi.fn>
+
+    fireEvent.click(await screen.findByRole('button', { name: '检测更新' }))
+
+    await waitFor(() => expect(checkForUpdates).toHaveBeenCalledTimes(1))
   })
 })

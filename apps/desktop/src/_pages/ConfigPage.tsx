@@ -319,14 +319,16 @@ export function ConfigPage() {
   const handleCheckUpdate = async () => {
     setUpdateChecking(true)
     try {
-      const status = await window.electronAPI.webAuthStatus()
-      if (status.version) {
-        setVersionInfo(status.version)
-
-        if (!status.version.needsUpdate) {
-          showToast('您已是最新版本', 'success')
-        }
+      const result = await window.electronAPI.checkForUpdates()
+      if (!result?.success) {
+        throw new Error(result?.error || '检查更新失败')
       }
+      showToast(
+        result.updateInfo
+          ? `已完成检查，当前最新版本为 ${result.updateInfo.version}`
+          : '已完成更新检查',
+        'success'
+      )
     } catch (error) {
       console.error('检测更新失败:', error)
       showToast('检测更新失败，请稍后再试', 'error')
