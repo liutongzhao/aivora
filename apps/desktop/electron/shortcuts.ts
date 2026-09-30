@@ -8,8 +8,8 @@ import {
   ShortcutAction,
   getMissingShortcutActions
 } from "../shared/shortcuts"
+import configData from './runtimeConfig'
 
-const configData = require('../../config.json')
 const API_BASE_URL = configData.api?.baseUrl || 'http://127.0.0.1:18000'
 
 const mouseButtonHookScript = String.raw`

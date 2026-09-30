@@ -1,5 +1,6 @@
 // config.ts - 配置文件读取工具
-import configData from '../../config.json'
+import localConfig from '../../config.local.json'
+import productionConfig from '../../config.json'
 
 interface AppConfig {
   api: {
@@ -19,7 +20,7 @@ interface AppConfig {
 }
 
 // 读取配置文件
-export const config: AppConfig = configData
+export const config: AppConfig = import.meta.env.DEV ? localConfig : productionConfig
 
 // 获取完整的AI API URL
 export const getAIApiBaseUrl = (): string => {

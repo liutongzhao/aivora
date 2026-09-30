@@ -4,6 +4,7 @@ import { configHelper } from './ConfigHelper'
 import { simpleAuthManager } from './SimpleAuthManager'
 import { ShortcutsHelper } from './shortcuts'
 import { shortcutDefinitions, type ShortcutAction } from '../shared/shortcuts'
+import configData from './runtimeConfig'
 
 type RemoteClientDeps = {
   shortcutsHelper: ShortcutsHelper
@@ -11,7 +12,6 @@ type RemoteClientDeps = {
   onState?: (state: { connected: boolean; code?: string; expiresAt?: number; remoteUrl?: string; pairingLoading?: boolean; error?: string }) => void
 }
 
-const configData = require('../../config.json')
 const packageJson = require('../../package.json')
 const configuredApiBaseUrl = configData.api?.baseUrl || 'http://127.0.0.1:18000'
 const configuredWebBaseUrl = configData.web?.baseUrl || configuredApiBaseUrl

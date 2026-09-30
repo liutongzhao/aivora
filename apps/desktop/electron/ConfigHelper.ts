@@ -46,7 +46,9 @@ export class ConfigHelper extends EventEmitter {
     super();
     // Use the app's user data directory to store the config
     try {
-      this.configPath = path.join(app.getPath('userData'), 'config.json');
+      const isDev = process.env.NODE_ENV === 'development';
+      const dataDirectoryName = isDev ? 'interview-coder-v1-dev' : 'interview-coder-v1';
+      this.configPath = path.join(app.getPath('appData'), dataDirectoryName, 'config.json');
       console.log('Config path:', this.configPath);
     } catch (err) {
       console.warn('Could not access user data path, using fallback');

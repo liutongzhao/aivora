@@ -23,6 +23,13 @@ patchConsoleForUTF8()
 
 // Constants
 const isDev = process.env.NODE_ENV === "development"
+const appDataDirectoryName = isDev ? "interview-coder-v1-dev" : "interview-coder-v1"
+
+// Select the data directory before Electron creates the single-instance lock.
+// The production directory is intentionally unchanged for existing users.
+const appDataPath = path.join(app.getPath("appData"), appDataDirectoryName)
+app.setPath("userData", appDataPath)
+console.log(`[app] ${isDev ? "development" : "production"} data directory: ${appDataPath}`)
 
 // Application State
 const state = {
@@ -1090,7 +1097,6 @@ function loadEnvVariables() {
 async function initializeApp() {
   try {
     // Set custom cache directory to prevent permission issues
-    const appDataPath = path.join(app.getPath('appData'), 'interview-coder-v1')
     const sessionPath = path.join(appDataPath, 'session')
     const tempPath = path.join(appDataPath, 'temp')
     const cachePath = path.join(appDataPath, 'cache')

@@ -8,10 +8,10 @@ import { simpleAuthManager } from "./SimpleAuthManager"
 import { SimpleAuthManager } from './SimpleAuthManager'
 import { CompatibilityChecker, CompatibilityResult, CompatibilityReport } from './CompatibilityChecker'
 import { buildRequestHeaders, fetchWithNetworkRetry } from './apiRequest'
+import configData from './runtimeConfig'
 // 使用 Electron 内置的 fetch API
 // 🆕 导入版本信息
 const packageJson = require('../../package.json');
-const configData = require('../../config.json');
 const API_BASE_URL = configData.api?.baseUrl || 'http://127.0.0.1:18000';
 let apiRequestQueue: Promise<void> = Promise.resolve()
 

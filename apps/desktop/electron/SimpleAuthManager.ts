@@ -5,10 +5,9 @@ import axios, { AxiosInstance } from 'axios'
 import { configHelper } from './ConfigHelper'
 import {Simulate} from "react-dom/test-utils";
 import waiting = Simulate.waiting;
+import configData from './runtimeConfig'
 // 🆕 导入版本信息
 const packageJson = require('../../package.json');
-// 🆕 导入配置信息
-const configData = require('../../config.json');
 const configuredApiBaseUrl = configData.api?.baseUrl || 'http://127.0.0.1:18000'
 const configuredWebBaseUrl = configData.web?.baseUrl || configuredApiBaseUrl
 

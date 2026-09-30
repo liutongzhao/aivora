@@ -1,0 +1,16 @@
+{
+  "api": {
+    "baseUrl": "http://127.0.0.1:18000",
+    "aiEndpoint": "/api/ai",
+    "webEndpoint": "/api"
+  },
+  "websocket": {
+    "url": "http://127.0.0.1:18000"
+  },
+  "web": {
+    "baseUrl": "http://127.0.0.1:3000",
+    "logoutPath": "/login",
+    "dashboardPath": "/dashboard"
+  },
+  "environment": "development"
+}
