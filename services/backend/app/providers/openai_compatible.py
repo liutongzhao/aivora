@@ -31,13 +31,20 @@ class OpenAICompatibleProvider:
             raise RuntimeError("AI_API_KEY 未配置")
         definition = PromptRegistry.get(mode, language)
         prompt = prompt_override or definition.user_prompt(len(images), language)
+        system_prompt = definition.system_prompt
+        if mode == "programming":
+            target_language = language or "Python 3"
+            system_prompt = (
+                f"{system_prompt}\n\n本次任务的目标编程语言是：{target_language}。"
+                "code 字段必须严格使用该语言；不得因为截图中的编辑器语言或用户提示词而改用其他语言。"
+            )
         content: list[dict] = [{"type": "text", "text": prompt}]
         content.extend({"type": "image_url", "image_url": {"url": image}} for image in images)
         payload = {
             "model": model,
             "stream": True,
             "messages": [
-                {"role": "system", "content": self.system_prompt or definition.system_prompt},
+                {"role": "system", "content": self.system_prompt or system_prompt},
                 {"role": "user", "content": content},
             ],
         }
