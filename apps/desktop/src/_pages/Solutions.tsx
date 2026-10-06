@@ -1075,54 +1075,6 @@ const Solutions: React.FC<SolutionsProps> = ({
 
       // 🗑️ 流式错误处理也简化了
 
-      // 🆕 调试事件监听器
-      window.electronAPI.onDebugStart(() => {
-        setIsStreaming(true)
-        setStreamingContent('')
-        setStreamingProgress(0)
-        // 清空现有数据
-        setSolutionData(null)
-        setThoughtsData(null)
-        setTimeComplexityData(null)
-        setSpaceComplexityData(null)
-        setMultipleChoiceAnswers(null)
-      }),
-
-      window.electronAPI.onDebugStreamChunk?.((data: any) => {
-        console.log('🌊 Solutions收到调试流式数据:', data);
-        
-        if (data.isComplete) {
-          // 调试流式完成，解析最终内容
-          setTimeout(() => {
-            setIsStreaming(false)
-            setStreamingProgress(100)
-          }, 1500)
-          
-          // 解析调试内容
-          if (data.fullContent) {
-            const parsed = parseDebugContent(data.fullContent)
-            setSolutionData(parsed.code)
-            setThoughtsData(parsed.thoughts)
-            setTimeComplexityData(parsed.timeComplexity)
-            setSpaceComplexityData(parsed.spaceComplexity)
-            setMultipleChoiceAnswers(null)
-            
-            // 缓存到queryClient
-            queryClient.setQueryData(["solution"], {
-              type: 'programming',
-              code: parsed.code,
-              thoughts: parsed.thoughts,
-              time_complexity: parsed.timeComplexity,
-              space_complexity: parsed.spaceComplexity
-            })
-          }
-        } else {
-          // 调试流式进行中
-          setIsStreaming(true)
-          setStreamingContent(data.fullContent || '')
-          setStreamingProgress(data.progress || 0)
-        }
-      }) || (() => {}),
     ]
 
     // 🆕 监听全局快捷键事件（来自主进程）
