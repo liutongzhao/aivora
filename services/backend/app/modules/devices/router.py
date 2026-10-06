@@ -26,7 +26,7 @@ class DeviceRegisterRequest(BaseModel):
 
 
 class PairingVerifyRequest(BaseModel):
-    code: str = Field(min_length=8, max_length=8)
+    code: str = Field(pattern=r"^[0-9]{4}$")
 
 
 class PairingCreateRequest(BaseModel):

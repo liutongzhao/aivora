@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 
 import socketio
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 
 from app.config import get_settings
 from app.infrastructure.database import session_factory
@@ -22,24 +22,6 @@ logger = logging.getLogger(__name__)
 async def retire_stale_sessions() -> None:
     async with session_factory() as db:
         now = datetime.now(timezone.utc)
-        await db.execute(
-            update(RemoteCommand)
-            .where(
-                RemoteCommand.status.in_(("created", "accepted", "running")),
-                RemoteCommand.session_id.in_(
-                    select(RemoteSession.id).where(RemoteSession.status.in_(("pending", "connecting", "active", "closing")))
-                ),
-            )
-            .values(status="cancelled", finished_at=now, error_code="SERVER_RESTARTED", error_message="远程服务已重启")
-        )
-        await db.execute(
-            update(RemoteSession)
-            .where(RemoteSession.status.in_(("pending", "connecting", "active", "closing")))
-            .values(
-                status="closed", disconnected_at=now, disconnect_reason="server_restarted",
-                duration_seconds=func.greatest(0, func.extract("epoch", now - RemoteSession.connected_at)),
-            )
-        )
         await db.execute(
             update(PairingCode)
             .where(PairingCode.used_at.is_(None), PairingCode.revoked_at.is_(None))
@@ -121,17 +103,16 @@ async def disconnect(sid):
     session_id = context.get("session_id")
     if session_id and mobile_sids.get(session_id) == sid:
         mobile_sids.pop(session_id, None)
-    if not session_id:
-        return
-    if context.get("kind") == "mobile" and mobile_sids.get(session_id) != sid:
-        return
-    async with session_factory() as db:
-        result = await db.execute(select(RemoteSession).where(RemoteSession.id == session_id))
-        session = result.scalar_one_or_none()
-        if session and session.status in {"pending", "connecting", "active", "closing"}:
-            await close_active_sessions(db, session.user_id, "socket_disconnected")
+    # Transport disconnects are recoverable. The database session ends only
+    # through the explicit close endpoint or a replacement connection.
+    if session_id:
+        async with session_factory() as db:
+            await db.execute(
+                update(RemoteSession)
+                .where(RemoteSession.id == session_id, RemoteSession.status == "active")
+                .values(last_seen_at=datetime.now(timezone.utc))
+            )
             await db.commit()
-            await detach_session(session_id, "closed", "socket_disconnected")
 
 
 @sio.on("remote:desktop_register", namespace="/remote")
@@ -154,14 +135,37 @@ async def desktop_register(sid, data):
         if previous_sid and previous_sid != sid:
             previous = sid_context.get(previous_sid, {})
             if previous.get("session_id"):
-                await close_active_sessions(db, context["user_id"], "desktop_reconnected")
+                context["session_id"] = previous["session_id"]
+                await db.execute(
+                    update(RemoteSession)
+                    .where(
+                        RemoteSession.id == previous["session_id"],
+                        RemoteSession.user_id == context["user_id"],
+                        RemoteSession.status == "active",
+                    )
+                    .values(last_seen_at=datetime.now(timezone.utc), desktop_connected_at=datetime.now(timezone.utc))
+                )
                 await db.commit()
-                await detach_session(previous["session_id"], "closed", "desktop_reconnected")
+                sid_context[previous_sid]["session_id"] = None
             else:
                 sid_context.pop(previous_sid, None)
                 await sio.disconnect(previous_sid, namespace="/remote")
         context.update({"kind": "desktop", "device_id": device.id})
         desktop_sids[device.id] = sid
+        if not context.get("session_id"):
+            active = await db.execute(
+                select(RemoteSession).where(
+                    RemoteSession.user_id == context["user_id"],
+                    RemoteSession.device_id == device.id,
+                    RemoteSession.status == "active",
+                ).order_by(RemoteSession.updated_at.desc())
+            )
+            session = active.scalar_one_or_none()
+            if session:
+                context["session_id"] = session.id
+                session.last_seen_at = datetime.now(timezone.utc)
+                session.desktop_connected_at = datetime.now(timezone.utc)
+                await db.commit()
         return {"success": True}
 
 
@@ -201,6 +205,44 @@ async def mobile_register(sid, data):
     await sio.emit("remote:session_state", payload, to=desktop_sid, namespace="/remote")
     await sio.emit("remote:session_state", payload, to=sid, namespace="/remote")
     await sio.emit("remote:paired", {}, to=desktop_sid, namespace="/remote")
+    return {"success": True, "sessionId": str(session.id)}
+
+
+@sio.on("remote:mobile_reconnect", namespace="/remote")
+async def mobile_reconnect(sid, data):
+    context = sid_context.get(sid)
+    session_id = (data or {}).get("sessionId")
+    if not context or context.get("kind") != "unregistered" or not session_id:
+        return {"success": False, "error": "远程会话无效"}
+    try:
+        session_uuid = UUID(str(session_id))
+    except ValueError:
+        return {"success": False, "error": "远程会话无效"}
+    async with session_factory() as db:
+        result = await db.execute(
+            select(RemoteSession).where(
+                RemoteSession.id == session_uuid,
+                RemoteSession.user_id == context["user_id"],
+                RemoteSession.status == "active",
+            )
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            return {"success": False, "error": "远程会话已结束"}
+        desktop_sid = desktop_sids.get(session.device_id)
+        if not desktop_sid:
+            return {"success": False, "error": "桌面端尚未连接"}
+        session.mobile_connected_at = datetime.now(timezone.utc)
+        session.last_seen_at = session.mobile_connected_at
+        await db.commit()
+    context.update({"kind": "mobile", "device_id": session.device_id, "session_id": session.id})
+    mobile_sids[session.id] = sid
+    payload = {"status": "active", "sessionId": str(session.id), "connectedAt": int(session.connected_at.timestamp() * 1000)}
+    await sio.emit("remote:session_state", payload, to=desktop_sid, namespace="/remote")
+    await sio.emit("remote:session_state", payload, to=sid, namespace="/remote")
+    desktop_context = sid_context.get(desktop_sid)
+    if desktop_context:
+        desktop_context["session_id"] = session.id
     return {"success": True, "sessionId": str(session.id)}
 
 

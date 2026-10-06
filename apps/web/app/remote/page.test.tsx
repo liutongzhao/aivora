@@ -17,13 +17,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   Object.keys(handlers).forEach((key) => delete handlers[key]);
   window.localStorage.setItem("aivora_session_id", "test");
+  window.localStorage.removeItem("aivora_remote_session_id");
   socket.timeout.mockReturnValue(socket);
   socket.connected = true;
 });
 
 test("tracks a command by request id and shows its result", async () => {
   render(<RemotePage />);
-  fireEvent.change(screen.getByPlaceholderText("请输入连接码"), { target: { value: "1234ABCD" } });
+  fireEvent.change(screen.getByPlaceholderText("请输入4位连接码"), { target: { value: "0042" } });
   fireEvent.click(screen.getByRole("button", { name: "连接" }));
   await act(async () => { handlers.connect(); });
   const ack = socket.emit.mock.calls.find(([event]) => event === "remote:mobile_register")?.[2];
@@ -52,7 +53,7 @@ test("switches between command and connection history", async () => {
 
 test("does not start a command when the socket is disconnected", async () => {
   render(<RemotePage />);
-  fireEvent.change(screen.getByPlaceholderText("请输入连接码"), { target: { value: "1234ABCD" } });
+  fireEvent.change(screen.getByPlaceholderText("请输入4位连接码"), { target: { value: "0042" } });
   fireEvent.click(screen.getByRole("button", { name: "连接" }));
   await act(async () => { handlers.connect(); });
   const ack = socket.emit.mock.calls.find(([event]) => event === "remote:mobile_register")?.[2];
@@ -69,7 +70,7 @@ test("does not start a command when the socket is disconnected", async () => {
 
 test("marks a command as failed when the send acknowledgement times out", async () => {
   render(<RemotePage />);
-  fireEvent.change(screen.getByPlaceholderText("请输入连接码"), { target: { value: "1234ABCD" } });
+  fireEvent.change(screen.getByPlaceholderText("请输入4位连接码"), { target: { value: "0042" } });
   fireEvent.click(screen.getByRole("button", { name: "连接" }));
   await act(async () => { handlers.connect(); });
   const ack = socket.emit.mock.calls.find(([event]) => event === "remote:mobile_register")?.[2];
@@ -91,7 +92,7 @@ test("sends a command on an HTTP origin without crypto.randomUUID", async () => 
   Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined });
   try {
     render(<RemotePage />);
-    fireEvent.change(screen.getByPlaceholderText("请输入连接码"), { target: { value: "1234ABCD" } });
+    fireEvent.change(screen.getByPlaceholderText("请输入4位连接码"), { target: { value: "0042" } });
     fireEvent.click(screen.getByRole("button", { name: "连接" }));
     await act(async () => { handlers.connect(); });
     const ack = socket.emit.mock.calls.find(([event]) => event === "remote:mobile_register")?.[2];

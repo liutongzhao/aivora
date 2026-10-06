@@ -87,9 +87,9 @@ export default function RemotePage() {
   }
   useEffect(() => { void refreshHistory(); }, []);
 
-  function connect() {
+  function connect(sessionToRestore?: string) {
     const sessionId = window.localStorage.getItem("aivora_session_id");
-    if (!sessionId || code.length !== 8) {
+    if (!sessionId || (!sessionToRestore && !/^\d{4}$/.test(code))) {
       setMessage("请先在当前浏览器登录，并输入有效连接码");
       return;
     }
@@ -104,9 +104,10 @@ export default function RemotePage() {
       timeout: 10000,
     });
     socketRef.current = socket;
-    socket.on("connect", () => socket.timeout(10000).emit("remote:mobile_register", { code }, (error: Error | null, result: { success?: boolean; error?: string }) => {
+    socket.on("connect", () => socket.timeout(10000).emit(sessionToRestore ? "remote:mobile_reconnect" : "remote:mobile_register", sessionToRestore ? { sessionId: sessionToRestore } : { code }, (error: Error | null, result: { success?: boolean; error?: string; sessionId?: string }) => {
       if (error) { setConnected(false); setMessage("连接超时，请检查桌面端和本地服务后重试"); socket.disconnect(); return; }
-      if (!result?.success) { setConnected(false); setMessage(result?.error ?? "连接失败"); socket.disconnect(); return; }
+      if (!result?.success) { window.localStorage.removeItem("aivora_remote_session_id"); setConnected(false); setMessage(result?.error ?? "连接失败"); socket.disconnect(); return; }
+      if (result.sessionId) window.localStorage.setItem("aivora_remote_session_id", result.sessionId);
       setConnected(true);
       setMessage("已连接到桌面客户端");
       void refreshHistory();
@@ -133,8 +134,13 @@ export default function RemotePage() {
       setMessage(result.success ? "操作已完成" : result.error ?? "操作失败");
     });
     socket.on("connect_error", () => { setConnected(false); setMessage("无法连接远程服务"); });
-    socket.on("disconnect", () => { setConnected(false); setMessage((current) => current === "正在连接桌面端…" ? "连接已中断，请重试" : current === "已连接到桌面客户端" ? "桌面端已断开" : current); void refreshHistory(); });
+    socket.on("disconnect", () => { if (sessionToRestore || window.localStorage.getItem("aivora_remote_session_id")) return; setConnected(false); setMessage((current) => current === "正在连接桌面端…" ? "连接已中断，请重试" : current === "已连接到桌面客户端" ? "桌面端已断开" : current); void refreshHistory(); });
   }
+
+  useEffect(() => {
+    const storedSession = window.localStorage.getItem("aivora_remote_session_id");
+    if (storedSession) connect(storedSession);
+  }, []);
 
   function execute(action: string) {
     const socket = socketRef.current;
@@ -190,12 +196,17 @@ export default function RemotePage() {
           )}
         </div>
         {connected && <button className="remote-disconnect" title="断开连接" onClick={() => {
-          socketRef.current?.disconnect();
-          void apiFetch("/api/remote/session/close", { method: "POST" }).then(refreshHistory).catch(() => setMessage("结束会话失败，请重试"));
+          void apiFetch("/api/remote/session/close", { method: "POST" }).then(() => {
+            window.localStorage.removeItem("aivora_remote_session_id");
+            socketRef.current?.disconnect();
+            setConnected(false);
+            setSession({});
+            return refreshHistory();
+          }).catch(() => setMessage("结束会话失败，请重试"));
         }}><Power size={17} aria-hidden="true" /><span>断开</span></button>}
         {!connected && <div className="remote-connect-form">
-          <input aria-label="连接码" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="请输入连接码" />
-          <button className="button" disabled={code.length !== 8} onClick={connect}>连接</button>
+          <input aria-label="连接码" inputMode="numeric" pattern="[0-9]*" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="请输入4位连接码" />
+          <button className="button" disabled={!/^\d{4}$/.test(code)} onClick={() => connect()}>连接</button>
         </div>}
       </section>
       {message && message !== "已连接到桌面客户端" && <p className={`remote-message ${message.includes("失败") || message.includes("超时") ? "is-error" : ""}`} role="status">{message}</p>}

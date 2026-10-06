@@ -76,11 +76,11 @@ async def test_closing_socket_clears_mappings_and_notifies_both_peers(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_service_restart_retires_active_sessions(monkeypatch):
+async def test_service_restart_preserves_sessions_and_revokes_pairing_codes(monkeypatch):
     db = SimpleNamespace(execute=AsyncMock(), commit=AsyncMock())
     monkeypatch.setattr(remote, "session_factory", lambda: _DbContext(db))
     await remote.retire_stale_sessions()
-    assert db.execute.await_count == 3
+    assert db.execute.await_count == 1
     db.commit.assert_awaited_once()
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_pairing_failure_returns_ack_instead_of_hanging(monkeypatch):
     remote.sid_context["phone"] = {"kind": "unregistered", "user_id": uuid4()}
     monkeypatch.setattr(remote, "session_factory", BrokenDb)
     try:
-        result = await remote.mobile_register("phone", {"code": "1234ABCD"})
+        result = await remote.mobile_register("phone", {"code": "0042"})
         assert result["success"] is False
     finally:
         remote.sid_context.pop("phone", None)

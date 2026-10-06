@@ -57,7 +57,7 @@ async def create_pairing(
         db.add(device)
         await db.flush()
     await revoke_open_pairings(db, user_id, device.id)
-    code = secrets.token_hex(4).upper()
+    code = f"{secrets.randbelow(10000):04d}"
     pairing = PairingCode(
         user_id=user_id,
         device_id=device.id,
@@ -73,6 +73,8 @@ async def create_pairing(
 async def consume_pairing(
     db: AsyncSession, user_id: UUID, code: str
 ) -> PairingCode | None:
+    if len(code) != 4 or not code.isascii() or not code.isdigit():
+        return None
     result = await db.execute(
         select(PairingCode).where(
             PairingCode.user_id == user_id,
