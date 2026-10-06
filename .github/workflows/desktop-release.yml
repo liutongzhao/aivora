@@ -33,6 +33,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: 配置 Node.js
         uses: actions/setup-node@v4
@@ -47,8 +49,35 @@ jobs:
       - name: 类型检查
         run: npm run typecheck
 
-      - name: 构建并发布安装包
+      - name: 构建安装包
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npm run ${{ matrix.script }} -- --publish always
+        run: npm run ${{ matrix.script }}
+
+      - name: 上传平台安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: apps/desktop/release/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: 创建桌面端 Release
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有平台安装包
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: 发布桌面端安装包
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release-assets/*
