@@ -47,6 +47,14 @@ const statusLabels: Record<string, string> = {
 function duration(seconds: number) {
   return `${Math.floor(seconds / 60)}分${String(seconds % 60).padStart(2, "0")}秒`;
 }
+function createRequestId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 export default function RemotePage() {
   const [code, setCode] = useState("");
@@ -88,11 +96,17 @@ export default function RemotePage() {
     socketRef.current?.disconnect();
     setConnected(false);
     setMessage("正在连接桌面端…");
-    const socket = io(`${getApiBase()}/remote`, { auth: { sessionId }, transports: ["websocket"], reconnection: false });
+    const socket = io(`${getApiBase()}/remote`, {
+      auth: { sessionId },
+      transports: ["polling", "websocket"],
+      reconnection: true,
+      reconnectionAttempts: 3,
+      timeout: 10000,
+    });
     socketRef.current = socket;
     socket.on("connect", () => socket.timeout(10000).emit("remote:mobile_register", { code }, (error: Error | null, result: { success?: boolean; error?: string }) => {
-      if (error) { setMessage("连接超时，请检查桌面端和本地服务后重试"); socket.disconnect(); return; }
-      if (!result?.success) { setMessage(result?.error ?? "连接失败"); socket.disconnect(); return; }
+      if (error) { setConnected(false); setMessage("连接超时，请检查桌面端和本地服务后重试"); socket.disconnect(); return; }
+      if (!result?.success) { setConnected(false); setMessage(result?.error ?? "连接失败"); socket.disconnect(); return; }
       setConnected(true);
       setMessage("已连接到桌面客户端");
       void refreshHistory();
@@ -118,15 +132,27 @@ export default function RemotePage() {
       }
       setMessage(result.success ? "操作已完成" : result.error ?? "操作失败");
     });
-    socket.on("connect_error", () => setMessage("无法连接远程服务"));
+    socket.on("connect_error", () => { setConnected(false); setMessage("无法连接远程服务"); });
     socket.on("disconnect", () => { setConnected(false); setMessage((current) => current === "正在连接桌面端…" ? "连接已中断，请重试" : current === "已连接到桌面客户端" ? "桌面端已断开" : current); void refreshHistory(); });
   }
 
   function execute(action: string) {
-    const requestId = crypto.randomUUID();
+    const socket = socketRef.current;
+    if (!connected || !socket?.connected) {
+      setConnected(false);
+      setMessage("连接已失效，请重新连接");
+      return;
+    }
+    const requestId = createRequestId();
     setCommandStates((current) => ({ ...current, [requestId]: { requestId, action, status: "sending", createdAt: new Date().toISOString() } }));
-    socketRef.current?.timeout(10000).emit("remote:command", { action, requestId }, (error: Error | null, result: { success?: boolean; error?: string }) => {
-      if (error || !result?.success) setCommandStates((current) => ({ ...current, [requestId]: { ...current[requestId], status: "failed", errorMessage: error ? "发送超时" : result?.error ?? "操作发送失败" } }));
+    socket.timeout(10000).emit("remote:command", { action, requestId }, (error: Error | null, result: { success?: boolean; error?: string }) => {
+      if (error || !result?.success) {
+        setCommandStates((current) => ({ ...current, [requestId]: { ...current[requestId], status: "failed", errorMessage: error ? "发送超时，请重新连接后重试" : result?.error ?? "操作发送失败" } }));
+        if (error) {
+          setConnected(false);
+          setMessage("发送超时，请重新连接后重试");
+        }
+      }
       else setCommandStates((current) => {
         const previous = current[requestId];
         return { ...current, [requestId]: ["sending", "accepted"].includes(previous?.status) ? { ...previous, status: "accepted" } : previous };
