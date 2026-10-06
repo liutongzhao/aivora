@@ -1372,7 +1372,7 @@ async function initializeApp() {
         }
       }
       state.isTestModeActive = true
-      const searchActions: ShortcutAction[] = ['programming', 'singleChoice', 'singleChoiceAlt', 'multipleChoice', 'universal']
+      const searchActions: ShortcutAction[] = ['programming', 'debug', 'singleChoice', 'singleChoiceAlt', 'multipleChoice', 'universal']
 
       state.shortcutsHelper?.beginShortcutTest('any', {
         persistent: true,
@@ -1594,6 +1594,7 @@ function formatActionLabel(action: ShortcutAction) {
   const mapping: Record<ShortcutAction, string> = {
     screenshot: '截图',
     programming: '搜编程题',
+    debug: '搜调试题',
     singleChoice: '搜单选',
     singleChoiceAlt: '搜单选',
     multipleChoice: '搜多选',

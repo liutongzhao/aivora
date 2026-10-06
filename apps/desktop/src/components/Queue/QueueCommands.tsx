@@ -3,7 +3,7 @@ import React from "react"
 import { useShortcutBindings } from "../../contexts/shortcuts"
 import { getShortcutParts } from "../../utils/shortcutFormat"
 
-type ShortcutKey = 'screenshot' | 'singleChoice' | 'programming' | 'universal'
+type ShortcutKey = 'screenshot' | 'singleChoice' | 'programming' | 'debug' | 'universal'
 
 interface QueueCommandsProps {
   screenshotCount?: number
@@ -14,6 +14,7 @@ const navShortcuts: Array<{ label: string; action: ShortcutKey }> = [
   { label: '截图', action: 'screenshot' },
   { label: '单选', action: 'singleChoice' },
   { label: '编程', action: 'programming' },
+  { label: '调试', action: 'debug' },
   { label: '通用', action: 'universal' }
 ]
 

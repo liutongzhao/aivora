@@ -294,6 +294,7 @@ export class CompatibilityChecker {
       { keys: 'CommandOrControl+Shift+,', name: '单选题处理(备用)' },
       { keys: 'CommandOrControl+Shift+Enter', name: '多选题处理' },
       { keys: 'CommandOrControl+.', name: '通用搜题' },
+      { keys: 'CommandOrControl+Shift+D', name: '调试题' },
       { keys: 'CommandOrControl+Shift+S', name: '部分截图' },
       
       // 窗口移动快捷键

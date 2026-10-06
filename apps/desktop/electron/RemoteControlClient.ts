@@ -195,7 +195,7 @@ export class RemoteControlClient {
             socket.emit('remote:command_status', { requestId: data.requestId, action: data.action, status: error?.message?.includes('超时') ? 'timeout' : 'failed', errorCode: error?.message?.includes('超时') ? 'ACTION_TIMEOUT' : 'ACTION_FAILED', errorMessage: error?.message || '动作执行失败' })
           }
         }
-        const expensive = ['screenshot', 'partialScreenshot', 'programming', 'singleChoice', 'singleChoiceAlt', 'multipleChoice', 'universal', 'reset', 'refreshConfig'].includes(data?.action || '')
+        const expensive = ['screenshot', 'partialScreenshot', 'programming', 'debug', 'singleChoice', 'singleChoiceAlt', 'multipleChoice', 'universal', 'reset', 'refreshConfig'].includes(data?.action || '')
         if (!expensive) {
           void run()
           return

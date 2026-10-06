@@ -660,6 +660,15 @@ export class ShortcutsHelper {
       await this.deps.processingHelper?.processScreenshots()
     })
 
+    // 调试题快捷键 - Ctrl+Shift+D (Command+Shift+D)
+    this.registerShortcut(bindings.debug, 'debug', async () => {
+      if (!this.ensureExamReady('debug')) {
+        return
+      }
+      console.log("Debug shortcut triggered. Processing as debug questions...")
+      await this.deps.processingHelper?.debugCode({})
+    })
+
     // 单选题快捷键 - Ctrl+M (Command+M)  
     this.registerShortcut(bindings.singleChoice, 'singleChoice', async () => {
       if (!this.ensureExamReady('singleChoice')) {

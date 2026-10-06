@@ -26,6 +26,7 @@ describe('QueueCommands', () => {
     expect(screen.getAllByText('截图').length).toBeGreaterThan(0)
     expect(screen.getByText('单选')).toBeTruthy()
     expect(screen.getByText('编程')).toBeTruthy()
+    expect(screen.getByText('调试')).toBeTruthy()
     expect(screen.getByText('通用')).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
     expect(triggerScreenshot).not.toHaveBeenCalled()

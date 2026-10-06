@@ -1,6 +1,7 @@
 export type ShortcutAction =
   | 'screenshot'
   | 'programming'
+  | 'debug'
   | 'singleChoice'
   | 'singleChoiceAlt'
   | 'multipleChoice'
@@ -59,6 +60,12 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
     action: 'programming',
     label: '搜编程题',
     description: '对当前队列进行编程题识别',
+    category: 'process'
+  },
+  {
+    action: 'debug',
+    label: '搜调试题',
+    description: '对当前截图进行代码调试',
     category: 'process'
   },
   {
@@ -259,6 +266,7 @@ export const defaultShortcutBindings: Record<ShortcutAction, string> = {
   screenshot: 'CommandOrControl+Shift+H',
   partialScreenshot: 'CommandOrControl+Shift+S',
   programming: 'CommandOrControl+Enter',
+  debug: 'CommandOrControl+Shift+D',
   singleChoice: 'CommandOrControl+Shift+M',
   singleChoiceAlt: 'CommandOrControl+Shift+,',
   multipleChoice: 'CommandOrControl+Shift+Enter',

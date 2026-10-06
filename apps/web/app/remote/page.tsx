@@ -13,6 +13,7 @@ const actions = [
   ["截图", "screenshot"],
   ["局部截图", "partialScreenshot"],
   ["编程题", "programming"],
+  ["调试题", "debug"],
   ["单选题", "singleChoice"],
   ["多选题", "multipleChoice"],
   ["通用搜题", "universal"],
@@ -29,16 +30,16 @@ type Command = { requestId: string; action: string; status: string; errorMessage
 type History = { id: string; status: string; connectedAt?: string; disconnectedAt?: string; durationSeconds?: number; disconnectReason?: string };
 const labels: Record<string, string> = Object.fromEntries(actions.map(([label, action]) => [action, label]));
 const actionIcons: Record<string, typeof Camera> = {
-  screenshot: Camera, partialScreenshot: ScanLine, programming: Code2,
+  screenshot: Camera, partialScreenshot: ScanLine, programming: Code2, debug: Code2,
   singleChoice: ListChecks, multipleChoice: ListChecks, universal: Search,
   reset: RotateCcw, refreshConfig: RefreshCw, increaseOpacity: Sun,
   decreaseOpacity: Sun, zoomIn: Plus, zoomOut: Minus,
   copyCode: ClipboardCopy, deleteLastScreenshot: Trash2,
 };
 const actionGroups = [
-  { name: "截屏与答题", items: actions.slice(0, 6) },
-  { name: "窗口与显示", items: actions.slice(8, 12) },
-  { name: "其他操作", items: [...actions.slice(6, 8), ...actions.slice(12)] },
+  { name: "截屏与答题", items: actions.slice(0, 7) },
+  { name: "窗口与显示", items: actions.slice(9, 13) },
+  { name: "其他操作", items: [...actions.slice(7, 9), ...actions.slice(13)] },
 ];
 const statusLabels: Record<string, string> = {
   sending: "发送中", accepted: "已接收", running: "执行中", success: "已完成",

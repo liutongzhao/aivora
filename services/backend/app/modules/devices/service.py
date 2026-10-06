@@ -10,7 +10,7 @@ from app.modules.devices.models import DesktopDevice, PairingCode, RemoteCommand
 
 ACTIVE_SESSION_STATUSES = ("pending", "connecting", "active", "closing")
 ALLOWED_ACTIONS = {
-    "screenshot", "partialScreenshot", "programming", "singleChoice",
+    "screenshot", "partialScreenshot", "programming", "debug", "singleChoice",
     "singleChoiceAlt", "multipleChoice", "universal", "reset", "refreshConfig",
     "increaseOpacity", "decreaseOpacity", "zoomIn", "zoomOut", "copyCode",
     "deleteLastScreenshot", "quitApp",

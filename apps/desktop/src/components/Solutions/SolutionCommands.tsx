@@ -15,6 +15,7 @@ const navShortcuts = [
   { label: "截图", action: "screenshot" as const },
   { label: "单选", action: "singleChoice" as const },
   { label: "编程", action: "programming" as const },
+  { label: "调试", action: "debug" as const },
   { label: "通用", action: "universal" as const }
 ]
 
