@@ -25,7 +25,7 @@ const ScreenshotQueue: React.FC<ScreenshotQueueProps> = ({
     )
   }
 
-  const displayScreenshots = screenshots.slice(0, 5)
+  const displayScreenshots = screenshots.slice(0, 10)
 
   return (
     <div className="flex flex-wrap gap-2">
