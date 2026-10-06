@@ -43,6 +43,37 @@ describe('AIService', () => {
     expect(request.image).toBeUndefined()
   })
 
+  it('sends debug screenshots and the configured language', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            task_id: 'debug-task',
+            stream_token: 'debug-stream',
+          }),
+          { status: 200 },
+        ),
+      ),
+    )
+
+    await new AIService().processScreenshotSSE(
+      ['debug-image-a', 'debug-image-b'],
+      'debug',
+      { language: 'java' },
+    )
+
+    const request = JSON.parse(
+      String((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body),
+    )
+    expect(request).toEqual({
+      mode: 'debug',
+      language: 'java',
+      images: ['debug-image-a', 'debug-image-b'],
+    })
+  })
+
   it('maps terminal backend statuses to the renderer status contract', async () => {
     vi.stubGlobal(
       'fetch',

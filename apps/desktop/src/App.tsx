@@ -402,7 +402,10 @@ function App() {
           
           // 🔧 使用useAIProcessing hook来处理WebSocket方式
           console.log('🔄 [APP] 调用useAIProcessing.debugCode...')
-          await debugCode(requestData.screenshot, requestData.code || '', requestData.language)
+          const screenshots = Array.isArray(requestData.screenshots)
+            ? requestData.screenshots
+            : requestData.screenshot
+          await debugCode(screenshots, requestData.code || '', requestData.language)
           
           console.log('✅ [APP] AI调试请求已通过WebSocket方式提交')
           

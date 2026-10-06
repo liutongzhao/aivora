@@ -74,7 +74,7 @@ interface AIProcessingState {
 
 export interface UseAIProcessingReturn extends AIProcessingState {
   processScreenshot: (screenshot: string | string[], options?: ProcessingOptions) => Promise<void>
-  debugCode: (screenshot: string, code?: string, language?: string) => Promise<void>
+  debugCode: (screenshot: string | string[], code?: string, language?: string) => Promise<void>
   cancelProcessing: () => Promise<void>
   clearError: () => void
   clearResult: () => void
@@ -575,7 +575,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
    * 调试代码
    */
   const debugCode = useCallback(async (
-    screenshot: string,
+    screenshot: string | string[],
     code?: string,
     language?: string
   ) => {
@@ -625,7 +625,11 @@ export function useAIProcessing(): UseAIProcessingReturn {
       }))
 
       // 🆕 使用新的SSE方式发送调试请求
-      const response = await aiService.processScreenshotSSE(screenshot, 'debug')
+      const response = await aiService.processScreenshotSSE(
+        screenshot,
+        'debug',
+        language ? { language } : undefined,
+      )
       
       if (response.success && response.task_id) {
         console.log(`✅ [SSE] 代码调试请求已提交: ${response.task_id}`)
