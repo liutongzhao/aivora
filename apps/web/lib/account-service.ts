@@ -138,8 +138,23 @@ async function getOptional<T>(
 }
 
 export async function getAccountEntitlements(): Promise<Entitlement[]> {
-  const records = await apiFetch<ApiEntitlement[]>("/api/account/entitlements");
-  return records.map(normalizeEntitlement);
+  const response = await apiFetch<ApiEntitlement[] | {
+    id?: string;
+    active?: boolean;
+    status?: string | null;
+    startsAt?: string | null;
+    expiresAt?: string | null;
+    source?: string | null;
+  }>("/api/account/entitlements");
+  if (Array.isArray(response)) return response.map(normalizeEntitlement);
+  if (!response.status || !response.startsAt || !response.expiresAt) return [];
+  return [{
+    id: response.id ?? "current",
+    status: response.active === false ? "expired" : response.status,
+    startsAt: response.startsAt,
+    expiresAt: response.expiresAt,
+    source: response.source ?? null,
+  }];
 }
 
 export async function getAccountUsageHistory(): Promise<UsageRecord[]> {

@@ -148,6 +148,30 @@ describe("account service", () => {
       },
     ]);
   });
+
+  it("accepts the current single entitlement response shape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({
+          active: true,
+          status: "active",
+          startsAt: "2026-10-01T00:00:00Z",
+          expiresAt: "2027-04-01T00:00:00Z",
+        }), { status: 200 }),
+      ),
+    );
+
+    await expect(getAccountEntitlements()).resolves.toEqual([
+      {
+        id: "current",
+        status: "active",
+        startsAt: "2026-10-01T00:00:00Z",
+        expiresAt: "2027-04-01T00:00:00Z",
+        source: null,
+      },
+    ]);
+  });
 });
 
 const _typeCheck: AccountSnapshot | null = null;

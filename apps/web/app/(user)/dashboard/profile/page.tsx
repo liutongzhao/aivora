@@ -22,7 +22,13 @@ export default function ProfilePage() {
     else setLoading(true);
     setError("");
     try {
-      const [nextSnapshot, nextHistory] = await Promise.all([getAccountSnapshot(), getAccountUsageHistory()]);
+      const [nextSnapshot, nextHistory] = await Promise.all([
+        getAccountSnapshot(),
+        getAccountUsageHistory().catch((reason) => {
+          setError(reason instanceof Error ? `使用记录暂时无法加载：${reason.message}` : "使用记录暂时无法加载");
+          return [];
+        }),
+      ]);
       setSnapshot(nextSnapshot);
       setHistory(nextHistory);
       if (nextSnapshot.issues.length) setError(nextSnapshot.issues.map((issue) => issue.message).join("；"));
