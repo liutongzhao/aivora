@@ -3,6 +3,11 @@ import { useCallback, useEffect, useRef } from 'react'
 import { aiService, ProcessingOptions, ProcessingStatus, AIProcessResult } from '../services/aiService'
 import { sseService } from '../services/sseService'
 import { useOptimizedState } from './useOptimizedState'
+import {
+  fetchUsageSummary,
+  getUsageAvailability,
+  getUsageErrorMessage,
+} from '../services/usageEntitlement'
 // ✅ WebSocket已完全移除，现在使用SSE进行实时通信
 
 // 🆕 客户端格式化函数
@@ -124,6 +129,48 @@ export function useAIProcessing(): UseAIProcessingReturn {
   
   // 🆕 防重入锁：防止多次同时清除导致状态竞争
   const isClearingRef = useRef<boolean>(false)
+
+  const checkUsageBeforeProcessing = useCallback(async () => {
+    try {
+      const usage = await fetchUsageSummary()
+      const availability = getUsageAvailability(usage)
+      if (availability.allowed) {
+        return true
+      }
+
+      const code =
+        availability.reason === 'entitlement_expired'
+          ? 'ENTITLEMENT_EXPIRED'
+          : 'TRIAL_EXHAUSTED'
+      const message = getUsageErrorMessage(code)
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        isInitializing: false,
+        stage: 'error',
+        message,
+        error: { code, message }
+      }))
+      throw Object.assign(new Error(message), { code })
+    } catch (error: any) {
+      if (error?.code === 'TRIAL_EXHAUSTED' || error?.code === 'ENTITLEMENT_EXPIRED') {
+        throw error
+      }
+      const message = '无法检查账号使用资格，请检查网络连接后重试'
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        isInitializing: false,
+        stage: 'error',
+        message,
+        error: {
+          code: 'USAGE_CHECK_FAILED',
+          message: error?.message || message
+        }
+      }))
+      throw Object.assign(new Error(message), { code: 'USAGE_CHECK_FAILED' })
+    }
+  }, [])
   
   // SSE状态更新处理函数
   const handleStatusUpdate = useCallback((status: ProcessingStatus) => {
@@ -455,6 +502,8 @@ export function useAIProcessing(): UseAIProcessingReturn {
     }
 
     try {
+      await checkUsageBeforeProcessing()
+
       const isMultiScreenshot = Array.isArray(screenshot)
       const screenshotArray = Array.isArray(screenshot) ? screenshot : [screenshot]
       
@@ -549,16 +598,28 @@ export function useAIProcessing(): UseAIProcessingReturn {
       } else {
         // 请求失败
         console.error('❌ AI处理请求失败:', response.error)
+        const message = getUsageErrorMessage(response.error?.code, response.error?.message)
         setState(prev => ({
           ...prev,
           isProcessing: false,
           isInitializing: false,
-          error: response.error
+          stage: 'error',
+          message,
+          error: {
+            code: response.error?.code,
+            message
+          }
         }))
+        throw Object.assign(new Error(message), {
+          code: response.error?.code
+        })
       }
 
     } catch (error: any) {
       console.error('❌ 处理截图异常:', error)
+      if (['TRIAL_EXHAUSTED', 'ENTITLEMENT_EXPIRED', 'EMAIL_NOT_VERIFIED', 'USAGE_CHECK_FAILED'].includes(error?.code)) {
+        throw error
+      }
       setState(prev => ({
         ...prev,
         isProcessing: false,
@@ -569,7 +630,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         }
       }))
     }
-  }, [state.isProcessing])
+  }, [checkUsageBeforeProcessing, state.isProcessing])
 
   /**
    * 调试代码
@@ -585,6 +646,8 @@ export function useAIProcessing(): UseAIProcessingReturn {
     }
 
     try {
+      await checkUsageBeforeProcessing()
+
       console.log('🔧 开始调试代码...')
       
       // 🚀 清理之前的轮询（如果存在）
@@ -665,16 +728,28 @@ export function useAIProcessing(): UseAIProcessingReturn {
 
       } else {
         console.error('❌ 代码调试请求失败:', response.error)
+        const message = getUsageErrorMessage(response.error?.code, response.error?.message)
         setState(prev => ({
           ...prev,
           isProcessing: false,
           isInitializing: false,
-          error: response.error
+          stage: 'error',
+          message,
+          error: {
+            code: response.error?.code,
+            message
+          }
         }))
+        throw Object.assign(new Error(message), {
+          code: response.error?.code
+        })
       }
 
     } catch (error: any) {
       console.error('❌ 调试代码异常:', error)
+      if (['TRIAL_EXHAUSTED', 'ENTITLEMENT_EXPIRED', 'EMAIL_NOT_VERIFIED', 'USAGE_CHECK_FAILED'].includes(error?.code)) {
+        throw error
+      }
       setState(prev => ({
         ...prev,
         isProcessing: false,
@@ -685,7 +760,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         }
       }))
     }
-  }, [state.isProcessing])
+  }, [checkUsageBeforeProcessing, state.isProcessing])
 
   /**
    * 取消处理

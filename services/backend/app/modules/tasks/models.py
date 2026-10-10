@@ -29,6 +29,9 @@ class AITask(Base):
     prompt_version_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("user_prompt_versions.id")
     )
+    usage_ledger_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("usage_ledger.id", ondelete="SET NULL")
+    )
     stream_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     stream_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(80))

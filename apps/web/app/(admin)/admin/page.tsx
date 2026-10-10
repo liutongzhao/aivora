@@ -25,7 +25,7 @@ export default function AdminPage() {
         <div className="metric-card"><span>任务总数</span><strong>{overview?.tasks ?? "—"}</strong></div>
         <div className="metric-card"><span>运行中</span><strong>{overview?.running_tasks ?? "—"}</strong></div>
       </section>
-      <div className="admin-overview"><div className="panel"><div className="panel-heading"><div><span className="eyebrow">MANAGE</span><h2>管理入口</h2></div></div><div className="admin-link-list"><Link href="/admin/users">用户管理 <span>→</span></Link><Link href="/admin/tasks">任务监控 <span>→</span></Link><Link href="/admin/models">模型目录 <span>→</span></Link></div></div><div><span className="eyebrow">SYSTEM</span><h2 className="admin-health-title">服务状态 · {healthLabel}</h2><ServiceHealthGrid checks={checks} /></div></div>
+      <div className="admin-overview"><div className="panel"><div className="panel-heading"><div><span className="eyebrow">MANAGE</span><h2>管理入口</h2></div></div><div className="admin-link-list"><Link href="/admin/users">用户管理 <span>→</span></Link><Link href="/admin/tasks">任务监控 <span>→</span></Link><Link href="/admin/models">模型目录 <span>→</span></Link><Link href="/admin/licenses">授权码与期限 <span>→</span></Link></div></div><div><span className="eyebrow">SYSTEM</span><h2 className="admin-health-title">服务状态 · {healthLabel}</h2><ServiceHealthGrid checks={checks} /></div></div>
     </main>
   );
 }

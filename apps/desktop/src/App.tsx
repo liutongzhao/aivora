@@ -23,6 +23,7 @@ import ClickThroughManager from "./components/ClickThroughManager"
 import { useWebAuth } from "./hooks/useWebAuth"
 import { useAIProcessing } from "./hooks/useAIProcessing"
 import { ShortcutProvider } from "./contexts/shortcuts"
+import { getUsageErrorMessage } from "./services/usageEntitlement"
 
 // 🆕 临时恢复QueryClient以保持向后兼容，SSE功能已独立实现
 const queryClient = new QueryClient({
@@ -376,7 +377,19 @@ function App() {
           
         } catch (error) {
           console.error('❌ [APP] 处理AI请求异常:', error)
-          showToast('处理失败', '无法连接AI服务，请稍后重试', 'error')
+          const code = typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code?: unknown }).code || '')
+            : undefined
+          showToast(
+            code
+              ? '暂时无法使用'
+              : '处理失败',
+            getUsageErrorMessage(
+              code,
+              error instanceof Error ? error.message : '无法连接AI服务，请稍后重试'
+            ),
+            'error'
+          )
         }
       })
       unsubscribers.push(unsubscribeAiProcess)

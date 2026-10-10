@@ -15,6 +15,12 @@ import { ConnectionSettings } from '../components/ConnectionSettings/ConnectionS
 import { WindowSettings } from '../components/WindowSettings/WindowSettings'
 import { AccountSettings } from '../components/AccountSettings/AccountSettings'
 import { ClientToast, ClientToastVariant } from '../components/ClientShell/ClientToast'
+import {
+  fetchUsageSummary,
+  getUsageAvailability,
+  getUsageMessage,
+  type UsageSummary
+} from '../services/usageEntitlement'
 
 type ShortcutMap = Record<ShortcutAction, string>
 
@@ -59,6 +65,8 @@ export function ConfigPage() {
   const [remoteNow, setRemoteNow] = useState(Date.now())
   const [activeSection, setActiveSection] = useState<ClientSection>('models')
   const [promptDirty, setPromptDirty] = useState(false)
+  const [usage, setUsage] = useState<UsageSummary | null>(null)
+  const [usageLoading, setUsageLoading] = useState(true)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showToast = useCallback((message: string, variant: ClientToastVariant = 'info') => {
@@ -81,6 +89,26 @@ export function ConfigPage() {
     showToast(message, success ? 'success' : 'error')
   }, [showToast])
 
+  const refreshUsage = useCallback(async () => {
+    if (!window.electronAPI?.apiRequest) {
+      setUsageLoading(false)
+      return null
+    }
+
+    setUsageLoading(true)
+    try {
+      const nextUsage = await fetchUsageSummary()
+      setUsage(nextUsage)
+      return nextUsage
+    } catch (error) {
+      console.error('获取账号使用资格失败:', error)
+      setUsage(null)
+      return null
+    } finally {
+      setUsageLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -97,6 +125,8 @@ export function ConfigPage() {
       } catch (error) {
         console.error('获取认证信息失败:', error)
       }
+
+      await refreshUsage()
 
       try {
         const bindings = await window.electronAPI.getShortcutBindings()
@@ -117,7 +147,7 @@ export function ConfigPage() {
     return () => {
       unsubscribeTest?.()
     }
-  }, [showToastMessage])
+  }, [refreshUsage, showToastMessage])
 
   useEffect(() => {
     const unsubscribeRemote = window.electronAPI.remoteControl?.onState((state) => {
@@ -285,8 +315,18 @@ export function ConfigPage() {
     return () => window.removeEventListener('pointerdown', handlePointerDown, true)
   }, [recordingAction, handleUpdateBinding])
 
-  const handleLaunchExamClient = () => {
+  const handleLaunchExamClient = async () => {
     if (examClientLaunching) return
+    const latestUsage = await refreshUsage()
+    if (!latestUsage || !getUsageAvailability(latestUsage).allowed) {
+      showToast(
+        latestUsage
+          ? getUsageMessage(latestUsage)
+          : '无法检查账号使用资格，请检查网络连接后重试',
+        'error'
+      )
+      return
+    }
     setTestResult(null)
     setIsThemeDialogOpen(true)
   }
@@ -420,12 +460,48 @@ export function ConfigPage() {
       <main className="client-settings-content space-y-8" data-active-section={activeSection}>
         <div className="client-page-actions">
           {activeSection === 'models' && (
-            <button className="client-button client-button-primary" onClick={handleLaunchExamClient} disabled={examClientLaunching}>
+            <button
+              className="client-button client-button-primary"
+              onClick={() => void handleLaunchExamClient()}
+              disabled={examClientLaunching || usageLoading || !usage || !getUsageAvailability(usage).allowed}
+            >
               <Play size={16} aria-hidden="true" />
-              {examClientLaunching ? '启动中...' : '开始使用'}
+              {examClientLaunching
+                ? '启动中...'
+                : usageLoading
+                  ? '检查使用资格...'
+                  : '开始使用'}
             </button>
           )}
         </div>
+
+        {activeSection === 'models' && (
+          <section data-client-page="models" className="border-b border-slate-200 py-4">
+            <div
+              className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
+                usage && getUsageAvailability(usage).allowed
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-rose-200 bg-rose-50 text-rose-800'
+              }`}
+              role={usage && getUsageAvailability(usage).allowed ? 'status' : 'alert'}
+            >
+              <div className="min-w-0">
+                <p className="font-medium">
+                  {usageLoading
+                    ? '正在检查账号使用资格'
+                    : usage
+                      ? getUsageMessage(usage)
+                      : '无法检查账号使用资格'}
+                </p>
+                <p className="mt-1 text-sm opacity-80">
+                  {usage && getUsageAvailability(usage).allowed
+                    ? '可以开始使用，系统会在服务端自动记录本次使用。'
+                    : '没有可用次数或有效授权时，开始使用按钮会保持禁用。'}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section data-client-page="connection" className="client-update-action">
           <button type="button" className="client-button client-button-secondary" onClick={handleCheckUpdate} disabled={updateChecking}>

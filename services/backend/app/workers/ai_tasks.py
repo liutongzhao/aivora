@@ -13,6 +13,7 @@ from app.infrastructure.events import event_bus
 from app.infrastructure.storage import storage
 from app.modules.files.models import StoredFile
 from app.modules.tasks.models import AITask, Answer, TaskImage
+from app.modules.usage.service import TrialUsageService
 from app.modules.tasks.field_stream import FieldProjector
 from app.modules.byok.crypto import decrypt_secret
 from app.modules.byok.models import ProviderConnection, UserModel, UserPromptVersion
@@ -126,6 +127,10 @@ async def _mark_provider_started(task_id: UUID) -> bool:
                 AITask.stage == "ai_streaming",
             ).values(stage="provider_started").returning(AITask.id)
         )
+        if started:
+            task = await db.get(AITask, task_id)
+            if task:
+                await TrialUsageService().commit(db, task.usage_ledger_id)
         await db.commit()
     return started is not None
 

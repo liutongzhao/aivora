@@ -17,7 +17,7 @@ def validate_password_strength(value: str) -> str:
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    registration_ticket: str = Field(min_length=20, max_length=200)
     password: str = Field(min_length=8, max_length=128)
     username: str | None = Field(default=None, max_length=120)
 
@@ -29,6 +29,37 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
     device_type: str = Field(default="web", max_length=30)
     device_name: str | None = Field(default=None, max_length=120)
+
+
+class SendVerificationCodeRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyVerificationCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class VerificationMessageResponse(BaseModel):
+    success: bool = True
+    message: str
+
+
+class VerificationTicketResponse(BaseModel):
+    success: bool = True
+    registration_ticket: str
+    expires_in_seconds: int
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+
+    _validate_password = field_validator("password")(validate_password_strength)
 
 
 class UserResponse(BaseModel):
@@ -51,4 +82,3 @@ class AuthResponse(BaseModel):
 class MessageResponse(BaseModel):
     success: bool = True
     message: str
-

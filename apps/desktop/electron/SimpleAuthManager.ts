@@ -799,7 +799,6 @@ export class SimpleAuthManager extends EventEmitter {
     console.log('🔑 SessionId长度:', this.token.length)
     console.log('🔑 SessionId前缀:', this.token.substring(0, 10) + '...')
     console.log('🌐 API地址:', `${this.apiBaseUrl}/api/session_status`)
-    console.log('📤 请求头:', this.apiClient.defaults.headers.common['X-Session-Id'])
 
     let retryCount = 0;
     const maxRetries = 2;

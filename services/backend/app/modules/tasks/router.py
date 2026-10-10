@@ -17,6 +17,7 @@ from app.modules.identity.models import User
 from app.modules.tasks.models import AITask, Answer, TaskImage, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest, TaskCreatedResponse, TaskResponse
 from app.modules.tasks.service import TaskService, hash_stream_token
+from app.modules.usage.service import UsageError
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -88,6 +89,8 @@ async def process_screenshot(
 ) -> TaskCreatedResponse:
     try:
         task, stream_token = await TaskService(db).create(user.id, request)
+    except UsageError as error:
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message})
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
     if not stream_token:

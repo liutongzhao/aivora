@@ -17,6 +17,7 @@ from app.modules.files.service import FileService
 from app.modules.byok.service import BYOKService
 from app.modules.tasks.models import AITask, Answer, TaskImage, TaskStreamToken
 from app.modules.tasks.schemas import ProcessScreenshotRequest
+from app.modules.usage.service import TrialUsageService
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -88,8 +89,15 @@ class TaskService:
             except ValueError:
                 raise
         await self._purge_expired_tokens()
+        task_id = uuid4()
+        usage_key = (
+            f"{user_id}:{request.client_request_id}"
+            if request.client_request_id
+            else f"{user_id}:{task_id}"
+        )
+        usage = await TrialUsageService().reserve_for_task(self.db, user_id, usage_key)
         task = AITask(
-            id=uuid4(),
+            id=task_id,
             user_id=user_id,
             client_request_id=request.client_request_id,
             mode=request.mode,
@@ -100,6 +108,7 @@ class TaskService:
             provider_connection_id=runtime_config["connection_id"] if runtime_config else None,
             user_model_id=runtime_config["model_id"] if runtime_config else None,
             prompt_version_id=runtime_config["prompt_version_id"] if runtime_config else None,
+            usage_ledger_id=usage.ledger_id,
         )
         if request.client_request_id:
             statement = insert(AITask).values(
@@ -111,6 +120,7 @@ class TaskService:
                 provider_connection_id=runtime_config["connection_id"] if runtime_config else None,
                 user_model_id=runtime_config["model_id"] if runtime_config else None,
                 prompt_version_id=runtime_config["prompt_version_id"] if runtime_config else None,
+                usage_ledger_id=usage.ledger_id,
             ).on_conflict_do_nothing(
                 index_elements=[AITask.user_id, AITask.client_request_id],
                 index_where=AITask.client_request_id.is_not(None),
@@ -125,6 +135,7 @@ class TaskService:
             await self.db.flush()
 
         task_id = task.id
+        await TrialUsageService().attach_task(self.db, usage.ledger_id, task_id)
         uploaded_keys: list[str] = []
         try:
             async with self.db.begin_nested():
@@ -144,6 +155,7 @@ class TaskService:
                 ))
         except BaseException:
             _remove_task_objects(user_id, task_id, uploaded_keys)
+            await TrialUsageService().reverse(self.db, usage.ledger_id, "task_input_upload_failed")
             task = await self.db.get(AITask, task_id)
             task.status = "failed"
             task.stage = "error"

@@ -25,6 +25,22 @@ class Settings(BaseSettings):
     byok_required: bool = True
     task_dispatch_global_limit: int = Field(default=4, ge=1)
     task_dispatch_user_limit: int = Field(default=2, ge=1)
+    trial_searches: int = Field(default=5, ge=0)
+    license_default_duration_months: int = Field(default=6, ge=1, le=120)
+    license_max_duration_months: int = Field(default=24, ge=1, le=120)
+
+    mail_provider: str = "smtp"
+    mail_host: str = ""
+    mail_port: int = Field(default=465, ge=1, le=65535)
+    mail_username: str = ""
+    mail_password: str = ""
+    mail_from: str = ""
+    mail_from_name: str = "Aivora"
+    mail_use_tls: bool = True
+    mail_code_ttl_minutes: int = Field(default=10, ge=1, le=60)
+    mail_registration_ticket_ttl_minutes: int = Field(default=15, ge=1, le=60)
+    password_reset_ttl_minutes: int = Field(default=30, ge=5, le=120)
+    web_base_url: str = "http://localhost:3000"
 
     ai_base_url: str = "https://ai-pixel.online"
     ai_model: str = "gpt-6-sol"
