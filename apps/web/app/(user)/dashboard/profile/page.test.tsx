@@ -66,6 +66,8 @@ describe("个人中心", () => {
     expect(screen.getByText("剩余 3 次")).toBeInTheDocument();
     expect(screen.getByText("模型已就绪")).toBeInTheDocument();
     expect(screen.getByText(/2026.*10.*10/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /模型设置/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /AI 任务/ })).not.toBeInTheDocument();
   });
 
   it("explains exhausted trial and expired entitlement states", async () => {

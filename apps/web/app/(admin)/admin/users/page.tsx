@@ -49,7 +49,33 @@ export default function AdminUsersPage() {
       setError(reasonError instanceof Error ? reasonError.message : "体验次数调整失败");
     }
   }
+  async function updateEntitlement(action: "extend" | "paused" | "revoked") {
+    if (!detail) return;
+    if (action !== "extend" && !window.confirm(`确定${action === "paused" ? "暂停" : "撤销"}该用户的授权吗？`)) return;
+    const reason = window.prompt("调整原因", action === "extend" ? "售后补偿" : action === "paused" ? "暂时暂停授权" : "退款处理");
+    if (!reason) return;
+    let body: { months: number; reason: string } | { reason: string };
+    if (action === "extend") {
+      const months = Number(window.prompt("延长月数", "1") || "0");
+      if (!Number.isInteger(months) || months < 1) return;
+      body = { months, reason };
+    } else {
+      body = { reason };
+    }
+    try {
+      await apiFetch(
+        action === "extend"
+          ? `/api/admin/users/${detail.user.id}/entitlement/extend`
+          : `/api/admin/users/${detail.user.id}/entitlement/${action}`,
+        { method: "POST", body: JSON.stringify(body) },
+      );
+      setDetail(await getAdminUserDetail(detail.user.id));
+      setError("");
+    } catch (reasonError) {
+      setError(reasonError instanceof Error ? reasonError.message : "授权调整失败");
+    }
+  }
   function updateSearch(value: string) { setSearch(value); setDetail(null); void load(value, status); }
   function updateStatus(value: string) { setStatus(value); setDetail(null); void load(search, value); }
-  return <main className="container"><div className="app-page-heading"><div><div className="eyebrow">ADMIN / USERS</div><h1>用户管理</h1><p className="muted">管理账号状态、免费体验额度和期限授权。</p></div><span className="page-heading-stat"><strong>{users.length}</strong><span>当前用户</span></span></div>{error && <div className="notice" role="alert">{error}</div>}<UserFilters search={search} status={status} onSearch={updateSearch} onStatus={updateStatus} onClear={() => { setSearch(""); setStatus("all"); setDetail(null); void load("", "all"); }} /><div className={`admin-monitor ${detail || detailLoading ? "has-detail" : ""}`}><div className="card"><AdminTable><thead><tr><th>账号</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead><tbody>{users.map((user) => <tr className={detail?.user.id === user.id ? "is-active" : ""} key={user.id}><td><strong>{user.email}</strong><small className="table-subline">{user.username || "未设置用户名"}</small></td><td>{user.role === "admin" ? "管理员" : "普通用户"}</td><td><span className={`ui-badge ${user.isActive ? "ui-badge-success" : "ui-badge-danger"}`}>{user.isActive ? "正常" : "已停用"}</span></td><td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString("zh-CN") : "—"}</td><td><div className="actions"><button className="button ghost" onClick={() => void openDetail(user)}>查看详情</button><button className="button ghost" onClick={() => setPending(user)}>{user.isActive ? "停用" : "启用"}</button></div></td></tr>)}</tbody></AdminTable>{users.length === 0 && <p className="muted">没有符合条件的用户。</p>}</div>{(detail || detailLoading) && <UserDetailDrawer detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onGrantTrial={() => void grantTrial()} />}</div>{pending && <ConfirmActionDialog title={`${pending.isActive ? "停用" : "启用"}用户`} description={`确定要${pending.isActive ? "停用" : "启用"} ${pending.email} 吗？`} onCancel={() => setPending(null)} onConfirm={() => void toggle(pending)} />}</main>;
+  return <main className="container"><div className="app-page-heading"><div><div className="eyebrow">ADMIN / USERS</div><h1>用户管理</h1><p className="muted">管理账号状态、免费体验额度和期限授权。</p></div><span className="page-heading-stat"><strong>{users.length}</strong><span>当前用户</span></span></div>{error && <div className="notice" role="alert">{error}</div>}<UserFilters search={search} status={status} onSearch={updateSearch} onStatus={updateStatus} onClear={() => { setSearch(""); setStatus("all"); setDetail(null); void load("", "all"); }} /><div className={`admin-monitor ${detail || detailLoading ? "has-detail" : ""}`}><div className="card"><AdminTable><thead><tr><th>账号</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead><tbody>{users.map((user) => <tr className={detail?.user.id === user.id ? "is-active" : ""} key={user.id}><td><strong>{user.email}</strong><small className="table-subline">{user.username || "未设置用户名"}</small></td><td>{user.role === "admin" ? "管理员" : "普通用户"}</td><td><span className={`ui-badge ${user.isActive ? "ui-badge-success" : "ui-badge-danger"}`}>{user.isActive ? "正常" : "已停用"}</span></td><td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString("zh-CN") : "—"}</td><td><div className="actions"><button className="button ghost" onClick={() => void openDetail(user)}>查看详情</button><button className="button ghost" onClick={() => setPending(user)}>{user.isActive ? "停用" : "启用"}</button></div></td></tr>)}</tbody></AdminTable>{users.length === 0 && <p className="muted">没有符合条件的用户。</p>}</div>{(detail || detailLoading) && <UserDetailDrawer detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onGrantTrial={() => void grantTrial()} onExtendEntitlement={() => void updateEntitlement("extend")} onPauseEntitlement={() => void updateEntitlement("paused")} onRevokeEntitlement={() => void updateEntitlement("revoked")} />}</div>{pending && <ConfirmActionDialog title={`${pending.isActive ? "停用" : "启用"}用户`} description={`确定要${pending.isActive ? "停用" : "启用"} ${pending.email} 吗？`} onCancel={() => setPending(null)} onConfirm={() => void toggle(pending)} />}</main>;
 }

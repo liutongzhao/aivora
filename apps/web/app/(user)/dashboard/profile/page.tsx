@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowUpRight, RefreshCw, Settings2 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { getAccountSnapshot, getAccountUsageHistory } from "../../../../lib/account-service";
 import type { AccountSnapshot, UsageRecord } from "../../../../types/account";
 import { AccountOverview } from "../../../../components/account/AccountOverview";
@@ -53,15 +52,7 @@ export default function ProfilePage() {
       </section>
       {error && <div className="notice" role="alert">部分数据暂时无法更新：{error}</div>}
       <AccountOverview snapshot={snapshot} />
-      <div className="profile-grid">
-        <EntitlementPanel snapshot={snapshot} onRedeemed={() => void load(true)} />
-        <section className="panel profile-shortcuts">
-          <div className="panel-heading"><div><span className="eyebrow">WORKSPACE</span><h2>常用入口</h2></div></div>
-          <Link href="/dashboard/settings"><Settings2 size={17} />模型设置 <ArrowUpRight size={14} /></Link>
-          <Link href="/dashboard/tasks"><RefreshCw size={17} />AI 任务 <ArrowUpRight size={14} /></Link>
-          <Link href="/help"><span className="profile-shortcut-dot" />帮助与反馈 <ArrowUpRight size={14} /></Link>
-        </section>
-      </div>
+      <EntitlementPanel snapshot={snapshot} onRedeemed={() => void load(true)} />
       <UsageHistory records={history} />
     </main>
   );

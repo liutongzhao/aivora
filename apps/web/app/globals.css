@@ -331,6 +331,12 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .admin-user-facts span { color: var(--muted); }
 .admin-user-facts strong { color: var(--ink-soft); text-align: right; }
 .admin-drawer-actions { display: flex; gap: 8px; margin-top: 20px; }
+.admin-drawer-actions { flex-wrap: wrap; }
+.danger-text { color: var(--red); }
+.admin-license-settings, .admin-license-result, .admin-license-history { margin-top: 18px; }
+.admin-settings-form { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+.admin-settings-form button { min-height: 42px; }
+.license-code-result { margin: 0; overflow: auto; padding: 16px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-soft); background: var(--surface-soft); font: 600 12px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
 .admin-detail .panel-heading { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 .admin-detail .panel-heading h2 { margin-top: 8px; }
 .admin-detail .panel-heading p { margin: 7px 0 0; font-size: 12px; }
@@ -427,7 +433,6 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .pagination .icon-button:disabled { cursor: not-allowed; opacity: .4; }
 .ui-empty, .ui-loading, .ui-error { display: grid; justify-items: center; gap: 10px; padding: 56px 24px; text-align: center; color: var(--muted); }
 .ui-error { border: 1px solid #f5d6da; border-radius: 10px; background: var(--red-soft); color: var(--red); }
-.profile-page { max-width: 1240px; }
 .account-overview { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.6fr); gap: 28px; margin-bottom: 16px; }
 .account-overview-identity { display: flex; align-items: center; gap: 14px; }
 .account-profile-avatar { display: grid; width: 58px; height: 58px; flex: 0 0 auto; place-items: center; border-radius: 15px; color: white; background: var(--accent); font-size: 22px; font-weight: 750; }
@@ -458,13 +463,6 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .entitlement-redeem .form label { min-width: 0; }
 .entitlement-redeem .form button { min-width: 112px; }
 .entitlement-redeem .form p { grid-column: 1 / -1; margin: 0; }
-.account-secondary-action { margin-top: 2px; }
-.profile-shortcuts { display: grid; align-content: start; gap: 0; }
-.profile-shortcuts .panel-heading { margin-bottom: 8px; }
-.profile-shortcuts a { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; min-height: 48px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; }
-.profile-shortcuts a:hover { color: var(--accent); }
-.profile-shortcuts a svg:last-child { color: var(--muted); }
-.profile-shortcut-dot { width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: var(--accent); }
 .account-history .panel-heading { margin-bottom: 5px; }
 .account-history-list { display: grid; }
 .account-history-row { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 10px; min-height: 62px; border-top: 1px solid var(--line); }
@@ -529,6 +527,7 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
   .form-grid { grid-template-columns: 1fr; }
   .account-overview-facts, .entitlement-summary { grid-template-columns: 1fr; }
   .account-overview, .profile-grid { gap: 12px; }
+  .admin-settings-form { grid-template-columns: 1fr; }
   .account-overview { padding: 18px; }
   .entitlement-redeem .form { grid-template-columns: 1fr; }
   .entitlement-redeem .form button { width: 100%; }

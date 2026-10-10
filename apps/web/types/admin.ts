@@ -41,3 +41,15 @@ export type AdminUserFilters = {
   search?: string;
   limit?: number;
 };
+
+export type AdminLicenseCode = {
+  id: string;
+  batchId: string;
+  batchName: string | null;
+  durationMonths: number;
+  suffix: string;
+  status: string;
+  activatedBy: string | null;
+  activatedAt: string | null;
+  createdAt: string;
+};

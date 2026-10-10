@@ -1,5 +1,6 @@
 import { apiFetch } from "./api-client";
 import type { AdminOverview, AdminUserDetail, AdminUserFilters, AdminUserRow } from "../types/admin";
+import type { AdminLicenseCode } from "../types/admin";
 
 type ApiUserRow = {
   id: string;
@@ -61,4 +62,30 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
       expiresAt: result.entitlement.expires_at,
     } : null,
   };
+}
+
+export async function listAdminLicenseCodes(status?: string): Promise<AdminLicenseCode[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const result = await apiFetch<{ codes: Array<{
+    id: string;
+    batch_id: string;
+    batch_name?: string | null;
+    duration_months: number;
+    suffix: string;
+    status: string;
+    activated_by: string | null;
+    activated_at: string | null;
+    created_at: string;
+  }> }>(`/api/admin/license-codes${query}`);
+  return result.codes.map((code) => ({
+    id: code.id,
+    batchId: code.batch_id,
+    batchName: code.batch_name ?? null,
+    durationMonths: code.duration_months,
+    suffix: code.suffix,
+    status: code.status,
+    activatedBy: code.activated_by,
+    activatedAt: code.activated_at,
+    createdAt: code.created_at,
+  }));
 }

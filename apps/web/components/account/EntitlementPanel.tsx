@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CalendarClock, KeyRound, Sparkles } from "lucide-react";
 import type { AccountSnapshot } from "../../types/account";
 import { LicenseRedeemForm } from "../licenses/LicenseRedeemForm";
@@ -42,7 +41,6 @@ export function EntitlementPanel({ snapshot, onRedeemed }: { snapshot: AccountSn
           <LicenseRedeemForm onRedeemed={onRedeemed} />
         </div>
       )}
-      {active && <Link className="button ghost account-secondary-action" href="/dashboard/tasks">开始创建任务 <span aria-hidden="true">→</span></Link>}
     </section>
   );
 }

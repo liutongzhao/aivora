@@ -56,6 +56,8 @@ describe("工作台状态", () => {
     render(<DashboardPage />);
     expect(await screen.findByText("免费体验")).toBeInTheDocument();
     expect(screen.getByText(/当前剩余|免费体验剩余/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("激活授权码")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "个人中心" })).not.toBeInTheDocument();
   });
 
   it("clearly blocks access after the trial is exhausted", async () => {
@@ -66,7 +68,8 @@ describe("工作台状态", () => {
     render(<DashboardPage />);
     expect(await screen.findByText("体验次数已用完")).toBeInTheDocument();
     expect(screen.getByText("当前账号没有可用额度，请先激活授权码。")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /前往激活授权码/ })).toHaveAttribute("href", "/dashboard/profile");
+    expect(screen.getByRole("link", { name: /前往个人中心/ })).toHaveAttribute("href", "/dashboard/profile");
+    expect(screen.queryByLabelText("激活授权码")).not.toBeInTheDocument();
   });
 
   it("points users to model settings when no model is configured", async () => {

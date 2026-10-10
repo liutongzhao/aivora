@@ -16,6 +16,7 @@ from app.modules.licenses.models import LicenseBatch, LicenseCode, LicenseSettin
 from app.modules.licenses.service import LicenseCodeService, LicenseError
 from app.modules.usage.models import UsageLedger
 from app.modules.admin.models import AdminAuditLog
+from app.modules.admin.service import AdminLicenseService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -34,6 +35,14 @@ class LicenseBatchRequest(BaseModel):
 class LicenseSettingsRequest(BaseModel):
     default_duration_months: int = Field(ge=1, le=120)
     max_duration_months: int = Field(ge=1, le=120)
+
+
+class AdminReasonRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class EntitlementExtensionRequest(AdminReasonRequest):
+    months: int = Field(ge=1, le=120)
 
 
 async def _audit(db: AsyncSession, admin_id: UUID, action: str, resource_type: str, resource_id: str | None, metadata: dict) -> None:
@@ -237,7 +246,12 @@ async def list_license_codes(
     status: str | None = None,
     limit: int = 100,
 ) -> dict:
-    query = select(LicenseCode).order_by(LicenseCode.created_at.desc()).limit(min(max(limit, 1), 200))
+    query = (
+        select(LicenseCode, LicenseBatch)
+        .join(LicenseBatch, LicenseBatch.id == LicenseCode.batch_id)
+        .order_by(LicenseCode.created_at.desc())
+        .limit(min(max(limit, 1), 200))
+    )
     if status:
         query = query.where(LicenseCode.status == status)
     result = await db.execute(query)
@@ -246,15 +260,69 @@ async def list_license_codes(
             {
                 "id": str(code.id),
                 "batch_id": str(code.batch_id),
+                "batch_name": batch.name,
+                "duration_months": batch.duration_months,
                 "suffix": code.code_suffix,
                 "status": code.status,
                 "activated_by": str(code.activated_by) if code.activated_by else None,
                 "activated_at": code.activated_at,
                 "created_at": code.created_at,
             }
-            for code in result.scalars().all()
+            for code, batch in result.all()
         ]
     }
+
+
+@router.post("/license-codes/{code_id}/revoke")
+async def revoke_license_code(
+    code_id: UUID,
+    request: AdminReasonRequest,
+    actor: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        code = await AdminLicenseService().revoke_license_code(db, actor.id, code_id, request.reason)
+    except LicenseError as error:
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message})
+    return {"success": True, "id": str(code.id), "status": code.status}
+
+
+@router.post("/users/{user_id}/entitlement/extend")
+async def extend_user_entitlement(
+    user_id: UUID,
+    request: EntitlementExtensionRequest,
+    actor: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        entitlement = await AdminLicenseService().extend_entitlement(
+            db, actor.id, user_id, request.months, request.reason
+        )
+    except LicenseError as error:
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message})
+    return {
+        "success": True,
+        "status": entitlement.status,
+        "startsAt": entitlement.starts_at,
+        "expiresAt": entitlement.expires_at,
+    }
+
+
+@router.post("/users/{user_id}/entitlement/{status}")
+async def set_user_entitlement_status(
+    user_id: UUID,
+    status: str,
+    request: AdminReasonRequest,
+    actor: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        entitlement = await AdminLicenseService().set_entitlement_status(
+            db, actor.id, user_id, status, request.reason
+        )
+    except LicenseError as error:
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message})
+    return {"success": True, "status": entitlement.status}
 
 
 @router.get("/tasks")
