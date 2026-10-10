@@ -1,233 +1,113 @@
-# Design System Master File
+# Aivora Design System
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+**Status:** Product workspace baseline
+**Updated:** 2026-10-10
+**Scope:** User workspace and administrator operations console
 
----
+## Product Direction
 
-**Project:** Aivora
-**Generated:** 2026-10-10 09:24:10
-**Category:** SaaS (General)
-**Design Dials:** Motion 4/10 (Standard) | Density 8/10 (Dense / Dashboard)
+Aivora is a work-oriented AI question-processing SaaS. The interface should feel
+calm, trustworthy, precise, and efficient during repeated use.
 
----
+- User workspace: make eligibility, next action, task progress, and model setup obvious.
+- Admin console: make operational risk, user state, entitlement state, and actions scannable.
+- Use full-width page sections with constrained content; reserve cards for repeated records,
+  framed tools, dialogs, and drawers.
+- Do not use a marketing hero, glassmorphism as the page surface, decorative blobs,
+  gradients, or excessive shadows.
 
-## Global Rules
+## Palette
 
-### Color Palette
+| Token | Value | Use |
+| --- | --- | --- |
+| `--bg` | `#f5f6f8` | App background |
+| `--surface` | `#ffffff` | Panels, tables, forms |
+| `--surface-soft` | `#fafbfc` | Hover and empty-state surfaces |
+| `--ink` | `#171a1f` | Primary text |
+| `--ink-soft` | `#4e5662` | Supporting text |
+| `--muted` | `#737d8c` | Metadata and secondary labels |
+| `--line` | `#e3e7ec` | Dividers and borders |
+| `--accent` | `#1769e0` | Primary actions and links |
+| `--accent-soft` | `#edf4ff` | Selected and informational states |
+| `--green` | `#18805a` | Available, active, successful |
+| `--orange` | `#a96808` | Expiring, pending, attention |
+| `--red` | `#c83d4e` | Errors, expired, destructive actions |
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#2563EB` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#3B82F6` | `--color-secondary` |
-| On Secondary | `#000000` | `--color-on-secondary` |
-| Accent/CTA | `#EA580C` | `--color-accent` |
-| On Accent/CTA | `#000000` | `--color-on-accent` |
-| Background | `#F8FAFC` | `--color-background` |
-| Foreground | `#1E293B` | `--color-foreground` |
-| Card | `#FFFFFF` | `--color-card` |
-| Card Foreground | `#1E293B` | `--color-card-foreground` |
-| Muted | `#E9EFF8` | `--color-muted` |
-| Muted Foreground | `#475569` | `--color-muted-foreground` |
-| Border | `#E2E8F0` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#2563EB` | `--color-ring` |
+Use semantic tokens instead of raw colors in components. Status must include text or
+an icon; color alone must never carry meaning.
 
-**Color Notes:** Trust blue + orange CTA contrast [Accent adjusted from #F97316]
+## Typography
 
-### Typography
+- Prefer `Plus Jakarta Sans` for headings and body when the font is available.
+- Keep a system fallback stack: `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.
+- Body text is at least 14px in the desktop web app and 16px for compact mobile form content.
+- Page titles: 32-40px; section titles: 18-22px; labels and metadata: 11-13px.
+- Use normal letter spacing. Do not use oversized hero typography in work surfaces.
+- Keep line height around 1.5 for body text and 1.25-1.35 for headings.
 
-- **Heading Font:** Plus Jakarta Sans
-- **Body Font:** Plus Jakarta Sans
-- **Mood:** enterprise, saas, b2b, professional, indigo, modern, approachable, legible, ios dynamic type, android scaling
-- **Google Fonts:** [Plus Jakarta Sans + Plus Jakarta Sans](https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400)
+## Layout
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap');
-```
+- Desktop shell: fixed 232-248px sidebar, flexible content area, 72px topbar.
+- Page content: max-width 1280px, 32-48px desktop padding, 16-20px mobile padding.
+- Default spacing scale: 4, 8, 12, 16, 24, 32.
+- Dashboard density: compact enough for scanning, with at least 12px between interactive groups.
+- Tables may scroll horizontally on narrow screens, but primary actions must remain reachable.
+- Mobile navigation becomes a compact menu; do not squeeze the desktop sidebar into the viewport.
 
-### Spacing Variables
+## Surfaces And Components
 
-*Density: 8/10 — Dense / Dashboard*
+- Border radius: 6-10px for controls and panels; use larger radii only for dialogs or clearly
+  distinct feature surfaces.
+- Borders define structure; shadows are subtle and reserved for overlays and selected tools.
+- Primary buttons use blue fill and white text. Secondary actions use white fill with a border.
+- Destructive actions use red only when the action is actually destructive.
+- Icon buttons must have `aria-label` and a tooltip when the icon meaning is not obvious.
+- Use Lucide icons; never use emoji as interface icons.
+- Avoid nested cards. Use section headings, dividers, tables, drawers, and tabs for hierarchy.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `2px` / `0.125rem` | Tight gaps |
-| `--space-sm` | `4px` / `0.25rem` | Icon gaps, inline spacing |
-| `--space-md` | `8px` / `0.5rem` | Standard padding |
-| `--space-lg` | `12px` / `0.75rem` | Section padding |
-| `--space-xl` | `16px` / `1rem` | Large gaps |
-| `--space-2xl` | `24px` / `1.5rem` | Section margins |
-| `--space-3xl` | `32px` / `2rem` | Hero padding |
+## User Workspace Patterns
 
-### Shadow Depths
+- The first screen must show eligibility: active entitlement, trial remaining, or the exact
+  reason usage is blocked.
+- Every blocked state includes the next action, such as activating a license or configuring a model.
+- Account center groups profile, entitlement, redemption, usage history, and security.
+- Task lists use filters, readable status badges, progress, and an explicit failure reason.
+- Empty states explain what is missing and include one primary action.
 
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
+## Admin Console Patterns
 
----
+- Prefer dense tables, filter bars, metric rows, attention lists, and right-side detail drawers.
+- Overview metrics must link to the relevant management view.
+- User details show account, verification, trial, entitlement, models, tasks, and admin actions.
+- Dangerous actions require a confirmation dialog and a success/error result.
+- Use pagination for large collections; do not render unbounded lists.
+- Keep admin-only actions visually distinct from read-only information.
 
-## Component Specs
+## Interaction And Accessibility
 
-### Buttons
+- Hover transitions: 150-250ms; do not shift layout with scale transforms.
+- Loading states preserve layout and show the operation being performed.
+- Respect `prefers-reduced-motion: reduce`.
+- Keyboard focus must be visible with a 2px outline and sufficient contrast.
+- Dialogs and drawers support Escape to close and restore focus to the trigger.
+- Buttons and touch targets are at least 40px high on desktop and 44px on mobile.
+- Error messages appear near the failed action and use `role="alert"` when urgent.
 
-```css
-/* Primary Button */
-.btn-primary {
-  background: #EA580C;
-  color: #000000;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+## Required Responsive Checks
 
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+Before delivery, verify at:
 
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #2563EB;
-  border: 2px solid #2563EB;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
+- 375px: mobile navigation, forms, drawers, table access.
+- 768px: tablet wrapping and two-column transitions.
+- 1024px: compact desktop shell.
+- 1440px: full dashboard density and detail drawer.
 
-### Cards
+## Do Not Ship
 
-```css
-.card {
-  background: #F8FAFC;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
-
-### Inputs
-
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
-
-.input:focus {
-  border-color: #2563EB;
-  outline: none;
-  box-shadow: 0 0 0 3px #2563EB20;
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
-
----
-
-## Style Guidelines
-
-**Style:** Glassmorphism
-
-**Keywords:** Frosted glass, transparent, blurred background, layered, vibrant background, light source, depth, multi-layer
-
-**Best For:** Modern SaaS, financial dashboards, high-end corporate, lifestyle apps, modal overlays, navigation
-
-**Key Effects:** Backdrop blur (10-20px), subtle border (1px solid rgba white 0.2), light reflection, Z-depth
-
-### Page Pattern
-
-**Pattern Name:** Hero + Features + CTA
-
-- **Conversion Strategy:** Deep CTA placement. For CTA label text, verify at least 4.5:1 against the button fill; use 7:1 only when the product explicitly targets AAA normal-text contrast. Keep focus and component boundaries independently visible. Disable hero parallax under reduced motion and render its static final state.
-- **CTA Placement:** Hero (sticky) + Bottom
-- **Section Order:** Hero with headline/image > Value prop > Key features (3-5) > CTA section > Footer
-
----
-
-## Motion
-
-**Stagger List** (Standard) — Trigger: load or scroll | Duration: 300-450ms | Easing: `back.out(1.4)`
-
-```js
-gsap.from('.grid-item', { opacity: 0, scale: 0.92, y: 16, duration: 0.4, stagger: { each: 0.06, from: 'start', grid: 'auto' }, ease: 'back.out(1.4)' });
-```
-
-**Framework notes:** grid: 'auto' lets GSAP infer rows/columns from a CSS grid layout for a natural wave stagger; Use matchMedia('(prefers-reduced-motion: reduce)') to skip non-essential motion and render the final state immediately
-
-- ✅ Combine with from: 'center' for a bento-grid layout to draw the eye inward first
-- ❌ Don't use back.out on dense data tables; the overshoot reads as sloppy on informational UI
-- ⚡ Group DOM writes; avoid interleaving layout reads (getBoundingClientRect) between staggered tweens
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Excessive animation
-- ❌ Dark mode by default
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+- Marketing-style hero sections inside authenticated workspaces.
+- Glass panels that reduce text contrast.
+- Gradient backgrounds, decorative orbs, or bokeh effects.
+- Emoji icons or unlabeled icon-only controls.
+- Disabled controls without an explanation.
+- Empty lists that do not explain the next step.
+- Errors that only say “请求失败” or “操作失败”.
