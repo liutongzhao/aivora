@@ -2,6 +2,7 @@
 import { BrowserWindow } from 'electron'
 import { ScreenshotHelper } from './ScreenshotHelper'
 import { IProcessingHelperDeps } from './main'
+import type { UsageAccess } from './usageEntitlement'
 
 // Set UTF-8 encoding for console output in this module
 if (process.stdout.setEncoding) {
@@ -37,6 +38,16 @@ export class LightweightProcessingHelper {
     console.log('🚀 轻量级AI处理助手初始化完成')
   }
 
+  private async ensureUsageAccess(): Promise<boolean> {
+    const access = await (this.deps.checkUsageAccess?.() ?? Promise.resolve<UsageAccess>({
+      allowed: true,
+      reason: 'trial',
+    }))
+    if (access.allowed) return true
+    this.showError('暂时无法开始', access.message || '当前账号暂时无法使用，请检查账号权益')
+    return false
+  }
+
   /**
    * 处理截图（编程题）
    */
@@ -49,6 +60,7 @@ export class LightweightProcessingHelper {
       console.log('🚫 编程题处理被拒绝：正在处理中或冷却中')
       return
     }
+    if (!await this.ensureUsageAccess()) return
 
     console.log('🔥 开始处理编程题截图...')
     this.markSearchStart()
@@ -119,6 +131,7 @@ export class LightweightProcessingHelper {
       console.log('🚫 单选题处理被拒绝：正在处理中或冷却中')
       return
     }
+    if (!await this.ensureUsageAccess()) return
 
     console.log('🔥 开始处理单选题截图...')
     this.markSearchStart()
@@ -175,6 +188,7 @@ export class LightweightProcessingHelper {
       console.log(`🚫 多选题处理被拒绝：正在处理中或冷却中 (${timestamp})`)
       return
     }
+    if (!await this.ensureUsageAccess()) return
 
     console.log('🔥 开始处理多选题截图...')
     this.markSearchStart()
@@ -229,6 +243,7 @@ export class LightweightProcessingHelper {
       console.log('🚫 代码调试被拒绝：正在处理中或冷却中')
       return
     }
+    if (!await this.ensureUsageAccess()) return
 
     console.log('🔧 开始代码调试...')
     this.markDebugStart()
@@ -487,6 +502,7 @@ export class LightweightProcessingHelper {
       console.log('🚫 通用搜题处理被拒绝：正在处理中或冷却中')
       return
     }
+    if (!await this.ensureUsageAccess()) return
 
     console.log('🎯 开始通用搜题处理...')
     this.markSearchStart()

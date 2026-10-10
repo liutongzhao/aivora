@@ -73,6 +73,10 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
         },
       )
 
+      if (sessionId && response.status === 401) {
+        simpleAuthManager.handleSessionExpired()
+      }
+
       return {
         status: response.status,
         body: await response.text(),

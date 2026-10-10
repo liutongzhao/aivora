@@ -77,7 +77,8 @@ function App() {
     isProcessing: aiIsProcessing,
     processScreenshot,
     debugCode,
-    cancelProcessing
+    cancelProcessing,
+    clearResult
   } = aiProcessing
 
   // 🆕 控制认证对话框显示
@@ -215,6 +216,20 @@ function App() {
     },
     []
   )
+
+  // 会话失效时立即清理当前任务和结果，避免继续提交旧会话的请求。
+  useEffect(() => {
+    if (!window.electronAPI?.onWebAuthStatus) return
+
+    const unsubscribe = window.electronAPI.onWebAuthStatus((status) => {
+      if (status.authenticated) return
+
+      void clearResult()
+      showToast('登录状态已失效', '请重新登录后继续使用', 'error')
+    })
+
+    return unsubscribe
+  }, [clearResult, showToast])
 
   // 监听后端发送的通知消息（优化用户体验）
   useEffect(() => {

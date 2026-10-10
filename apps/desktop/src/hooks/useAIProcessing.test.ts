@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAIProcessing } from './useAIProcessing'
 
 const listeners = new Map<string, (...args: any[]) => void>()
+const { fetchUsageSummary, processScreenshotSSE } = vi.hoisted(() => ({
+  fetchUsageSummary: vi.fn(),
+  processScreenshotSSE: vi.fn(),
+}))
 
 vi.mock('../services/sseService', () => ({
   sseService: {
@@ -19,12 +23,35 @@ vi.mock('../services/sseService', () => ({
     offFinalResult: () => listeners.delete('final'),
     onError: (fn: (...args: any[]) => void) => listeners.set('error', fn),
     offError: () => listeners.delete('error'),
-    disconnect: vi.fn()
+    disconnect: vi.fn(),
+    connectToStream: vi.fn().mockResolvedValue({ success: true }),
   }
 }))
 
+vi.mock('../services/usageEntitlement', async () => {
+  const actual = await vi.importActual<typeof import('../services/usageEntitlement')>(
+    '../services/usageEntitlement',
+  )
+  return {
+    ...actual,
+    fetchUsageSummary,
+  }
+})
+
+vi.mock('../services/aiService', () => ({
+  aiService: {
+    processScreenshotSSE,
+    getProcessingStatus: vi.fn(),
+    cancelProcessing: vi.fn().mockResolvedValue({ success: true }),
+  },
+}))
+
 describe('useAIProcessing SSE results', () => {
-  beforeEach(() => listeners.clear())
+  beforeEach(() => {
+    listeners.clear()
+    fetchUsageSummary.mockReset()
+    processScreenshotSSE.mockReset()
+  })
 
   it('accumulates appended chunks and replaces a snapshot', async () => {
     const { result } = renderHook(() => useAIProcessing())
@@ -58,5 +85,86 @@ describe('useAIProcessing SSE results', () => {
 
     expect(result.current.isProcessing).toBe(false)
     expect(result.current.error?.message).toBe('实时连接超时，请检查网络后重试')
+  })
+
+  it('refreshes usage after a completed task', async () => {
+    fetchUsageSummary.mockResolvedValue({
+      trialTotal: 5,
+      trialUsed: 1,
+      trialRemaining: 4,
+      entitlementActive: false,
+      entitlementExpiresAt: null,
+      entitlementStatus: null,
+    })
+    const { result } = renderHook(() => useAIProcessing())
+
+    await act(async () => {
+      await listeners.get('final')?.({
+        questionType: 'universal',
+        content: '答案',
+      })
+    })
+
+    expect(fetchUsageSummary).toHaveBeenCalledTimes(1)
+    expect(result.current.isProcessing).toBe(false)
+  })
+
+  it('refreshes usage after an SSE error', async () => {
+    fetchUsageSummary.mockResolvedValue({
+      trialTotal: 5,
+      trialUsed: 1,
+      trialRemaining: 4,
+      entitlementActive: false,
+      entitlementExpiresAt: null,
+      entitlementStatus: null,
+    })
+    const { result } = renderHook(() => useAIProcessing())
+
+    await act(async () => {
+      await listeners.get('error')?.('服务异常')
+    })
+    expect(fetchUsageSummary).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes usage after cancellation', async () => {
+    fetchUsageSummary.mockResolvedValue({
+      trialTotal: 5,
+      trialUsed: 1,
+      trialRemaining: 4,
+      entitlementActive: false,
+      entitlementExpiresAt: null,
+      entitlementStatus: null,
+    })
+    processScreenshotSSE.mockResolvedValue({
+      success: true,
+      task_id: 'task-1',
+      stream_token: 'stream-token',
+    })
+    const { result } = renderHook(() => useAIProcessing())
+
+    await act(async () => {
+      await result.current.processScreenshot('data:image/png;base64,test')
+    })
+
+    await act(async () => {
+      await result.current.cancelProcessing()
+    })
+    expect(fetchUsageSummary).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not submit a task when usage cannot be checked', async () => {
+    fetchUsageSummary.mockRejectedValue(new Error('offline'))
+    const { result } = renderHook(() => useAIProcessing())
+
+    await act(async () => {
+      await expect(
+        result.current.processScreenshot('data:image/png;base64,test'),
+      ).rejects.toMatchObject({ code: 'USAGE_CHECK_FAILED' })
+    })
+
+    expect(processScreenshotSSE).not.toHaveBeenCalled()
+    expect(result.current.error).toMatchObject({
+      code: 'USAGE_CHECK_FAILED',
+    })
   })
 })

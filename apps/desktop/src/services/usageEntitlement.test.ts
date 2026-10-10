@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getUsageAvailability,
+  getUsageErrorMessage,
   getUsageMessage,
   type UsageSummary,
 } from './usageEntitlement'
@@ -64,5 +65,21 @@ describe('usage entitlement', () => {
         entitlementStatus: 'expired',
       }),
     ).toBe('授权已过期，请激活新的授权码后继续使用')
+  })
+
+  it('blocks accounts that are not active even when trial uses remain', () => {
+    const usage = {
+      ...baseUsage,
+      accountStatus: 'disabled',
+    }
+
+    expect(getUsageAvailability(usage)).toEqual({
+      allowed: false,
+      reason: 'account_ineligible',
+    })
+    expect(getUsageMessage(usage)).toBe('账号已被停用，请联系管理员')
+    expect(getUsageErrorMessage('ACCOUNT_NOT_ELIGIBLE')).toBe(
+      '账号已被停用，请联系管理员',
+    )
   })
 })

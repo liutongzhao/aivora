@@ -130,4 +130,5 @@ class TrialUsageService:
             "entitlementActive": entitlement_active,
             "entitlementExpiresAt": entitlement.expires_at if entitlement else None,
             "entitlementStatus": entitlement.status if entitlement else None,
+            "accountStatus": user.status if user else None,
         }

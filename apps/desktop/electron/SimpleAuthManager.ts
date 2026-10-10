@@ -327,6 +327,15 @@ export class SimpleAuthManager extends EventEmitter {
   }
 
   /**
+   * 由 API 网关在确认当前会话失效时调用，统一清理本地认证状态。
+   */
+  public handleSessionExpired(): void {
+    if (!this.token) return
+    console.warn('🔒 API返回会话失效，清理本地认证状态')
+    this.clearAuthData()
+  }
+
+  /**
    * 获取用户配置
    */
   public getUserConfig(): UserConfig | null {

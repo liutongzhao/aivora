@@ -16,6 +16,7 @@ import * as dotenv from "dotenv"
 import { setupUTF8Encoding, patchConsoleForUTF8 } from "./encoding-fix"
 import { PerformantAntiCapture } from "./PerformantAntiCapture"
 import { RemoteControlClient } from "./RemoteControlClient"
+import { fetchUsageAccess, type UsageAccess } from "./usageEntitlement"
 
 // Setup UTF-8 encoding at the very beginning
 setupUTF8Encoding()
@@ -243,6 +244,7 @@ export interface IProcessingHelperDeps {
   getExtraScreenshotQueue: () => string[]
   takeScreenshot: () => Promise<string>
   getImagePreview: (filepath: string) => Promise<string>
+  checkUsageAccess?: () => Promise<UsageAccess>
 }
 
 export interface IShortcutsHelperDeps {
@@ -367,7 +369,8 @@ function initializeHelpers() {
     getScreenshotQueue,
     getExtraScreenshotQueue,
     takeScreenshot,
-    getImagePreview
+    getImagePreview,
+    checkUsageAccess: () => fetchUsageAccess()
   } as IProcessingHelperDeps)
   state.shortcutsHelper = new ShortcutsHelper({
     getMainWindow,

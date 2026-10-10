@@ -7,6 +7,7 @@ export interface UsageSummary {
   entitlementActive: boolean
   entitlementExpiresAt: string | null
   entitlementStatus: string | null
+  accountStatus?: string | null
 }
 
 export type UsageAvailabilityReason =
@@ -14,6 +15,9 @@ export type UsageAvailabilityReason =
   | 'trial'
   | 'entitlement_expired'
   | 'trial_exhausted'
+  | 'account_ineligible'
+  | 'usage_check_failed'
+  | 'auth_required'
 
 export interface UsageAvailability {
   allowed: boolean
@@ -25,6 +29,10 @@ export async function fetchUsageSummary(): Promise<UsageSummary> {
 }
 
 export function getUsageAvailability(usage: UsageSummary): UsageAvailability {
+  if (usage.accountStatus && usage.accountStatus !== 'active') {
+    return { allowed: false, reason: 'account_ineligible' }
+  }
+
   if (usage.entitlementActive) {
     return { allowed: true, reason: 'entitlement' }
   }
@@ -44,6 +52,8 @@ export function getUsageMessage(usage: UsageSummary): string {
   const availability = getUsageAvailability(usage)
 
   switch (availability.reason) {
+    case 'account_ineligible':
+      return '账号已被停用，请联系管理员'
     case 'entitlement':
       return usage.entitlementExpiresAt
         ? `会员有效期至 ${new Date(usage.entitlementExpiresAt).toLocaleDateString('zh-CN')}`
@@ -67,7 +77,12 @@ export function getUsageErrorMessage(code?: string, fallback?: string): string {
       return '请先完成邮箱验证后再使用'
     case 'AUTH_REQUIRED':
     case 'UNAUTHORIZED':
+    case 'SESSION_REQUIRED':
       return '登录状态已失效，请重新登录'
+    case 'ACCOUNT_NOT_ELIGIBLE':
+      return '账号已被停用，请联系管理员'
+    case 'USAGE_CHECK_FAILED':
+      return '暂时无法确认账号使用权限，请检查网络后重试'
     default:
       return fallback || '当前账号暂时无法使用，请检查账号权益'
   }

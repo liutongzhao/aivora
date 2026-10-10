@@ -1,6 +1,7 @@
 // useAIProcessing.ts - AI处理状态管理Hook（SSE版本）
 import { useCallback, useEffect, useRef } from 'react'
 import { aiService, ProcessingOptions, ProcessingStatus, AIProcessResult } from '../services/aiService'
+import { ApiRequestError } from '../services/apiClient'
 import { sseService } from '../services/sseService'
 import { useOptimizedState } from './useOptimizedState'
 import {
@@ -86,6 +87,14 @@ export interface UseAIProcessingReturn extends AIProcessingState {
   retryProcessing: () => Promise<void>
 }
 
+async function refreshUsage(): Promise<void> {
+  try {
+    await fetchUsageSummary()
+  } catch {
+    // The next task preflight remains authoritative and fails closed.
+  }
+}
+
 /**
  * AI处理状态管理Hook
  * 重构为使用SSE（Server-Sent Events）进行实时状态更新
@@ -139,7 +148,9 @@ export function useAIProcessing(): UseAIProcessingReturn {
       }
 
       const code =
-        availability.reason === 'entitlement_expired'
+        availability.reason === 'account_ineligible'
+          ? 'ACCOUNT_NOT_ELIGIBLE'
+          : availability.reason === 'entitlement_expired'
           ? 'ENTITLEMENT_EXPIRED'
           : 'TRIAL_EXHAUSTED'
       const message = getUsageErrorMessage(code)
@@ -153,8 +164,29 @@ export function useAIProcessing(): UseAIProcessingReturn {
       }))
       throw Object.assign(new Error(message), { code })
     } catch (error: any) {
-      if (error?.code === 'TRIAL_EXHAUSTED' || error?.code === 'ENTITLEMENT_EXPIRED') {
+      if (
+        error?.code === 'TRIAL_EXHAUSTED' ||
+        error?.code === 'ENTITLEMENT_EXPIRED' ||
+        error?.code === 'ACCOUNT_NOT_ELIGIBLE'
+      ) {
         throw error
+      }
+      if (
+        error instanceof ApiRequestError &&
+        (error.status === 401 ||
+          error.code === 'SESSION_REQUIRED' ||
+          error.code === 'UNAUTHORIZED')
+      ) {
+        const message = getUsageErrorMessage('AUTH_REQUIRED')
+        setState(prev => ({
+          ...prev,
+          isProcessing: false,
+          isInitializing: false,
+          stage: 'error',
+          message,
+          error: { code: 'AUTH_REQUIRED', message }
+        }))
+        throw Object.assign(new Error(message), { code: 'AUTH_REQUIRED' })
       }
       const message = '无法检查账号使用资格，请检查网络连接后重试'
       setState(prev => ({
@@ -241,6 +273,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         
         // 断开SSE连接
         sseService.disconnect()
+        void refreshUsage()
         
       } else if (status.status === 'error') {
         console.error('❌ [SSE] AI处理失败:', status.error)
@@ -252,6 +285,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         
         // 断开SSE连接
         sseService.disconnect()
+        void refreshUsage()
       } else if (status.status === 'cancelled') {
         console.log('🚫 [SSE] AI处理被取消')
         setState(prev => ({
@@ -263,6 +297,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
           requestId: null
         }))
         sseService.disconnect()
+        void refreshUsage()
       } else {
         console.log(`🔄 [SSE] 处理中... 阶段: ${status.stage}, 进度: ${status.progress}%`)
       }
@@ -431,6 +466,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     // 清理
     streamingContent.current = ''
     sseService.disconnect()
+    void refreshUsage()
   }, [performClientFormatting])
   
   // 🆕 SSE最终结果处理函数（用于选择题等不需要流式传输的结果）
@@ -443,6 +479,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     // 清理
     streamingContent.current = ''
     sseService.disconnect()
+    void refreshUsage()
   }, [performClientFormatting])
   
   // SSE错误处理函数
@@ -459,6 +496,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     
     // 断开SSE连接
     sseService.disconnect()
+    void refreshUsage()
   }, [])
 
   // 🗑️ 简化：移除复杂的流式传输处理函数
@@ -617,7 +655,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
 
     } catch (error: any) {
       console.error('❌ 处理截图异常:', error)
-      if (['TRIAL_EXHAUSTED', 'ENTITLEMENT_EXPIRED', 'EMAIL_NOT_VERIFIED', 'USAGE_CHECK_FAILED'].includes(error?.code)) {
+      if (['TRIAL_EXHAUSTED', 'ENTITLEMENT_EXPIRED', 'ACCOUNT_NOT_ELIGIBLE', 'AUTH_REQUIRED', 'SESSION_REQUIRED', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'USAGE_CHECK_FAILED'].includes(error?.code)) {
         throw error
       }
       setState(prev => ({
@@ -747,7 +785,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
 
     } catch (error: any) {
       console.error('❌ 调试代码异常:', error)
-      if (['TRIAL_EXHAUSTED', 'ENTITLEMENT_EXPIRED', 'EMAIL_NOT_VERIFIED', 'USAGE_CHECK_FAILED'].includes(error?.code)) {
+      if (['TRIAL_EXHAUSTED', 'ENTITLEMENT_EXPIRED', 'ACCOUNT_NOT_ELIGIBLE', 'AUTH_REQUIRED', 'SESSION_REQUIRED', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'USAGE_CHECK_FAILED'].includes(error?.code)) {
         throw error
       }
       setState(prev => ({
@@ -810,6 +848,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
         stage: 'idle',
         message: '已取消'
       }))
+      void refreshUsage()
     }
   }, [state.requestId])
 
