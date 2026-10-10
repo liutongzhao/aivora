@@ -1,5 +1,5 @@
 import { apiFetch } from "./api-client";
-import type { AdminOverview, AdminUserDetail, AdminUserFilters, AdminUserRow } from "../types/admin";
+import type { AdminAuditLog, AdminOverview, AdminUserDetail, AdminUserFilters, AdminUserRow } from "../types/admin";
 import type { AdminLicenseCode } from "../types/admin";
 
 type ApiUserRow = {
@@ -88,4 +88,40 @@ export async function listAdminLicenseCodes(status?: string): Promise<AdminLicen
     activatedAt: code.activated_at,
     createdAt: code.created_at,
   }));
+}
+
+export async function listAdminAuditLogs(filters: {
+  action?: string;
+  resourceType?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<{ logs: AdminAuditLog[]; total: number }> {
+  const query = new URLSearchParams();
+  if (filters.action) query.set("action", filters.action);
+  if (filters.resourceType) query.set("resource_type", filters.resourceType);
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  query.set("limit", String(filters.limit ?? 50));
+  query.set("offset", String(filters.offset ?? 0));
+  const result = await apiFetch<{ logs: Array<{
+    id: string;
+    action: string;
+    resource_type: string;
+    resource_id: string | null;
+    actor_email: string;
+    details: Record<string, unknown>;
+    created_at: string;
+  }>; total: number }>(`/api/admin/audit-logs?${query.toString()}`);
+  return {
+    total: result.total,
+    logs: result.logs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      resourceType: log.resource_type,
+      resourceId: log.resource_id,
+      actorEmail: log.actor_email,
+      details: log.details,
+      createdAt: log.created_at,
+    })),
+  };
 }

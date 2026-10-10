@@ -16,7 +16,7 @@ from app.modules.licenses.models import LicenseBatch, LicenseCode, LicenseSettin
 from app.modules.licenses.service import LicenseCodeService, LicenseError
 from app.modules.usage.models import UsageLedger
 from app.modules.admin.models import AdminAuditLog
-from app.modules.admin.service import AdminLicenseService
+from app.modules.admin.service import AdminAuditService, AdminLicenseService, sanitize_audit_details
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -52,7 +52,7 @@ async def _audit(db: AsyncSession, admin_id: UUID, action: str, resource_type: s
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
-            details=metadata,
+            details=sanitize_audit_details(metadata),
         )
     )
 
@@ -348,6 +348,27 @@ async def list_tasks(
             for task in result.scalars().all()
         ]
     }
+
+
+@router.get("/audit-logs")
+async def list_audit_logs(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+    action: str | None = None,
+    resource_type: str | None = None,
+    search: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    logs, total = await AdminAuditService().list_logs(
+        db,
+        action=action,
+        resource_type=resource_type,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+    return {"logs": logs, "total": total, "limit": min(max(limit, 1), 100), "offset": max(offset, 0)}
 
 
 @router.get("/tasks/{task_id}")

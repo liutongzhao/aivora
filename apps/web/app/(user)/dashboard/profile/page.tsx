@@ -7,6 +7,7 @@ import type { AccountSnapshot, UsageRecord } from "../../../../types/account";
 import { AccountOverview } from "../../../../components/account/AccountOverview";
 import { EntitlementPanel } from "../../../../components/account/EntitlementPanel";
 import { UsageHistory } from "../../../../components/account/UsageHistory";
+import { AccountSecurity } from "../../../../components/account/AccountSecurity";
 import { ErrorState, LoadingState } from "../../../../components/ui";
 
 export default function ProfilePage() {
@@ -53,6 +54,7 @@ export default function ProfilePage() {
       {error && <div className="notice" role="alert">部分数据暂时无法更新：{error}</div>}
       <AccountOverview snapshot={snapshot} />
       <EntitlementPanel snapshot={snapshot} onRedeemed={() => void load(true)} />
+      <AccountSecurity />
       <UsageHistory records={history} />
     </main>
   );

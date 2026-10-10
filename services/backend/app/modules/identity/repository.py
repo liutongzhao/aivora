@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.identity.models import Session, User
@@ -53,3 +53,29 @@ class IdentityRepository:
             .values(revoked_at=datetime.now(timezone.utc))
         )
 
+    async def list_active_sessions(self, user_id: UUID) -> list[Session]:
+        result = await self.db.execute(
+            select(Session)
+            .where(
+                Session.user_id == user_id,
+                Session.revoked_at.is_(None),
+                Session.expires_at > datetime.now(timezone.utc),
+            )
+            .order_by(Session.last_used_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def revoke_other_sessions(self, user_id: UUID, current_session_id: UUID | None) -> int:
+        statement = (
+            update(Session)
+            .where(
+                Session.user_id == user_id,
+                Session.revoked_at.is_(None),
+                Session.expires_at > datetime.now(timezone.utc),
+            )
+            .values(revoked_at=datetime.now(timezone.utc))
+        )
+        if current_session_id:
+            statement = statement.where(Session.id != current_session_id)
+        result = await self.db.execute(statement)
+        return result.rowcount or 0

@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.modules.identity.models import Session, User
 from app.modules.identity.passwords import hash_password, verify_password
 from app.modules.identity.repository import IdentityRepository
-from app.modules.identity.schemas import LoginRequest, RegisterRequest
+from app.modules.identity.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest
 from app.modules.identity.verification import RegistrationService
 
 
@@ -90,3 +90,44 @@ class IdentityService:
         if session:
             await self.repository.revoke_session(session.id)
             await self.db.commit()
+
+    async def change_password(
+        self,
+        user: User,
+        raw_token: str,
+        request: ChangePasswordRequest,
+    ) -> None:
+        if not verify_password(request.old_password, user.password_hash):
+            raise IdentityError("INVALID_OLD_PASSWORD", "原密码不正确", 400)
+        if request.old_password == request.new_password:
+            raise IdentityError("PASSWORD_UNCHANGED", "新密码不能与原密码相同", 400)
+        session = await self.repository.find_session(_hash_token(raw_token))
+        if not session or session.user_id != user.id:
+            raise IdentityError("SESSION_INVALID", "会话无效或已过期", 401)
+        user.password_hash = hash_password(request.new_password)
+        await self.repository.revoke_other_sessions(user.id, session.id)
+        await self.db.commit()
+
+    async def list_sessions(self, user_id, raw_token: str) -> list[dict]:
+        current_hash = _hash_token(raw_token)
+        sessions = await self.repository.list_active_sessions(user_id)
+        return [
+            {
+                "id": str(session.id),
+                "device_type": session.device_type,
+                "device_name": session.device_name,
+                "created_at": session.created_at,
+                "last_used_at": session.last_used_at,
+                "expires_at": session.expires_at,
+                "is_current": session.token_hash == current_hash,
+            }
+            for session in sessions
+        ]
+
+    async def revoke_other_sessions(self, user_id, raw_token: str) -> int:
+        session = await self.repository.find_session(_hash_token(raw_token))
+        if not session or session.user_id != user_id:
+            raise IdentityError("SESSION_INVALID", "会话无效或已过期", 401)
+        revoked = await self.repository.revoke_other_sessions(user_id, session.id)
+        await self.db.commit()
+        return revoked

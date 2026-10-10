@@ -23,7 +23,14 @@ async def test_admin_can_revoke_unused_license_without_persisting_plaintext(regi
         code = (await db.execute(select(LicenseCode).where(LicenseCode.batch_id == batch.id))).scalar_one()
         await AdminLicenseService().revoke_license_code(db, admin.id, code.id, "库存作废")
 
-        audit = (await db.execute(select(AdminAuditLog))).scalar_one()
+        audit = (
+            await db.execute(
+                select(AdminAuditLog)
+                .where(AdminAuditLog.action == "license_code_revoked")
+                .order_by(AdminAuditLog.created_at.desc())
+            )
+        ).scalars().first()
+        assert audit is not None
         assert audit.action == "license_code_revoked"
         assert "code" not in audit.details
         with pytest.raises(LicenseError):

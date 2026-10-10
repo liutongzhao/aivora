@@ -53,3 +53,13 @@ export type AdminLicenseCode = {
   activatedAt: string | null;
   createdAt: string;
 };
+
+export type AdminAuditLog = {
+  id: string;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  actorEmail: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+};

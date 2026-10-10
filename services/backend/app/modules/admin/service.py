@@ -1,13 +1,28 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.admin.models import AdminAuditLog
 from app.modules.identity.models import User
 from app.modules.licenses.models import LicenseCode, UserEntitlement
 from app.modules.licenses.service import LicenseError, add_calendar_months
+
+
+_SENSITIVE_KEY_PARTS = ("code", "password", "secret", "token", "session", "api_key", "apikey", "smtp")
+
+
+def sanitize_audit_details(value):
+    if isinstance(value, dict):
+        return {
+            key: "[REDACTED]" if any(part in key.lower() for part in _SENSITIVE_KEY_PARTS)
+            else sanitize_audit_details(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [sanitize_audit_details(item) for item in value]
+    return value
 
 
 def _require_reason(reason: str) -> str:
@@ -104,3 +119,52 @@ class AdminLicenseService:
         self, db: AsyncSession, admin_id: UUID, user_id: UUID, reason: str
     ) -> UserEntitlement:
         return await self.set_entitlement_status(db, admin_id, user_id, "revoked", reason)
+
+
+class AdminAuditService:
+    async def list_logs(
+        self,
+        db: AsyncSession,
+        *,
+        action: str | None = None,
+        resource_type: str | None = None,
+        search: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[dict], int]:
+        conditions = []
+        if action:
+            conditions.append(AdminAuditLog.action == action)
+        if resource_type:
+            conditions.append(AdminAuditLog.resource_type == resource_type)
+        if search:
+            pattern = f"%{search.strip()}%"
+            conditions.append(
+                AdminAuditLog.resource_id.ilike(pattern)
+                | AdminAuditLog.action.ilike(pattern)
+                | AdminAuditLog.resource_type.ilike(pattern)
+            )
+        count_result = await db.execute(
+            select(func.count()).select_from(AdminAuditLog).where(*conditions)
+        )
+        total = count_result.scalar_one()
+        result = await db.execute(
+            select(AdminAuditLog, User.email)
+            .join(User, User.id == AdminAuditLog.admin_user_id)
+            .where(*conditions)
+            .order_by(AdminAuditLog.created_at.desc())
+            .offset(max(offset, 0))
+            .limit(min(max(limit, 1), 100))
+        )
+        return [
+            {
+                "id": str(log.id),
+                "action": log.action,
+                "resource_type": log.resource_type,
+                "resource_id": log.resource_id,
+                "actor_email": email,
+                "details": sanitize_audit_details(log.details or {}),
+                "created_at": log.created_at,
+            }
+            for log, email in result.all()
+        ], total

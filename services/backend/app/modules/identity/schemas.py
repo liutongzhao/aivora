@@ -62,6 +62,23 @@ class PasswordResetConfirmRequest(BaseModel):
     _validate_password = field_validator("password")(validate_password_strength)
 
 
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    _validate_password = field_validator("new_password")(validate_password_strength)
+
+
+class SessionResponse(BaseModel):
+    id: UUID
+    device_type: str
+    device_name: str | None
+    created_at: datetime
+    last_used_at: datetime
+    expires_at: datetime
+    is_current: bool
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

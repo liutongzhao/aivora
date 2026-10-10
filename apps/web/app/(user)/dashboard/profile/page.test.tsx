@@ -117,4 +117,35 @@ describe("个人中心", () => {
     expect(await screen.findByText("期限授权有效")).toBeInTheDocument();
     expect(getAccountSnapshot).toHaveBeenCalledTimes(2);
   });
+
+  it("shows security controls and submits a password change", async () => {
+    apiFetch
+      .mockResolvedValueOnce([
+        {
+          id: "session-1",
+          device_type: "web",
+          device_name: "Chrome",
+          created_at: "2026-10-10T07:00:00Z",
+          last_used_at: "2026-10-10T08:00:00Z",
+          expires_at: "2026-11-09T07:00:00Z",
+          is_current: true,
+        },
+      ])
+      .mockResolvedValueOnce({ message: "密码已修改，其他登录设备已退出" });
+
+    render(<ProfilePage />);
+    await screen.findByRole("heading", { name: "个人中心" });
+
+    expect(await screen.findByText("当前设备")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("原密码"), { target: { value: "OldPass123" } });
+    fireEvent.change(screen.getByLabelText("新密码"), { target: { value: "NewPass123" } });
+    fireEvent.change(screen.getByLabelText("确认新密码"), { target: { value: "NewPass123" } });
+    fireEvent.click(screen.getByRole("button", { name: "修改密码" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith(
+      "/api/auth/password/change",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByText("密码已修改，其他登录设备已退出")).toBeInTheDocument();
+  });
 });

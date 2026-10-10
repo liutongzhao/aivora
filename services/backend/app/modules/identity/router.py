@@ -16,6 +16,8 @@ from app.modules.identity.schemas import (
     VerificationTicketResponse,
     PasswordResetRequest,
     PasswordResetConfirmRequest,
+    ChangePasswordRequest,
+    SessionResponse,
     UserResponse,
 )
 from app.modules.identity.service import IdentityError, IdentityService
@@ -161,6 +163,42 @@ async def logout(
         await IdentityService(db).logout(token)
     response.delete_cookie("aivora_session")
     return MessageResponse(message="已退出登录")
+
+
+@router.post("/password/change", response_model=MessageResponse)
+async def change_password(
+    request: ChangePasswordRequest,
+    token: str = Depends(get_session_token),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> MessageResponse:
+    try:
+        await IdentityService(db).change_password(user, token, request)
+        return MessageResponse(message="密码已修改，其他登录设备已退出")
+    except IdentityError as error:
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message})
+
+
+@router.get("/sessions", response_model=list[SessionResponse])
+async def list_sessions(
+    token: str = Depends(get_session_token),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[dict]:
+    return await IdentityService(db).list_sessions(user.id, token)
+
+
+@router.post("/sessions/revoke-others", response_model=MessageResponse)
+async def revoke_other_sessions(
+    token: str = Depends(get_session_token),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> MessageResponse:
+    try:
+        count = await IdentityService(db).revoke_other_sessions(user.id, token)
+        return MessageResponse(message=f"已退出其他 {count} 个登录设备")
+    except IdentityError as error:
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message})
 
 
 @session_router.get("/session_status")

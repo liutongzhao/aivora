@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "../../../../lib/api-client";
 import { listAdminLicenseCodes } from "../../../../lib/admin-service";
 import type { AdminLicenseCode } from "../../../../types/admin";
+import { ActionFormDialog } from "../../../../components/admin/ActionFormDialog";
 
 function statusLabel(status: string) {
   return status === "unused" ? "未使用" : status === "activated" ? "已激活" : "已撤销";
@@ -21,6 +22,8 @@ export default function AdminLicensesPage() {
   const [busyCodeId, setBusyCodeId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [revokeTarget, setRevokeTarget] = useState<AdminLicenseCode | null>(null);
+  const [revokeReason, setRevokeReason] = useState("库存作废处理");
 
   async function load() {
     const [settings, list] = await Promise.all([
@@ -70,19 +73,19 @@ export default function AdminLicensesPage() {
     }
   }
 
-  async function revokeCode(code: AdminLicenseCode) {
-    if (!window.confirm(`确定撤销未使用授权码 ••••-${code.suffix} 吗？`)) return;
-    const reason = window.prompt("请输入撤销原因", "库存作废处理");
-    if (!reason) return;
-    setBusyCodeId(code.id);
+  async function revokeCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!revokeTarget || !revokeReason.trim()) return;
+    setBusyCodeId(revokeTarget.id);
     setError("");
     setMessage("");
     try {
-      await apiFetch(`/api/admin/license-codes/${code.id}/revoke`, {
+      await apiFetch(`/api/admin/license-codes/${revokeTarget.id}/revoke`, {
         method: "POST",
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: revokeReason }),
       });
-      setMessage(`授权码 ••••-${code.suffix} 已撤销。`);
+      setMessage(`授权码 ••••-${revokeTarget.suffix} 已撤销。`);
+      setRevokeTarget(null);
       await load();
     } catch (reasonError) {
       setError(reasonError instanceof Error ? reasonError.message : "授权码撤销失败");
@@ -111,6 +114,7 @@ export default function AdminLicensesPage() {
     </section>
     <section className="panel admin-license-settings"><div className="panel-heading"><div><span className="eyebrow">POLICY</span><h2>期限策略</h2><p className="muted">新批次默认使用此期限，单批次不能超过最大期限。</p></div></div><form className="form admin-settings-form" onSubmit={saveSettings}><label>默认有效月数<input type="number" min={1} max={maxDuration} value={duration} onChange={(event) => setDuration(Number(event.target.value))} /></label><label>最大有效月数<input type="number" min={duration} max={120} value={maxDuration} onChange={(event) => setMaxDuration(Number(event.target.value))} /></label><button className="button ghost" type="submit" disabled={savingSettings}>{savingSettings ? "保存中..." : "保存策略"}</button></form></section>
     {codes.length > 0 && <section className="panel admin-license-result"><div className="panel-heading"><div><span className="eyebrow">ONE-TIME RESULT</span><h2>本次生成结果</h2><p className="muted">明文只在本次生成结果中显示，请立即保存。</p></div><button className="button ghost" type="button" onClick={() => void copyCodes()}>复制</button></div><pre className="license-code-result">{codes.join("\n")}</pre></section>}
-    <section className="panel admin-license-history"><div className="panel-heading"><div><span className="eyebrow">HISTORY</span><h2>授权码记录</h2></div><span className="muted">{loading ? "加载中..." : `${history.length} 条记录`}</span></div><div className="admin-table-wrap"><table className="table"><thead><tr><th>后缀</th><th>批次</th><th>期限</th><th>状态</th><th>兑换账号</th><th>创建时间</th><th>操作</th></tr></thead><tbody>{history.map((code) => <tr key={code.id}><td>••••-{code.suffix}</td><td>{code.batchName || "未命名批次"}</td><td>{code.durationMonths} 个月</td><td><span className={`ui-badge ${code.status === "unused" ? "ui-badge-info" : code.status === "activated" ? "ui-badge-success" : "ui-badge-danger"}`}>{statusLabel(code.status)}</span></td><td>{code.activatedBy ?? "未兑换"}</td><td>{new Date(code.createdAt).toLocaleString("zh-CN")}</td><td>{code.status === "unused" ? <button className="button ghost" type="button" onClick={() => void revokeCode(code)} disabled={busyCodeId === code.id}>{busyCodeId === code.id ? "撤销中..." : "撤销"}</button> : "—"}</td></tr>)}</tbody></table>{!loading && history.length === 0 && <p className="muted">暂无授权码记录。</p>}</div></section>
+    <section className="panel admin-license-history"><div className="panel-heading"><div><span className="eyebrow">HISTORY</span><h2>授权码记录</h2></div><span className="muted">{loading ? "加载中..." : `${history.length} 条记录`}</span></div><div className="admin-table-wrap"><table className="table"><thead><tr><th>后缀</th><th>批次</th><th>期限</th><th>状态</th><th>兑换账号</th><th>创建时间</th><th>操作</th></tr></thead><tbody>{history.map((code) => <tr key={code.id}><td>••••-{code.suffix}</td><td>{code.batchName || "未命名批次"}</td><td>{code.durationMonths} 个月</td><td><span className={`ui-badge ${code.status === "unused" ? "ui-badge-info" : code.status === "activated" ? "ui-badge-success" : "ui-badge-danger"}`}>{statusLabel(code.status)}</span></td><td>{code.activatedBy ?? "未兑换"}</td><td>{new Date(code.createdAt).toLocaleString("zh-CN")}</td><td>{code.status === "unused" ? <button className="button ghost" type="button" onClick={() => setRevokeTarget(code)} disabled={busyCodeId === code.id}>{busyCodeId === code.id ? "撤销中..." : "撤销"}</button> : "—"}</td></tr>)}</tbody></table>{!loading && history.length === 0 && <p className="muted">暂无授权码记录。</p>}</div></section>
+    {revokeTarget && <ActionFormDialog title={`撤销授权码 ••••-${revokeTarget.suffix}`} description="撤销后该授权码将无法再次激活，请填写处理原因。" onCancel={() => setRevokeTarget(null)} onSubmit={revokeCode} loading={busyCodeId === revokeTarget.id} submitLabel="确认撤销"><label>撤销原因<textarea value={revokeReason} onChange={(event) => setRevokeReason(event.target.value)} required /></label></ActionFormDialog>}
   </main>;
 }

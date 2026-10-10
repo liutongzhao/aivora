@@ -337,6 +337,11 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .admin-settings-form { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
 .admin-settings-form button { min-height: 42px; }
 .license-code-result { margin: 0; overflow: auto; padding: 16px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-soft); background: var(--surface-soft); font: 600 12px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+.audit-filter-panel, .audit-list-panel { margin-top: 18px; }
+.audit-filters { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(150px, 1fr)) auto; align-items: end; gap: 12px; }
+.audit-filters label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 11px; font-weight: 650; }
+.audit-filters input, .audit-filters select { min-height: 42px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); }
+.audit-detail-cell { max-width: 360px; overflow-wrap: anywhere; color: var(--ink-soft); font-size: 11px; }
 .admin-detail .panel-heading { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 .admin-detail .panel-heading h2 { margin-top: 8px; }
 .admin-detail .panel-heading p { margin: 7px 0 0; font-size: 12px; }
@@ -471,6 +476,38 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .account-history-row strong { color: var(--ink-soft); font-size: 12px; }
 .account-history-row small { margin-top: 4px; color: var(--muted); font-size: 11px; }
 .account-history-amount { color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgba(22, 27, 35, .42); }
+.dialog-card { width: min(440px, calc(100vw - 32px)); padding: 26px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-lg); }
+.action-form-dialog { width: min(500px, calc(100vw - 32px)); }
+.action-dialog-fields { display: grid; gap: 14px; margin: 18px 0 2px; }
+.action-dialog-fields label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+.action-dialog-fields input, .action-dialog-fields textarea { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 7px; outline: none; color: var(--ink); background: var(--surface); }
+.action-dialog-fields textarea { min-height: 92px; padding: 11px 12px; resize: vertical; line-height: 1.5; }
+.action-dialog-fields input:focus, .action-dialog-fields textarea:focus { border-color: #9bbcf1; box-shadow: 0 0 0 4px var(--accent-soft); }
+.dialog-card h2 { margin: 8px 0; }
+.dialog-card p { margin: 0; color: var(--muted); line-height: 1.6; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.account-security { margin-bottom: 16px; }
+.account-security-icon { color: var(--green); background: var(--green-soft); }
+.account-security-notice { margin: -3px 0 16px; }
+.account-security-notice.is-error { border-color: #f0d5d9; color: var(--red); background: #fff6f7; }
+.account-security-grid { display: grid; grid-template-columns: minmax(280px, .82fr) minmax(0, 1.18fr); gap: 18px; }
+.account-password-form, .account-session-panel { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
+.account-password-form label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+.account-password-form input { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); outline: none; }
+.account-password-form input:focus { border-color: #9bbcf1; box-shadow: 0 0 0 4px var(--accent-soft); }
+.account-password-form .ui-button { width: fit-content; }
+.account-session-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.account-session-heading strong, .account-session-heading span { display: block; }
+.account-session-heading span { margin-top: 5px; color: var(--muted); font-size: 11px; }
+.account-session-list { display: grid; }
+.account-session-row { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 10px; min-height: 62px; border-top: 1px solid var(--line); }
+.account-session-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; color: var(--accent); background: var(--accent-soft); }
+.account-session-row strong, .account-session-row small { display: block; }
+.account-session-row strong { color: var(--ink-soft); font-size: 12px; }
+.account-session-row small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.account-session-row .ui-badge { margin-left: 5px; vertical-align: 1px; }
+.account-session-current { color: var(--green); }
 
 .public-shell { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); }
 .public-brand-panel { display: flex; min-height: 100vh; flex-direction: column; justify-content: space-between; padding: 42px clamp(36px, 6vw, 90px); color: white; background: #171b22; }
@@ -527,7 +564,11 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
   .form-grid { grid-template-columns: 1fr; }
   .account-overview-facts, .entitlement-summary { grid-template-columns: 1fr; }
   .account-overview, .profile-grid { gap: 12px; }
+  .account-security-grid { grid-template-columns: 1fr; }
+  .account-session-heading { flex-wrap: wrap; }
   .admin-settings-form { grid-template-columns: 1fr; }
+  .audit-filters { grid-template-columns: 1fr; }
+  .audit-filters .button { width: 100%; }
   .account-overview { padding: 18px; }
   .entitlement-redeem .form { grid-template-columns: 1fr; }
   .entitlement-redeem .form button { width: 100%; }
