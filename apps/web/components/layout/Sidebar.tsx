@@ -2,7 +2,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-export function Sidebar({ items }: { items: Array<{ href: string; label: string; icon: ReactNode }> }) {
+export function Sidebar({ items, onNavigate }: { items: Array<{ href: string; label: string; icon: ReactNode }>; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <aside className="app-sidebar">
@@ -14,7 +14,7 @@ export function Sidebar({ items }: { items: Array<{ href: string; label: string;
       <nav className="sidebar-nav">
         {items.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
-          return <Link className={active ? "is-active" : ""} href={item.href} key={item.href} aria-current={active ? "page" : undefined}>
+          return <Link className={active ? "is-active" : ""} href={item.href} key={item.href} aria-current={active ? "page" : undefined} onClick={onNavigate}>
             <span className="sidebar-icon">{item.icon}</span><span>{item.label}</span>{active && <i className="sidebar-active-mark" />}
           </Link>;
         })}

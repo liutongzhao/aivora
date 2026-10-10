@@ -10,6 +10,8 @@ import type {
   UserProfile,
 } from "../types/account";
 
+export type { AccountSnapshot } from "../types/account";
+
 type ApiUser = {
   id: string;
   email: string;
