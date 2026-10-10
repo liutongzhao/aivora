@@ -1,6 +1,6 @@
 [project]
 name = "aivora-backend"
-version = "0.1.0"
+version = "0.1.11"
 description = "Aivora modular backend API and worker"
 requires-python = ">=3.12"
 dependencies = [
