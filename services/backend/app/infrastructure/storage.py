@@ -51,6 +51,9 @@ class MinioStorage:
             response.close()
             response.release_conn()
 
+    def get_object(self, object_key: str):
+        return self.client.get_object(self.bucket, object_key)
+
     def presigned_get(self, object_key: str, expires_seconds: int = 600) -> str:
         from datetime import timedelta
 

@@ -213,13 +213,25 @@ async def get_task_image(
     if not file:
         raise HTTPException(status_code=404, detail="题目截图不存在")
     try:
-        content = await asyncio.to_thread(storage.get_bytes, file.object_key)
+        object_response = await asyncio.to_thread(storage.get_object, file.object_key)
     except Exception as error:
         raise HTTPException(status_code=404, detail="题目截图读取失败") from error
-    return Response(
-        content=content,
+
+    async def stream_image():
+        try:
+            while chunk := await asyncio.to_thread(object_response.read, 1024 * 1024):
+                yield chunk
+        finally:
+            object_response.close()
+            object_response.release_conn()
+
+    return StreamingResponse(
+        stream_image(),
         media_type=file.content_type or "application/octet-stream",
-        headers={"Cache-Control": "private, max-age=300"},
+        headers={
+            "Cache-Control": "private, max-age=300",
+            "Content-Length": str(file.size_bytes),
+        },
     )
 
 
