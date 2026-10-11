@@ -108,7 +108,5 @@ jobs:
           WINDOWS_PACKAGE="$(find release-assets -type f -name '*.exe' | head -n 1)"
           test -n "$MAC_PACKAGE"
           test -n "$WINDOWS_PACKAGE"
-          ossutil cp -f "$MAC_PACKAGE" "oss://${OSS_BUCKET}/Aivora-latest.dmg" \
-            -H "Cache-Control:no-cache,max-age=0,must-revalidate"
-          ossutil cp -f "$WINDOWS_PACKAGE" "oss://${OSS_BUCKET}/Aivora-latest.exe" \
-            -H "Cache-Control:no-cache,max-age=0,must-revalidate"
+          ossutil cp -f "$MAC_PACKAGE" "oss://${OSS_BUCKET}/Aivora-latest.dmg"
+          ossutil cp -f "$WINDOWS_PACKAGE" "oss://${OSS_BUCKET}/Aivora-latest.exe"
