@@ -206,6 +206,17 @@ export default function SettingsPage() {
     }
   }
 
+  async function deleteConnection(connection: Connection) {
+    if (!window.confirm(`删除连接「${connection.name}」？该连接下的模型也会被删除。`)) return;
+    try {
+      await apiFetch(`/api/user/connections/${connection.id}`, { method: "DELETE" });
+      notify("success", "连接已删除");
+      await refresh();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "删除连接失败");
+    }
+  }
+
   async function setConnectionEnabled(connectionId: string, enabled: boolean) {
     try {
       await apiFetch(`/api/user/connections/${connectionId}`, {
@@ -398,16 +409,14 @@ export default function SettingsPage() {
       {toast && <Toast tone={toast.tone} message={toast.message} onDismiss={() => setToast(null)} />}
       <div className="app-page-heading">
         <div>
-          <div className="eyebrow">CONFIGURATION</div>
           <h1>模型设置</h1>
-          <p>先管理 API 连接，再同步模型，最后设置题型默认模型。</p>
         </div>
         <div className="settings-security"><span>●</span> 密钥加密保存</div>
       </div>
 
       <section className="card settings-card settings-card-wide">
         <div className="section-heading">
-          <div><span className="eyebrow">01 / CONNECTIONS</span><h2>API 连接管理</h2><p className="section-description">连接保存后，API Key 只在服务端加密保存。</p></div>
+          <div><h2>API 连接管理</h2></div>
           <button className="button" type="button" onClick={openNewConnection}>新增连接</button>
         </div>
         {connectionFormOpen && (
@@ -441,6 +450,7 @@ export default function SettingsPage() {
                 {connection.enabled
                   ? <button className="button ghost" type="button" onClick={() => void disableConnection(connection.id)}>停用</button>
                   : <button className="button secondary" type="button" onClick={() => void setConnectionEnabled(connection.id, true)}>启用</button>}
+                <button className="button ghost" type="button" aria-label={`删除连接 ${connection.name}`} onClick={() => void deleteConnection(connection)}>删除</button>
               </div>
             </div>
           ))}
@@ -450,7 +460,7 @@ export default function SettingsPage() {
 
       <section className="card settings-card settings-card-wide">
         <div className="section-heading">
-          <div><span className="eyebrow">02 / MODELS</span><h2>模型管理</h2><p className="section-description">选择连接后同步供应商模型，不需要手动填写模型 ID。模型测试会发送一次最小文本请求，可能产生少量费用。</p></div>
+          <div><h2>模型管理</h2></div>
           <div className="form-actions">
             <select className="settings-inline-select" value={selectedConnection} onChange={(event) => setSelectedConnection(event.target.value)}>
               <option value="">选择连接</option>
@@ -507,7 +517,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="card settings-card settings-card-wide">
-        <div className="section-heading"><div><span className="eyebrow">03 / ROUTING</span><h2>题型默认模型</h2><p className="section-description">这里只展示已启用的模型。</p></div></div>
+        <div className="section-heading"><div><h2>题型默认模型</h2></div></div>
         <div className="routing-grid">
           {modes.map(([mode, label]) => (
             <div className="routing-row" key={mode}>
@@ -519,7 +529,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="card settings-card settings-card-wide">
-        <div className="section-heading"><div><span className="eyebrow">04 / PROMPTS</span><h2>题型提示词</h2></div></div>
+        <div className="section-heading"><div><h2>题型提示词</h2></div></div>
         <div className="form-actions">{modes.map(([mode, label]) => <button className={promptMode === mode ? "button" : "button secondary"} type="button" key={mode} onClick={() => void loadPrompt(mode)}>{label}</button>)}</div>
         <form className="form prompt-form" onSubmit={savePrompt}><label>{modes.find(([mode]) => mode === promptMode)?.[1]}提示词<textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={10} required /></label><button className="button" type="submit">保存提示词</button></form>
       </section>

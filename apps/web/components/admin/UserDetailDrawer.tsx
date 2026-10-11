@@ -10,7 +10,7 @@ function date(value: string | null) {
 export function UserDetailDrawer({ detail, loading, onClose, onGrantTrial, onExtendEntitlement, onPauseEntitlement, onRevokeEntitlement }: { detail: AdminUserDetail | null; loading: boolean; onClose: () => void; onGrantTrial?: () => void; onExtendEntitlement?: () => void; onPauseEntitlement?: () => void; onRevokeEntitlement?: () => void }) {
   return (
     <aside className="admin-user-drawer" aria-label="用户详情">
-      <div className="admin-user-drawer-head"><div><span className="eyebrow">USER DETAIL</span><h2>{detail?.user.username || detail?.user.email || "用户详情"}</h2></div><button className="icon-button" type="button" aria-label="关闭用户详情" title="关闭用户详情" onClick={onClose}><X size={18} /></button></div>
+      <div className="admin-user-drawer-head"><div><h2>{detail?.user.username || detail?.user.email || "用户详情"}</h2></div><button className="icon-button" type="button" aria-label="关闭用户详情" title="关闭用户详情" onClick={onClose}><X size={18} /></button></div>
       {loading && <div className="ui-loading" role="status">正在加载用户详情</div>}
       {!loading && detail && <div className="admin-user-drawer-body">
         <p className="admin-user-email">{detail.user.email}</p>

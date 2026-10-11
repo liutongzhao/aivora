@@ -150,6 +150,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./downloads:/opt/aivora/downloads:ro
 
 volumes:
   postgres_data:

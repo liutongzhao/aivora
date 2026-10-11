@@ -193,7 +193,7 @@ export default function RemotePage() {
           {connected ? (
             <p><span className="remote-connected-at">连接于 {session.connectedAt ? new Date(session.connectedAt).toLocaleTimeString() : "刚刚"} <span className="remote-separator">·</span> </span>已连接 {session.connectedAt ? duration(Math.max(0, Math.floor((now - session.connectedAt) / 1000))) : "0分00秒"}</p>
           ) : (
-            <p>在桌面端生成连接码后输入</p>
+            <p>输入桌面端显示的连接码</p>
           )}
         </div>
         {connected && <button className="remote-disconnect" title="断开连接" onClick={() => {

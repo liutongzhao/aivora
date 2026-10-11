@@ -44,6 +44,17 @@ export function ConnectionSettings({ onNotify }: { onNotify?: (message: string, 
     }
   }
 
+  async function deleteConnection(connection: Connection) {
+    if (!window.confirm(`删除连接「${connection.name}」？该连接下的模型也会被删除。`)) return
+    try {
+      await userConfigService.deleteConnection(connection.id)
+      onNotify?.('连接已删除', 'success')
+      await refresh()
+    } catch (reason) {
+      onNotify?.(reason instanceof Error ? reason.message : '删除连接失败', 'error')
+    }
+  }
+
   return (
     <section className="connection-settings-panel">
       <div className="connection-panel-heading">
@@ -62,6 +73,7 @@ export function ConnectionSettings({ onNotify }: { onNotify?: (message: string, 
             <button type="button" className="client-button client-button-secondary" onClick={() => void testConnection(connection)}>测试连接</button>
             <button type="button" className="client-button client-button-secondary" onClick={() => setEditing(connection)}>编辑</button>
             <button type="button" className="client-button client-button-secondary" aria-label={connection.enabled ? '停用连接' : '启用连接'} onClick={() => void toggleConnection(connection)}>{connection.enabled ? '停用' : '启用'}</button>
+            <button type="button" className="client-button client-button-secondary" aria-label={`删除连接 ${connection.name}`} onClick={() => void deleteConnection(connection)}>删除</button>
           </div>
         </div>
       ))}

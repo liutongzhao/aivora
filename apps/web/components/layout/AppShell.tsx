@@ -2,7 +2,7 @@
 
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import { LayoutDashboard, ListTodo, History, Settings2, Smartphone, UserRound, HelpCircle, Menu, X } from "lucide-react";
+import { LayoutDashboard, ListTodo, History, Settings2, Smartphone, UserRound, Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { AccountMenu } from "./AccountMenu";
 
@@ -13,7 +13,6 @@ const items = [
   { href: "/dashboard/settings", label: "模型设置", icon: <Settings2 size={17} /> },
   { href: "/dashboard/profile", label: "个人中心", icon: <UserRound size={17} /> },
   { href: "/remote", label: "远程控制", icon: <Smartphone size={17} /> },
-  { href: "/help", label: "帮助与反馈", icon: <HelpCircle size={17} /> },
 ];
 
 export function AppShell({ children, navigation = items }: PropsWithChildren<{ navigation?: typeof items }>) {

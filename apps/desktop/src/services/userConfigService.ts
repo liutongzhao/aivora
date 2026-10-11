@@ -31,10 +31,14 @@ export const userConfigService = {
     })
   },
 
-  disableConnection(connectionId: string): Promise<{ success: boolean }> {
+  deleteConnection(connectionId: string): Promise<{ success: boolean }> {
     return apiFetch<{ success: boolean }>(userPath(`/connections/${connectionId}`), {
       method: 'DELETE',
     })
+  },
+
+  disableConnection(connectionId: string): Promise<Connection> {
+    return this.updateConnection(connectionId, { enabled: false })
   },
 
   testNewConnection(payload: { base_url: string; api_key: string }): Promise<ConnectionTestResult> {

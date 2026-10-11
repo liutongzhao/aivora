@@ -34,7 +34,7 @@ export function AnswerViewer({ content, rawContent, parsed, warnings = [] }: { c
   const renderText = (value: string) => <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>;
   async function copy() { await navigator.clipboard?.writeText(copyValue); setCopied(true); window.setTimeout(() => setCopied(false), 1600); }
   return <div className="answer-viewer">
-    <div className="answer-viewer-head"><div><div className="eyebrow">ANSWER</div><h2>处理结果</h2></div><Button variant="secondary" onClick={copy}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制结果"}</Button></div>
+    <div className="answer-viewer-head"><div><h2>处理结果</h2></div><Button variant="secondary" onClick={copy}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? "已复制" : "复制结果"}</Button></div>
     {[...warnings, ...modelWarnings].map((warning) => <div className="notice" key={warning}>{warning}</div>)}
     {question && <div className="answer-question markdown-body"><div className="answer-section-label">题目</div>{renderText(question)}</div>}
     {options.length > 0 && <div className="answer-options"><div className="answer-section-label">选项</div>{options.map(([key, value]) => <div className={`answer-option ${answer.split(",").map((item) => item.trim()).includes(key) ? "is-correct" : ""}`} key={key}><strong>{key}</strong><span>{String(value)}</span></div>)}</div>}

@@ -91,7 +91,7 @@ export default function TasksPage() {
   }, [selected?.id]);
   return (
     <main className="container">
-      <section className="app-page-heading"><div><div className="eyebrow">LIVE TASKS</div><h1>AI 任务</h1><p>查看正在处理的任务，并实时跟踪答案生成。</p></div><div className="page-heading-stat"><strong>{tasks.filter((task) => ["queued", "processing", "streaming"].includes(task.status)).length}</strong><span>进行中</span></div></section>
+      <section className="app-page-heading"><div><h1>AI 任务</h1></div><div className="page-heading-stat"><strong>{tasks.filter((task) => ["queued", "processing", "streaming"].includes(task.status)).length}</strong><span>进行中</span></div></section>
       {error && <div className="notice">{error}</div>}
       {!error && tasks.length === 0 && total === 0 ? <div className="card empty-inline"><p>还没有任务，桌面客户端提交截图后会出现在这里。</p></div> : <TaskWorkspace tasks={tasks} selected={selected} result={result} filter={filter} onFilter={setFilter} onSelect={setSelected} filters={[["all", "全部"], ["queued", "排队中"], ["processing", "处理中"], ["streaming", "生成中"], ["programming", "编程题"], ["single_choice", "选择题"]]} page={page} pageSize={20} total={total} onPage={(nextPage) => { setPage(nextPage); setSelected(null); }} />}
     </main>

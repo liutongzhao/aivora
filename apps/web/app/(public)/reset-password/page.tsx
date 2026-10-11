@@ -35,7 +35,7 @@ function ResetPasswordForm() {
     }
   }
 
-  return <PublicShell><div className="auth-card motion-slide-up"><BrandMark compact /><div className="auth-heading"><span className="eyebrow">PASSWORD RESET</span><h1>设置新密码</h1><p>设置新密码后，旧登录会话会全部退出。</p></div>{message && <div className="notice" role="status">{message}</div>}{error && <div className="notice" role="alert">{error}</div>}<form className="auth-form" onSubmit={submit}><label htmlFor="new-password">新密码<Input id="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoFocus /></label><PasswordRules /><Button type="submit" loading={busy} className="auth-submit" disabled={!token}>{busy ? "保存中" : "重置密码"}</Button></form></div></PublicShell>;
+  return <PublicShell><div className="auth-card motion-slide-up"><BrandMark compact /><div className="auth-heading"><h1>设置新密码</h1></div>{message && <div className="notice" role="status">{message}</div>}{error && <div className="notice" role="alert">{error}</div>}<form className="auth-form" onSubmit={submit}><label htmlFor="new-password">新密码<Input id="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoFocus /></label><PasswordRules /><Button type="submit" loading={busy} className="auth-submit" disabled={!token}>{busy ? "保存中" : "重置密码"}</Button></form></div></PublicShell>;
 }
 
 export default function ResetPasswordPage() {

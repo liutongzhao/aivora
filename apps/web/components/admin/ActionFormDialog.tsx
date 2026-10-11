@@ -26,7 +26,6 @@ export function ActionFormDialog({
 
   return <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="action-dialog-title">
     <form className="dialog-card motion-scale-in action-form-dialog" onSubmit={onSubmit}>
-      <span className="eyebrow">ADMIN ACTION</span>
       <h2 id="action-dialog-title">{title}</h2>
       <p>{description}</p>
       <div className="action-dialog-fields">{children}</div>

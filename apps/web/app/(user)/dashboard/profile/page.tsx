@@ -48,7 +48,7 @@ export default function ProfilePage() {
   return (
     <main className="container profile-page">
       <section className="app-page-heading">
-        <div><div className="eyebrow">ACCOUNT CENTER</div><h1>个人中心</h1><p>统一管理账号、授权期限、体验额度和使用记录。</p></div>
+        <div><h1>个人中心</h1></div>
         <button className="button ghost" type="button" onClick={() => void load(true)} disabled={refreshing}><RefreshCw size={15} className={refreshing ? "remote-spin" : ""} />刷新状态</button>
       </section>
       {error && <div className="notice" role="alert">部分数据暂时无法更新：{error}</div>}

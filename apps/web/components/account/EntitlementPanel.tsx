@@ -23,7 +23,6 @@ export function EntitlementPanel({ snapshot, onRedeemed }: { snapshot: AccountSn
     <section className={`entitlement-panel panel ${active ? "is-active" : exhausted || expired ? "is-blocked" : "is-trial"}`}>
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">ACCESS &amp; ENTITLEMENT</span>
           <h2>{title}</h2>
           <p className="muted">{description}</p>
         </div>
@@ -37,7 +36,7 @@ export function EntitlementPanel({ snapshot, onRedeemed }: { snapshot: AccountSn
       {expired && <p className="entitlement-expired-copy">兑换授权码后继续使用</p>}
       {!active && (
         <div className="entitlement-redeem">
-          <div className="form-panel-heading"><div><strong>激活授权码</strong><span>激活后按管理员配置的期限使用，默认期限为 6 个月。</span></div><Sparkles size={18} aria-hidden="true" /></div>
+          <div className="form-panel-heading"><div><strong>激活授权码</strong></div><Sparkles size={18} aria-hidden="true" /></div>
           <LicenseRedeemForm onRedeemed={onRedeemed} />
         </div>
       )}

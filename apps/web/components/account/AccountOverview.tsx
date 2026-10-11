@@ -8,7 +8,6 @@ export function AccountOverview({ snapshot }: { snapshot: AccountSnapshot }) {
       <div className="account-overview-identity">
         <span className="account-profile-avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</span>
         <div>
-          <span className="eyebrow">ACCOUNT</span>
           <h2>{displayName}</h2>
           <p>{snapshot.user.email}</p>
         </div>

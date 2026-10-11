@@ -41,7 +41,7 @@ export function TaskDetail({ task, result }: { task: { id?: string; mode: string
   }, [task.id, result]);
 
   return <section className="task-detail motion-scale-in">
-    <div className="task-detail-head"><div><span className="eyebrow">SELECTED TASK</span><h2>{modes[task.mode] ?? task.mode}</h2><p className="muted">{new Date(task.created_at).toLocaleString("zh-CN")} · {task.id ?? ""}</p></div><TaskStatusBadge status={task.status} /></div>
+    <div className="task-detail-head"><div><h2>{modes[task.mode] ?? task.mode}</h2><p className="muted">{new Date(task.created_at).toLocaleString("zh-CN")} · {task.id ?? ""}</p></div><TaskStatusBadge status={task.status} /></div>
     {["queued", "processing", "streaming"].includes(task.status) && <div className="task-detail-progress"><div><span>处理进度</span><strong>{task.progress}%</strong></div><Progress value={task.progress} label="任务处理进度" /><small>{task.stage}</small></div>}
     {task.error_message && <div className="notice">{task.error_message}</div>}
     <div className="task-detail-columns">

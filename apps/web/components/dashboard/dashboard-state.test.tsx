@@ -55,7 +55,7 @@ describe("工作台状态", () => {
   it("shows an actionable trial state when the account still has free uses", async () => {
     render(<DashboardPage />);
     expect(await screen.findByText("免费体验")).toBeInTheDocument();
-    expect(screen.getByText(/当前剩余|免费体验剩余/)).toBeInTheDocument();
+    expect(screen.getByText("剩余 3 次")).toBeInTheDocument();
     expect(screen.queryByLabelText("激活授权码")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "个人中心" })).not.toBeInTheDocument();
   });
@@ -81,7 +81,7 @@ describe("工作台状态", () => {
     getAccountSnapshot.mockResolvedValueOnce({ ...snapshot, modelStatus: { ...snapshot.modelStatus, ready: false } });
     render(<DashboardPage />);
     expect(await screen.findByText("尚未配置模型")).toBeInTheDocument();
-    expect(screen.getByText("添加自己的 API 连接后即可使用。")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /管理模型/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /管理模型/ })).toHaveAttribute("href", "/dashboard/settings");
   });
 });

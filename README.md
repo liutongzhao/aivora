@@ -300,7 +300,7 @@ curl http://<server-host>/health/ready
 
 ## 客户端发布与更新
 
-`.github/workflows/desktop-release.yml` 负责构建 macOS 与 Windows 安装包。推送符合 `desktop-v*` 的 Tag，或在 GitHub Actions 中手动运行 workflow，即可创建 GitHub Release 并上传安装文件。
+`.github/workflows/desktop-release.yml` 负责构建 macOS 与 Windows 安装包。推送符合 `desktop-v*` 的 Tag，或在 GitHub Actions 中手动运行 workflow，即可创建 GitHub Release，并自动覆盖生产环境的直链下载文件。
 
 推荐发布步骤：
 
@@ -308,6 +308,13 @@ curl http://<server-host>/health/ready
 git tag desktop-v0.2.0
 git push origin desktop-v0.2.0
 ```
+
+发布完成后，生产环境会自动更新：
+
+- `https://<站点>/downloads/Aivora-latest.dmg`
+- `https://<站点>/downloads/Aivora-latest.exe`
+
+桌面端发布工作流复用生产部署所需的 `DEPLOY_HOST`、`DEPLOY_USER`、`DEPLOY_PORT` 和 `DEPLOY_SSH_KEY` Secrets。上传使用临时文件，完成后再原子替换，避免用户下载到不完整的安装包。
 
 客户端通过 Releases 检查新版本。正式公开分发前，建议补齐：
 

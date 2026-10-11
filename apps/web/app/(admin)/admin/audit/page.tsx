@@ -46,7 +46,7 @@ export default function AdminAuditPage() {
   useEffect(() => { void load(); }, []);
 
   return <main className="container">
-    <div className="app-page-heading"><div><div className="eyebrow">ADMIN / AUDIT</div><h1>操作日志</h1><p className="muted">追踪管理员操作，敏感信息已自动脱敏。</p></div><span className="page-heading-stat"><strong>{total}</strong><span>条记录</span></span></div>
+    <div className="app-page-heading"><div><h1>操作日志</h1></div><span className="page-heading-stat"><strong>{total}</strong><span>条记录</span></span></div>
     {error && <div className="notice" role="alert">{error}</div>}
     <section className="panel audit-filter-panel">
       <div className="audit-filters">
@@ -57,7 +57,7 @@ export default function AdminAuditPage() {
       </div>
     </section>
     <section className="panel audit-list-panel">
-      <div className="panel-heading"><div><span className="eyebrow">AUDIT TRAIL</span><h2>管理员活动</h2></div><span className="muted">{loading ? "加载中..." : `显示 ${logs.length} 条`}</span></div>
+      <div className="panel-heading"><div><h2>管理员活动</h2></div><span className="muted">{loading ? "加载中..." : `显示 ${logs.length} 条`}</span></div>
       <div className="admin-table-wrap"><table className="table"><thead><tr><th>时间</th><th>操作</th><th>管理员</th><th>资源</th><th>详情</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td>{new Date(log.createdAt).toLocaleString("zh-CN")}</td><td><strong>{actionLabels[log.action] ?? log.action}</strong><small className="table-subline">{log.action}</small></td><td>{log.actorEmail}</td><td>{log.resourceType}{log.resourceId ? ` · ${log.resourceId}` : ""}</td><td className="audit-detail-cell">{details(log.details)}</td></tr>)}</tbody></table>{!loading && logs.length === 0 && <p className="muted">暂无符合条件的操作记录。</p>}</div>
     </section>
   </main>;

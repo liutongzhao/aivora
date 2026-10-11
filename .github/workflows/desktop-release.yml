@@ -81,3 +81,42 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: release-assets/*
+
+  publish-direct-downloads:
+    name: 更新生产环境直链下载
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有平台安装包
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: 配置 SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/aivora_deploy
+          chmod 600 ~/.ssh/aivora_deploy
+          ssh-keyscan -p "${DEPLOY_PORT:-22}" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: 上传并原子替换 latest 安装包
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          MAC_PACKAGE="$(find release-assets -type f -name '*.dmg' | head -n 1)"
+          WINDOWS_PACKAGE="$(find release-assets -type f -name '*.exe' | head -n 1)"
+          test -n "$MAC_PACKAGE"
+          test -n "$WINDOWS_PACKAGE"
+          ssh -i ~/.ssh/aivora_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" \
+            'mkdir -p /home/ubuntu/service-deploy/downloads'
+          scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" "$MAC_PACKAGE" "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/downloads/Aivora-latest.dmg.tmp"
+          scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" "$WINDOWS_PACKAGE" "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/downloads/Aivora-latest.exe.tmp"
+          ssh -i ~/.ssh/aivora_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" \
+            'mv /home/ubuntu/service-deploy/downloads/Aivora-latest.dmg.tmp /home/ubuntu/service-deploy/downloads/Aivora-latest.dmg && mv /home/ubuntu/service-deploy/downloads/Aivora-latest.exe.tmp /home/ubuntu/service-deploy/downloads/Aivora-latest.exe'

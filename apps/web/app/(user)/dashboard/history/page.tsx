@@ -27,7 +27,7 @@ export default function HistoryPage() {
     if (filteredSelected?.id !== selected?.id) setSelected(filteredSelected);
   }, [filteredSelected?.id, selected?.id]);
   return <main className="container">
-    <div className="app-page-heading"><div><div className="eyebrow">HISTORY</div><h1>历史记录</h1><p>复习过去完成的题目和答案。</p></div><div className="history-summary"><strong>{tasks.length}</strong><span>已完成任务</span></div></div>
+    <div className="app-page-heading"><div><h1>历史记录</h1></div><div className="history-summary"><strong>{tasks.length}</strong><span>已完成任务</span></div></div>
     {error && <div className="notice" role="alert">{error}</div>}
     <div className="history-toolbar"><div className="history-search"><Search size={16} aria-hidden="true" /><input aria-label="搜索历史记录" placeholder="搜索题型或时间" value={query} onChange={(event) => setQuery(event.target.value)} /></div><span className="muted">{visible.length} 条记录</span></div>
     {error && <div className="notice">{error}</div>}

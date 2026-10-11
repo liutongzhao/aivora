@@ -23,6 +23,25 @@ beforeEach(() => {
 });
 
 describe("模型设置", () => {
+  it("deletes a connection after confirmation", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    apiFetch.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/api/user/connections") return connections;
+      if (path === "/api/user/connections/connection-a" && init?.method === "DELETE") return { success: true };
+      if (path === "/api/user/models") return [];
+      if (path === "/api/user/models/defaults") return [];
+      if (path.endsWith("/test")) return { models: [] };
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    render(<SettingsPage />);
+    await screen.findByRole("button", { name: "删除连接 Pixel" });
+    fireEvent.click(screen.getByRole("button", { name: "删除连接 Pixel" }));
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith(
+      "/api/user/connections/connection-a",
+      { method: "DELETE" },
+    ));
+  });
+
   it("syncs models from a selected connection and adds one without typing its ID", async () => {
     render(<SettingsPage />);
     const selector = await screen.findByRole("combobox", { name: "" });

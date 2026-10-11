@@ -71,7 +71,7 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/aivora_deploy
           chmod 600 ~/.ssh/aivora_deploy
           ssh-keyscan -p "${DEPLOY_PORT:-22}" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/aivora_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p /home/ubuntu/service-deploy/nginx /home/ubuntu/service-deploy/scripts /home/ubuntu/service-deploy/migrations'
+          ssh -i ~/.ssh/aivora_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p /home/ubuntu/service-deploy/nginx /home/ubuntu/service-deploy/scripts /home/ubuntu/service-deploy/migrations /home/ubuntu/service-deploy/downloads'
           scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" deploy/compose.prod.yml deploy/nginx/default.conf "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/"
           scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" deploy/scripts/*.sh "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/scripts/"
           scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" services/backend/db/migrations/*.sql "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/migrations/"

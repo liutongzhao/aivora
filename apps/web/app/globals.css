@@ -121,8 +121,17 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .recent-task small { margin-top: 5px; color: var(--muted); font-size: 11px; }
 .desktop-status-card { padding: 22px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: var(--shadow-sm); }
 .desktop-status-card .eyebrow { color: #83b3ff; }
+.desktop-status-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.desktop-status-card-heading > svg { color: var(--accent); }
 .desktop-status-card h3 { margin-top: 12px; font-size: 17px; }
 .desktop-status-card p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.desktop-download-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.desktop-download-actions .button { min-height: 38px; }
+.mac-install-note { display: grid; gap: 7px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.mac-install-note strong { color: var(--ink-soft); font-size: 12px; }
+.mac-install-note span { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.mac-install-note code { display: block; overflow-x: auto; padding: 9px 10px; border-radius: 6px; color: #dfe7f2; background: #1c2430; font: 11px/1.5 "SFMono-Regular", Consolas, monospace; white-space: nowrap; }
+.mac-install-note .text-button { display: inline-flex; align-items: center; gap: 5px; width: fit-content; margin-top: 0; }
 .connection-state { display: inline-flex; width: fit-content; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: #c9d1dd; font-size: 11px; }
 .connection-state i { width: 6px; height: 6px; border-radius: 99px; background: #f0b84d; box-shadow: 0 0 0 4px rgba(240,184,77,.12); }
 .workflow-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

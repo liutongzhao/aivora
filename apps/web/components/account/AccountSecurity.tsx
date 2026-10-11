@@ -93,16 +93,14 @@ export function AccountSecurity() {
     <section className="account-security panel">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">SECURITY</span>
           <h2>账号安全</h2>
-          <p className="muted">修改密码并检查账号在哪些设备保持登录。</p>
         </div>
         <span className="entitlement-icon account-security-icon" aria-hidden="true"><Shield size={19} /></span>
       </div>
       {(message || error) && <div className={`notice account-security-notice ${error ? "is-error" : ""}`} role={error ? "alert" : "status"}>{error || message}</div>}
       <div className="account-security-grid">
         <form className="account-password-form" onSubmit={changePassword} aria-label="修改密码">
-          <div className="form-panel-heading"><div><strong>修改密码</strong><span>使用至少 8 位、包含大小写字母和数字的新密码。</span></div></div>
+          <div className="form-panel-heading"><div><strong>修改密码</strong></div></div>
           <label>原密码<input type="password" autoComplete="current-password" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} required /></label>
           <label>新密码<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
           <label>确认新密码<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>

@@ -85,7 +85,7 @@ async def test_saved_connection(
 
 
 @router.delete("/connections/{connection_id}")
-async def disable_connection(
+async def delete_connection(
     connection_id: UUID, user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):

@@ -32,7 +32,10 @@ class BYOKService:
 
     async def connections(self, user_id: UUID) -> list[ProviderConnection]:
         return list((await self.db.scalars(
-            select(ProviderConnection).where(ProviderConnection.user_id == user_id)
+            select(ProviderConnection).where(
+                ProviderConnection.user_id == user_id,
+                ProviderConnection.archived.is_(False),
+            )
         )).all())
 
     async def create_connection(self, user_id: UUID, request: ConnectionCreate) -> ProviderConnection:
@@ -49,7 +52,9 @@ class BYOKService:
         self, user_id: UUID, connection_id: UUID, request: ConnectionUpdate,
     ) -> ProviderConnection | None:
         item = await self.db.scalar(select(ProviderConnection).where(
-            ProviderConnection.id == connection_id, ProviderConnection.user_id == user_id,
+            ProviderConnection.id == connection_id,
+            ProviderConnection.user_id == user_id,
+            ProviderConnection.archived.is_(False),
         ))
         if not item:
             return None
@@ -69,17 +74,37 @@ class BYOKService:
 
     async def delete_connection(self, user_id: UUID, connection_id: UUID) -> bool:
         item = await self.db.scalar(select(ProviderConnection).where(
-            ProviderConnection.id == connection_id, ProviderConnection.user_id == user_id,
+            ProviderConnection.id == connection_id,
+            ProviderConnection.user_id == user_id,
+            ProviderConnection.archived.is_(False),
         ))
         if not item:
             return False
         item.enabled = False
+        item.archived = True
+        model_ids = list((await self.db.scalars(select(UserModel.id).where(
+            UserModel.connection_id == connection_id,
+            UserModel.user_id == user_id,
+            UserModel.archived.is_(False),
+        ))).all())
+        if model_ids:
+            await self.db.execute(delete(QuestionModelDefault).where(
+                QuestionModelDefault.user_id == user_id,
+                QuestionModelDefault.model_id.in_(model_ids),
+            ))
+            await self.db.execute(
+                UserModel.__table__.update()
+                .where(UserModel.id.in_(model_ids), UserModel.user_id == user_id)
+                .values(enabled=False, archived=True)
+            )
         await self.db.commit()
         return True
 
     async def test_connection(self, user_id: UUID, connection_id: UUID) -> list[str]:
         item = await self.db.scalar(select(ProviderConnection).where(
-            ProviderConnection.id == connection_id, ProviderConnection.user_id == user_id,
+            ProviderConnection.id == connection_id,
+            ProviderConnection.user_id == user_id,
+            ProviderConnection.archived.is_(False),
         ))
         if not item:
             raise ValueError("连接不存在")

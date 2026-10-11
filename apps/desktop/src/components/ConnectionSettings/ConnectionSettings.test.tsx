@@ -9,6 +9,7 @@ vi.mock('../../services/userConfigService', () => ({
     listConnections: vi.fn(),
     createConnection: vi.fn(),
     updateConnection: vi.fn(),
+    deleteConnection: vi.fn(),
     disableConnection: vi.fn(),
     testNewConnection: vi.fn(),
     syncConnection: vi.fn(),
@@ -59,7 +60,12 @@ describe('ConnectionSettings', () => {
       { id: 'a', name: '第一连接', base_url: 'https://a.example.com', enabled: true },
       { id: 'b', name: '第二连接', base_url: 'https://b.example.com', enabled: true },
     ])
-    vi.mocked(userConfigService.disableConnection).mockResolvedValue({ success: true })
+    vi.mocked(userConfigService.disableConnection).mockResolvedValue({
+      id: 'b',
+      name: '第二连接',
+      base_url: 'https://b.example.com',
+      enabled: false,
+    })
     render(<ConnectionSettings />)
     await screen.findByText('第一连接')
     fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0])
@@ -68,5 +74,17 @@ describe('ConnectionSettings', () => {
     expect((screen.getByLabelText('连接名称') as HTMLInputElement).value).toBe('第二连接')
     fireEvent.click(screen.getAllByRole('button', { name: '停用连接' })[1])
     await waitFor(() => expect(userConfigService.disableConnection).toHaveBeenCalledWith('b'))
+  })
+
+  it('deletes a connection after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(userConfigService.listConnections).mockResolvedValue([
+      { id: 'a', name: '第一连接', base_url: 'https://a.example.com', enabled: true },
+    ])
+    vi.mocked(userConfigService.deleteConnection).mockResolvedValue({ success: true })
+    render(<ConnectionSettings />)
+    await screen.findByText('第一连接')
+    fireEvent.click(screen.getByRole('button', { name: '删除连接 第一连接' }))
+    await waitFor(() => expect(userConfigService.deleteConnection).toHaveBeenCalledWith('a'))
   })
 })

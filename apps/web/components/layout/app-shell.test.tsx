@@ -12,6 +12,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("link", { name: /工作台/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /个人中心/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /帮助与反馈/ })).not.toBeInTheDocument();
     expect(screen.getByText("页面内容")).toBeInTheDocument();
   });
 
