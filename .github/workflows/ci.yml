@@ -44,6 +44,8 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    env:
+      AIVORA_TEST_POSTGRES_CONTAINER: aivora-ci-postgres-1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

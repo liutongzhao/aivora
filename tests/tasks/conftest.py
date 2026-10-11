@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -13,6 +14,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.infrastructure.storage import storage
 
 
+POSTGRES_CONTAINER = os.getenv("AIVORA_TEST_POSTGRES_CONTAINER", "aivora-postgres")
+
+
 @pytest.fixture(scope="session")
 def isolated_infrastructure():
     suffix = uuid4().hex[:12]
@@ -20,7 +24,7 @@ def isolated_infrastructure():
     bucket = f"aivora-task1-{suffix}"
     root = Path(__file__).resolve().parents[2]
     subprocess.run(
-        ["docker", "exec", "aivora-postgres", "psql", "-U", "aivora", "-d", "postgres",
+        ["docker", "exec", POSTGRES_CONTAINER, "psql", "-U", "aivora", "-d", "postgres",
          "-v", "ON_ERROR_STOP=1", "-c", f"CREATE DATABASE {database}"],
         check=True, capture_output=True, text=True,
     )
@@ -50,7 +54,7 @@ def isolated_infrastructure():
                 client.remove_object(bucket, item.object_name)
             client.remove_bucket(bucket)
         subprocess.run(
-            ["docker", "exec", "aivora-postgres", "psql", "-U", "aivora", "-d", "postgres",
+            ["docker", "exec", POSTGRES_CONTAINER, "psql", "-U", "aivora", "-d", "postgres",
              "-v", "ON_ERROR_STOP=1", "-c", f"DROP DATABASE {database} WITH (FORCE)"],
             check=True, capture_output=True, text=True,
         )
