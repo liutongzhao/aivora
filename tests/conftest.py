@@ -1,28 +1,44 @@
-import sys
+import asyncio
 import os
+import sys
 from pathlib import Path
 import subprocess
 from uuid import uuid4
 
+import asyncpg
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1] / "services" / "backend"
-POSTGRES_CONTAINER = os.getenv("AIVORA_TEST_POSTGRES_CONTAINER", "aivora-postgres")
+POSTGRES_HOST = os.getenv("AIVORA_TEST_POSTGRES_HOST", "127.0.0.1")
+POSTGRES_PORT = int(os.getenv("AIVORA_TEST_POSTGRES_PORT", "15439"))
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
+
+
+def _run_database_command(sql: str) -> None:
+    async def execute() -> None:
+        connection = await asyncpg.connect(
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT,
+            user="aivora",
+            password="aivora",
+            database="postgres",
+        )
+        try:
+            await connection.execute(sql)
+        finally:
+            await connection.close()
+
+    asyncio.run(execute())
 
 
 @pytest.fixture(scope="session")
 def registration_database():
     name = f"aivora_registration_{uuid4().hex[:12]}"
-    subprocess.run(
-        ["docker", "exec", POSTGRES_CONTAINER, "psql", "-U", "aivora", "-d", "postgres",
-         "-v", "ON_ERROR_STOP=1", "-c", f"CREATE DATABASE {name}"],
-        check=True, capture_output=True, text=True,
-    )
+    _run_database_command(f"CREATE DATABASE {name}")
     flyway = [
         "docker", "run", "--rm", "-v",
         f"{BACKEND_ROOT / 'db/migrations'}:/flyway/sql:ro",
@@ -30,15 +46,13 @@ def registration_database():
         f"-url=jdbc:postgresql://host.docker.internal:15439/{name}",
         "-user=aivora", "-password=aivora",
     ]
+    if sys.platform.startswith("linux"):
+        flyway[2:2] = ["--add-host", "host.docker.internal:host-gateway"]
     try:
         subprocess.run(flyway + ["migrate"], check=True, capture_output=True, text=True)
-        yield f"postgresql+asyncpg://aivora:aivora@127.0.0.1:15439/{name}"
+        yield f"postgresql+asyncpg://aivora:aivora@{POSTGRES_HOST}:{POSTGRES_PORT}/{name}"
     finally:
-        subprocess.run(
-            ["docker", "exec", POSTGRES_CONTAINER, "psql", "-U", "aivora", "-d", "postgres",
-             "-v", "ON_ERROR_STOP=1", "-c", f"DROP DATABASE {name} WITH (FORCE)"],
-            check=True, capture_output=True, text=True,
-        )
+        _run_database_command(f"DROP DATABASE {name} WITH (FORCE)")
 
 
 @pytest_asyncio.fixture
