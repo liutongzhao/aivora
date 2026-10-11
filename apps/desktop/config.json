@@ -1,14 +1,14 @@
 {
   "api": {
-    "baseUrl": "http://43.133.80.249",
+    "baseUrl": "https://aivora.cuzisme.cn",
     "aiEndpoint": "/api/ai",
     "webEndpoint": "/api"
   },
   "websocket": {
-    "url": "http://43.133.80.249"
+    "url": "https://aivora.cuzisme.cn"
   },
   "web": {
-    "baseUrl": "http://43.133.80.249",
+    "baseUrl": "https://aivora.cuzisme.cn",
     "logoutPath": "/logout",
     "dashboardPath": "/dashboard"
   },
