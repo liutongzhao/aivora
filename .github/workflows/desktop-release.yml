@@ -83,7 +83,7 @@ jobs:
           files: release-assets/*
 
   publish-direct-downloads:
-    name: 更新生产环境直链下载
+    name: 更新 OSS 直链下载
     needs: release
     runs-on: ubuntu-latest
     steps:
@@ -93,30 +93,22 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: 配置 SSH
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/aivora_deploy
-          chmod 600 ~/.ssh/aivora_deploy
-          ssh-keyscan -p "${DEPLOY_PORT:-22}" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+      - name: 配置 ossutil
+        uses: pascal-lab/setup-ossutil@v1
+        with:
+          endpoint: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+          access-key-id: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
 
-      - name: 上传并原子替换 latest 安装包
+      - name: 上传并覆盖 OSS 最新安装包
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
         run: |
           MAC_PACKAGE="$(find release-assets -type f -name '*.dmg' | head -n 1)"
           WINDOWS_PACKAGE="$(find release-assets -type f -name '*.exe' | head -n 1)"
           test -n "$MAC_PACKAGE"
           test -n "$WINDOWS_PACKAGE"
-          ssh -i ~/.ssh/aivora_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" \
-            'mkdir -p /home/ubuntu/service-deploy/downloads'
-          scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" "$MAC_PACKAGE" "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/downloads/Aivora-latest.dmg.tmp"
-          scp -i ~/.ssh/aivora_deploy -P "${DEPLOY_PORT:-22}" "$WINDOWS_PACKAGE" "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/service-deploy/downloads/Aivora-latest.exe.tmp"
-          ssh -i ~/.ssh/aivora_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" \
-            'mv /home/ubuntu/service-deploy/downloads/Aivora-latest.dmg.tmp /home/ubuntu/service-deploy/downloads/Aivora-latest.dmg && mv /home/ubuntu/service-deploy/downloads/Aivora-latest.exe.tmp /home/ubuntu/service-deploy/downloads/Aivora-latest.exe'
+          ossutil cp -f "$MAC_PACKAGE" "oss://${OSS_BUCKET}/Aivora-latest.dmg" \
+            -H "Cache-Control:no-cache,max-age=0,must-revalidate"
+          ossutil cp -f "$WINDOWS_PACKAGE" "oss://${OSS_BUCKET}/Aivora-latest.exe" \
+            -H "Cache-Control:no-cache,max-age=0,must-revalidate"
