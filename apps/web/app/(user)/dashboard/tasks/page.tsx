@@ -16,16 +16,20 @@ export default function TasksPage() {
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const taskId = useSearchParams().get("id");
 
   useEffect(() => {
+    setLoading(true);
     apiFetch<{ tasks: typeof tasks; total: number }>(`/api/ai/tasks?page=${page}&page_size=20`)
       .then((result) => {
         setTasks(result.tasks);
         setTotal(result.total);
         setSelected(taskId ? result.tasks.find((task) => task.id === taskId) ?? result.tasks[0] ?? null : result.tasks[0] ?? null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "任务加载失败"));
+      .catch((err) => setError(err instanceof Error ? err.message : "任务加载失败"))
+      .finally(() => setLoading(false));
   }, [taskId, page]);
   useEffect(() => {
     if (!selected?.id) return;
@@ -34,6 +38,7 @@ export default function TasksPage() {
     let source: EventSource | null = null;
     let content = "";
     const fields: Record<string, unknown> = {};
+    setDetailLoading(true);
 
     const updateTask = (patch: Partial<TaskSummary>) => {
       setTasks((current) => current.map((item) => item.id === selectedId ? { ...item, ...patch } : item));
@@ -66,12 +71,14 @@ export default function TasksPage() {
       }
     };
 
-    Promise.all([
-      apiFetch<{ result: NonNullable<typeof result> }>(`/api/ai/tasks/${selectedId}`),
-      apiFetch<{ token: string }>(`/api/ai/tasks/${selectedId}/stream-token`),
-    ]).then(([detail, token]) => {
+    apiFetch<{ result: NonNullable<typeof result>; status?: string; stage?: string; progress?: number }>(`/api/ai/tasks/${selectedId}`).then(async (detail) => {
       if (disposed) return;
+      if (detail.status) updateTask({ status: detail.status, stage: detail.stage ?? selected.stage, progress: Number(detail.progress ?? selected.progress) });
       setResult(detail.result);
+      setDetailLoading(false);
+      if (["completed", "failed", "cancelled"].includes(detail.status ?? selected.status)) return;
+      const token = await apiFetch<{ token: string }>(`/api/ai/tasks/${selectedId}/stream-token`);
+      if (disposed) return;
       const session = getWebSessionId();
       const query = new URLSearchParams({ token: token.token });
       if (session) query.set("session_id", session);
@@ -82,18 +89,19 @@ export default function TasksPage() {
       source.onerror = () => {
         if (!disposed) source?.close();
       };
-    }).catch(() => { if (!disposed) setResult(null); });
+    }).catch(() => { if (!disposed) { setResult(null); setDetailLoading(false); } });
 
     return () => {
       disposed = true;
       source?.close();
+      setDetailLoading(false);
     };
   }, [selected?.id]);
   return (
     <main className="container">
       <section className="app-page-heading"><div><h1>AI 任务</h1></div><div className="page-heading-stat"><strong>{tasks.filter((task) => ["queued", "processing", "streaming"].includes(task.status)).length}</strong><span>进行中</span></div></section>
       {error && <div className="notice">{error}</div>}
-      {!error && tasks.length === 0 && total === 0 ? <div className="card empty-inline"><p>还没有任务，桌面客户端提交截图后会出现在这里。</p></div> : <TaskWorkspace tasks={tasks} selected={selected} result={result} filter={filter} onFilter={setFilter} onSelect={setSelected} filters={[["all", "全部"], ["queued", "排队中"], ["processing", "处理中"], ["streaming", "生成中"], ["programming", "编程题"], ["single_choice", "选择题"]]} page={page} pageSize={20} total={total} onPage={(nextPage) => { setPage(nextPage); setSelected(null); }} />}
+      {!error && !loading && tasks.length === 0 && total === 0 ? <div className="card empty-inline"><p>还没有任务，桌面客户端提交截图后会出现在这里。</p></div> : <TaskWorkspace tasks={tasks} selected={selected} result={result} filter={filter} onFilter={setFilter} onSelect={(task) => { setSelected(task); setResult(null); }} filters={[["all", "全部"], ["queued", "排队中"], ["processing", "处理中"], ["streaming", "生成中"], ["programming", "编程题"], ["single_choice", "选择题"]]} page={page} pageSize={20} total={total} onPage={(nextPage) => { setPage(nextPage); setSelected(null); }} loading={loading} detailLoading={detailLoading} />}
     </main>
   );
 }

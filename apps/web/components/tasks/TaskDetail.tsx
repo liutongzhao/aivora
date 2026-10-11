@@ -12,6 +12,7 @@ type TaskResult = { content?: string; rawContent?: string; parsed?: Record<strin
 
 export function TaskDetail({ task, result }: { task: { id?: string; mode: string; status: string; stage: string; progress: number; created_at: string; error_message?: string | null }; result?: TaskResult | null }) {
   const images = result?.images ?? [];
+  const imageKey = images.map((image) => `${image.id}:${image.url}`).join("|");
   const imageUrl = (url: string) => new URL(url, getApiBase()).toString();
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [imageError, setImageError] = useState(false);
@@ -38,7 +39,7 @@ export function TaskDetail({ task, result }: { task: { id?: string; mode: string
       active = false;
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [task.id, result]);
+  }, [task.id, imageKey]);
 
   return <section className="task-detail motion-scale-in">
     <div className="task-detail-head"><div><h2>{modes[task.mode] ?? task.mode}</h2><p className="muted">{new Date(task.created_at).toLocaleString("zh-CN")} · {task.id ?? ""}</p></div><TaskStatusBadge status={task.status} /></div>

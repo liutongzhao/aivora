@@ -126,7 +126,7 @@ async def test_disabled_connection_and_model_can_be_reenabled(task_db, byok_key,
         model = await service.create_model(
             byok_user, ModelCreate(connection_id=connection.id, name="model-a", display_name="模型 A"),
         )
-        await service.delete_connection(byok_user, connection.id)
+        await service.update_connection(byok_user, connection.id, ConnectionUpdate(enabled=False))
         await service.update_model(byok_user, model.id, ModelUpdate(enabled=False))
         await service.update_connection(byok_user, connection.id, ConnectionUpdate(enabled=True))
         restored = await service.update_model(byok_user, model.id, ModelUpdate(enabled=True))
