@@ -8,8 +8,8 @@ Aivora 是一套可自主部署的 AI 截图任务处理工具，由 Electron �
 
 | 入口 | 地址 | 说明 |
 | --- | --- | --- |
-| Web 管理端 | [http://43.133.80.249](http://43.133.80.249) | 注册、登录、任务记录、模型与远程控制 |
-| 注册账号 | [立即注册](http://43.133.80.249/register) | 桌面客户端与 Web 端共用账号 |
+| Web 管理端 | [https://aivora.cuzisme.cn](https://aivora.cuzisme.cn) | 注册、登录、任务记录、模型与远程控制 |
+| 注册账号 | [立即注册](https://aivora.cuzisme.cn/register) | 桌面客户端与 Web 端共用账号 |
 | 最新客户端 | [GitHub Releases](https://github.com/liutongzhao/aivora/releases/latest) | 在 Assets 中选择对应系统安装包 |
 | 全部版本 | [版本列表](https://github.com/liutongzhao/aivora/releases) | 查看历史版本、更新说明和安装文件 |
 
@@ -92,7 +92,7 @@ Web 端用于账号管理、任务查询、模型配置同步和远程控制，�
 
 ## 快速使用
 
-1. 在 [Web 管理端](http://43.133.80.249) 注册账号。
+1. 在 [Web 管理端](https://aivora.cuzisme.cn) 注册账号。
 2. 从 [GitHub Releases](https://github.com/liutongzhao/aivora/releases/latest) 下载并安装客户端。
 3. 启动客户端并使用同一账号登录。
 4. 在“服务连接”中添加 OpenAI 兼容接口，填写接口地址和 API Key。
