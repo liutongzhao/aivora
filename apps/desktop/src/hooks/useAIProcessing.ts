@@ -462,6 +462,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     
     // 🆕 统一格式化处理，优先使用后端解析数据
     await performClientFormatting(result as AIProcessResult)
+    if (result) window.electronAPI?.clearScreenshotQueues?.()
     
     // 清理
     streamingContent.current = ''
@@ -475,6 +476,7 @@ export function useAIProcessing(): UseAIProcessingReturn {
     
     // 直接格式化并显示结果
     await performClientFormatting(result as AIProcessResult)
+    if (result) window.electronAPI?.clearScreenshotQueues?.()
     
     // 清理
     streamingContent.current = ''

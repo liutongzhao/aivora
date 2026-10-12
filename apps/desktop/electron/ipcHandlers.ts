@@ -761,6 +761,16 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     }
   })
 
+  ipcMain.handle("clear-screenshot-queues", () => {
+    try {
+      deps.clearQueues()
+      return { success: true }
+    } catch (error) {
+      console.error("Error clearing screenshot queues:", error)
+      return { error: "Failed to clear screenshot queues" }
+    }
+  })
+
   // Process screenshot handlers
   ipcMain.handle("trigger-process-screenshots", async (_event, options?: { mock?: boolean }) => {
     try {

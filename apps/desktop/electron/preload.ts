@@ -247,6 +247,7 @@ const electronAPI = {
     ipcRenderer.invoke("trigger-process-screenshots"),
   triggerDebugScreenshots: () =>
     ipcRenderer.invoke("trigger-debug-screenshots"),
+  clearScreenshotQueues: () => ipcRenderer.invoke("clear-screenshot-queues"),
   triggerReset: () => ipcRenderer.invoke("trigger-reset"),
   triggerMoveLeft: () => ipcRenderer.invoke("trigger-move-left"),
   triggerMoveRight: () => ipcRenderer.invoke("trigger-move-right"),
