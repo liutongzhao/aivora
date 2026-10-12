@@ -388,7 +388,7 @@ export class LightweightProcessingHelper {
           const previewData = await this.deps.getImagePreview(newScreenshot)
           console.log(`📸 新截图预览数据长度: ${previewData?.length}`)
           console.log(`📸 新截图预览前缀: ${previewData?.substring(0, 50)}`)
-          return previewData // 返回单张截图
+          return this.consumeCapturedScreenshots(previewData)
         } else {
           throw new Error('立即截图失败')
         }
@@ -412,7 +412,7 @@ export class LightweightProcessingHelper {
           isValidBase64: screenshotData?.startsWith('data:image/')
         })
         
-        return screenshotData
+        return this.consumeCapturedScreenshots(screenshotData)
       } else if (allScreenshots.length > 1) {
         // 🆕 多张截图情况，返回截图数组
         console.log(`📸 处理多张截图: ${allScreenshots.length} 张`)
@@ -439,7 +439,7 @@ export class LightweightProcessingHelper {
         })
         
         if (screenshotDataArray.length > 0) {
-          return screenshotDataArray // 返回截图数组
+          return this.consumeCapturedScreenshots(screenshotDataArray)
         } else {
           throw new Error('所有截图都验证失败')
         }
@@ -451,6 +451,16 @@ export class LightweightProcessingHelper {
       console.error('❌ 采集截图失败:', error)
       return null
     }
+  }
+
+  /**
+   * 搜题请求已经拿到截图数据后，消费本轮队列，避免下一轮把旧图再次带上。
+   * 截图数据已经转换成内存中的 data URL，清理本地文件不会影响本次请求或失败重试。
+   */
+  private consumeCapturedScreenshots<T extends string | string[]>(screenshots: T): T {
+    this.screenshotHelper.clearQueues()
+    console.log('🧹 [SCREENSHOT] 已消费本轮截图并清空本地截图队列')
+    return screenshots
   }
 
   /**
