@@ -1,7 +1,9 @@
+import asyncio
 from uuid import UUID
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -412,11 +414,49 @@ async def get_task(
                 "id": str(file.id),
                 "content_type": file.content_type,
                 "size_bytes": file.size_bytes,
-                "url": storage.presigned_get(file.object_key),
+                "url": f"/api/admin/tasks/{task_id}/images/{file.id}",
             }
             for file in files
         ],
     }
+
+
+@router.get("/tasks/{task_id}/images/{file_id}")
+async def get_task_image(
+    task_id: UUID,
+    file_id: UUID,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    file = await db.scalar(
+        select(StoredFile)
+        .join(TaskImage, TaskImage.stored_file_id == StoredFile.id)
+        .where(
+            TaskImage.task_id == task_id,
+            StoredFile.id == file_id,
+            StoredFile.deleted_at.is_(None),
+        )
+    )
+    if not file:
+        raise HTTPException(status_code=404, detail="题目截图不存在")
+    try:
+        object_response = await asyncio.to_thread(storage.get_object, file.object_key)
+    except Exception as error:
+        raise HTTPException(status_code=404, detail="题目截图读取失败") from error
+
+    async def stream_image():
+        try:
+            while chunk := await asyncio.to_thread(object_response.read, 1024 * 1024):
+                yield chunk
+        finally:
+            object_response.close()
+            object_response.release_conn()
+
+    return StreamingResponse(
+        stream_image(),
+        media_type=file.content_type or "application/octet-stream",
+        headers={"Cache-Control": "private, max-age=300", "Content-Length": str(file.size_bytes)},
+    )
 
 
 @router.get("/overview")

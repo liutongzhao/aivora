@@ -13,6 +13,10 @@ export function getApiBase(): string {
   return "http://127.0.0.1:18000";
 }
 
+export function resolveApiUrl(url: string): string {
+  return new URL(url, getApiBase()).toString();
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const sessionId = getWebSessionId();
   let response: Response;

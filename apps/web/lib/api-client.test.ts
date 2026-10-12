@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch } from "./api-client";
+import { apiFetch, getApiBase, resolveApiUrl } from "./api-client";
 
 describe("apiFetch", () => {
   afterEach(() => {
@@ -24,6 +24,20 @@ describe("apiFetch", () => {
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Session-Id": "session-test" }),
       }),
+    );
+  });
+});
+
+describe("resolveApiUrl", () => {
+  it("resolves relative resource URLs against the API origin", () => {
+    expect(resolveApiUrl("/api/ai/tasks/task-1/images/image-1")).toBe(
+      `${getApiBase()}/api/ai/tasks/task-1/images/image-1`,
+    );
+  });
+
+  it("preserves absolute resource URLs", () => {
+    expect(resolveApiUrl("https://storage.example/image-1.png")).toBe(
+      "https://storage.example/image-1.png",
     );
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../../../lib/api-client";
+import { apiFetch, resolveApiUrl } from "../../../../lib/api-client";
 import { AnswerViewer } from "../../../../components/tasks/AnswerViewer";
 import { TaskStatusBadge } from "../../../../components/tasks/TaskStatusBadge";
 import { modes } from "../../../../components/tasks/TaskList";
@@ -27,7 +27,7 @@ export default function AdminTasksPage() {
       <div className="table-surface admin-table-wrap">{tasks.length === 0 ? <div className="empty-inline">暂无任务数据。</div> : <table className="table"><thead><tr><th>用户</th><th>模式</th><th>状态</th><th>进度</th><th>创建时间</th><th aria-label="查看详情" /></tr></thead><tbody>{tasks.map((task) => <tr className={detail?.task.id === task.id ? "is-active" : ""} key={task.id}><td>{task.user_id.slice(0, 8)}</td><td>{modes[task.mode] ?? task.mode}</td><td><TaskStatusBadge status={task.status} /></td><td>{task.progress}%</td><td>{new Date(task.created_at).toLocaleString("zh-CN")}</td><td><button className="button ghost" onClick={() => void selectTask(task)}>查看</button></td></tr>)}</tbody></table>}</div>
       {detail && <section className="admin-detail" aria-label="任务详情"><div className="panel-heading"><div><h2>{detail.task.id.slice(0, 12)}</h2><p className="muted">{modes[detail.task.mode] ?? detail.task.mode} · {new Date(detail.task.created_at).toLocaleString("zh-CN")}</p></div><button className="icon-button" title="关闭详情" aria-label="关闭详情" onClick={() => setDetail(null)}><X size={18} /></button></div>
         {detail.task.error_message && <div className="notice">{detail.task.error_message}</div>}
-        <div className="admin-detail-columns"><div><h3>用户截图</h3>{detail.images.length ? <div className="admin-images">{detail.images.map((image, index) => <a key={image.id} href={image.url} target="_blank" rel="noreferrer"><img src={image.url} alt={`任务截图 ${index + 1}`} /><span>截图 {index + 1} · 点击查看原图</span></a>)}</div> : <p className="muted">暂无截图。</p>}</div><div><h3>处理结果</h3>{detail.answer ? <AnswerViewer content={detail.answer.content} rawContent={detail.answer.raw_content} parsed={detail.answer.parsed} warnings={detail.answer.parse_warning ? [detail.answer.parse_warning] : []} /> : <p className="muted">暂无答案。</p>}</div></div>
+        <div className="admin-detail-columns"><div><h3>用户截图</h3>{detail.images.length ? <div className="admin-images">{detail.images.map((image, index) => { const imageUrl = resolveApiUrl(image.url); return <a key={image.id} href={imageUrl} target="_blank" rel="noreferrer"><img src={imageUrl} alt={`任务截图 ${index + 1}`} /><span>截图 {index + 1} · 点击查看原图</span></a>; })}</div> : <p className="muted">暂无截图。</p>}</div><div><h3>处理结果</h3>{detail.answer ? <AnswerViewer content={detail.answer.content} rawContent={detail.answer.raw_content} parsed={detail.answer.parsed} warnings={detail.answer.parse_warning ? [detail.answer.parse_warning] : []} /> : <p className="muted">暂无答案。</p>}</div></div>
       </section>}
     </div>
   </main>;
