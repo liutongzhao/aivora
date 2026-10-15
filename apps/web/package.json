@@ -1,7 +1,7 @@
 {
   "name": "aivora-web",
   "private": true,
-  "version": "0.1.11",
+  "version": "0.1.17",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

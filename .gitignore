@@ -10,7 +10,6 @@ recovered-build/
 *.tsbuildinfo
 __pycache__/
 *.py[cod]
-AGENT.md
 .env
 .env.*
 !.env.example
@@ -23,3 +22,4 @@ apps/web/output/
 output/
 .playwright-cli/
 minio-data/
+/optimization/
