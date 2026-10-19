@@ -17,9 +17,10 @@ class UsageError(Exception):
 
 
 class TrialReservation:
-    def __init__(self, ledger_id: UUID | None, entitled: bool):
+    def __init__(self, ledger_id: UUID | None, entitled: bool, builtin_ledger_id: UUID | None = None):
         self.ledger_id = ledger_id
         self.entitled = entitled
+        self.builtin_ledger_id = builtin_ledger_id
 
 
 class TrialUsageService:
@@ -37,7 +38,8 @@ class TrialUsageService:
         ))
 
     async def reserve_for_task(
-        self, db: AsyncSession, user_id: UUID, idempotency_key: str
+        self, db: AsyncSession, user_id: UUID, idempotency_key: str,
+        uses_builtin_model: bool = False,
     ) -> TrialReservation:
         existing = await db.scalar(
             select(UsageLedger).where(UsageLedger.idempotency_key == idempotency_key)
@@ -48,37 +50,57 @@ class TrialUsageService:
         user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
         if not user or user.status != "active":
             raise UsageError("ACCOUNT_NOT_ELIGIBLE", "账号暂不可使用搜题", 403)
-        if await self.has_active_entitlement(db, user_id):
-            return TrialReservation(None, True)
-        # Users created before the registration migration have no normalized
-        # email or verification timestamp. Preserve their existing access.
-        if user.email_verified_at is None and user.email_normalized is None:
-            return TrialReservation(None, True)
-        if not user.email_verified_at:
-            raise UsageError("EMAIL_NOT_VERIFIED", "请先完成邮箱验证", 403)
-        from app.modules.licenses.models import UserEntitlement
+        entitled = await self.has_active_entitlement(db, user_id)
+        software_ledger_id = None
+        if not entitled:
+            # Users created before the registration migration have no normalized
+            # email or verification timestamp. Preserve their existing access.
+            if user.email_verified_at is None and user.email_normalized is None:
+                entitled = True
+            elif not user.email_verified_at:
+                raise UsageError("EMAIL_NOT_VERIFIED", "请先完成邮箱验证", 403)
+            else:
+                from app.modules.licenses.models import UserEntitlement
 
-        has_entitlement = await db.scalar(
-            select(UserEntitlement.id)
-            .where(UserEntitlement.user_id == user_id)
-            .limit(1)
-        )
-        if has_entitlement:
-            raise UsageError("ENTITLEMENT_EXPIRED", "授权已到期，请续期后继续使用", 402)
-        if user.trial_used >= user.trial_total:
-            raise UsageError("TRIAL_EXHAUSTED", "免费试用次数已用完，请激活授权", 402)
+                has_entitlement = await db.scalar(
+                    select(UserEntitlement.id)
+                    .where(UserEntitlement.user_id == user_id)
+                    .limit(1)
+                )
+                if has_entitlement:
+                    raise UsageError("ENTITLEMENT_EXPIRED", "授权已到期，请续期后继续使用", 402)
+                if user.trial_used >= user.trial_total:
+                    raise UsageError("TRIAL_EXHAUSTED", "软件体验次数已用完，请激活授权", 402)
 
-        user.trial_used += 1
-        ledger = UsageLedger(
-            user_id=user_id,
-            usage_type="trial_search",
-            amount=1,
-            status="reserved",
-            idempotency_key=idempotency_key,
-        )
-        db.add(ledger)
-        await db.flush()
-        return TrialReservation(ledger.id, False)
+                user.trial_used += 1
+                ledger = UsageLedger(
+                    user_id=user_id,
+                    usage_type="trial_search",
+                    amount=1,
+                    status="reserved",
+                    idempotency_key=idempotency_key,
+                )
+                db.add(ledger)
+                await db.flush()
+                software_ledger_id = ledger.id
+
+        builtin_ledger_id = None
+        if uses_builtin_model:
+            if user.builtin_model_used >= user.builtin_model_total:
+                raise UsageError("BUILTIN_MODEL_EXHAUSTED", "内置模型次数已用完，请联系管理员增加次数", 402)
+            user.builtin_model_used += 1
+            ledger = UsageLedger(
+                user_id=user_id,
+                usage_type="builtin_model",
+                amount=1,
+                status="reserved",
+                idempotency_key=f"{idempotency_key}:builtin-model",
+            )
+            db.add(ledger)
+            await db.flush()
+            builtin_ledger_id = ledger.id
+
+        return TrialReservation(software_ledger_id, entitled, builtin_ledger_id)
 
     async def attach_task(self, db: AsyncSession, reservation_id: UUID | None, task_id: UUID) -> None:
         if not reservation_id:
@@ -112,6 +134,23 @@ class TrialUsageService:
         ledger.reversed_at = datetime.now(timezone.utc)
         ledger.reversal_reason = reason
 
+    async def reverse_builtin(self, db: AsyncSession, reservation_id: UUID | None, reason: str) -> None:
+        if not reservation_id:
+            return
+        ledger = await db.scalar(
+            select(UsageLedger).where(
+                UsageLedger.id == reservation_id, UsageLedger.status == "reserved"
+            ).with_for_update()
+        )
+        if not ledger:
+            return
+        user = await db.scalar(select(User).where(User.id == ledger.user_id).with_for_update())
+        if user:
+            user.builtin_model_used = max(0, user.builtin_model_used - ledger.amount)
+        ledger.status = "reversed"
+        ledger.reversed_at = datetime.now(timezone.utc)
+        ledger.reversal_reason = reason
+
     async def summary(self, db: AsyncSession, user_id: UUID) -> dict:
         user = await db.get(User, user_id)
         from app.modules.licenses.service import LicenseCodeService
@@ -127,6 +166,9 @@ class TrialUsageService:
             "trialTotal": user.trial_total if user else 0,
             "trialUsed": user.trial_used if user else 0,
             "trialRemaining": max(0, (user.trial_total if user else 0) - (user.trial_used if user else 0)),
+            "builtinModelTotal": user.builtin_model_total if user else 0,
+            "builtinModelUsed": user.builtin_model_used if user else 0,
+            "builtinModelRemaining": max(0, (user.builtin_model_total if user else 0) - (user.builtin_model_used if user else 0)),
             "entitlementActive": entitlement_active,
             "entitlementExpiresAt": entitlement.expires_at if entitlement else None,
             "entitlementStatus": entitlement.status if entitlement else None,

@@ -9,6 +9,7 @@ class AIModelResponse(BaseModel):
     display_name: str
     question_types: list[str]
     supports_vision: bool
+    enabled: bool
 
 
 class AIModelCreate(BaseModel):

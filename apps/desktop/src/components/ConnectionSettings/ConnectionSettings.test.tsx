@@ -12,6 +12,7 @@ vi.mock('../../services/userConfigService', () => ({
     deleteConnection: vi.fn(),
     disableConnection: vi.fn(),
     testNewConnection: vi.fn(),
+    setupModel: vi.fn(),
     syncConnection: vi.fn(),
   },
 }))
@@ -39,20 +40,20 @@ describe('ConnectionSettings', () => {
     })
 
     render(<ConnectionSettings />)
-    fireEvent.click(await screen.findByRole('button', { name: '新增连接' }))
-    fireEvent.click(screen.getByRole('button', { name: '保存连接' }))
-    expect(userConfigService.createConnection).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: '添加模型' }))
+    fireEvent.click(screen.getByRole('button', { name: '保存模型' }))
+    expect(userConfigService.setupModel).not.toHaveBeenCalled()
 
     fireEvent.change(screen.getByLabelText('连接名称'), { target: { value: 'OpenAI' } })
     fireEvent.change(screen.getByLabelText('API 地址'), { target: { value: 'https://api.example.com' } })
     fireEvent.change(screen.getByLabelText('API 密钥'), { target: { value: 'secret-api-key' } })
-    fireEvent.click(screen.getByRole('button', { name: '保存连接' }))
+    vi.mocked(userConfigService.testNewConnection).mockResolvedValue({ success: true, models: ['gpt-4o'] })
+    vi.mocked(userConfigService.setupModel).mockResolvedValue({ connection: { id: 'connection-1', name: 'OpenAI', base_url: 'https://api.example.com', enabled: true }, model: { id: 'model-1', connection_id: 'connection-1', name: 'gpt-4o', display_name: 'gpt-4o', supports_vision: true, enabled: true } })
+    fireEvent.click(screen.getByRole('button', { name: '获取模型' }))
+    await screen.findByRole('option', { name: 'gpt-4o' })
+    fireEvent.click(screen.getByRole('button', { name: '保存模型' }))
 
-    await waitFor(() => expect(userConfigService.createConnection).toHaveBeenCalledWith({
-      name: 'OpenAI',
-      base_url: 'https://api.example.com',
-      api_key: 'secret-api-key',
-    }))
+    await waitFor(() => expect(userConfigService.setupModel).toHaveBeenCalledWith(expect.objectContaining({ connection_name: 'OpenAI', model_name: 'gpt-4o' })))
   })
 
   it('switches editor fields when choosing another connection and can disable one', async () => {

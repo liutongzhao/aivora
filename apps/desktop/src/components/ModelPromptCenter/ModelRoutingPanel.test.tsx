@@ -9,6 +9,7 @@ vi.mock('../../services/userConfigService', () => ({
     listConnections: vi.fn(),
     listModels: vi.fn(),
     listDefaults: vi.fn(),
+    getTrialModel: vi.fn(),
     setModelDefault: vi.fn(),
   },
 }))
@@ -23,6 +24,7 @@ describe('ModelRoutingPanel', () => {
       { id: 'model-2', connection_id: 'connection-1', name: 'text-only', display_name: 'Text Only', supports_vision: false, enabled: true },
     ])
     vi.mocked(userConfigService.listDefaults).mockResolvedValue([])
+    vi.mocked(userConfigService.getTrialModel).mockResolvedValue({ enabled: true, display_name: '内置模型', model_name: 'gpt-6-sol', trial_total: 20, trial_used: 2, trial_remaining: 18 })
     vi.mocked(userConfigService.setModelDefault).mockResolvedValue({ mode: 'programming', model_id: 'model-1', language: 'typescript' })
 
     render(<ModelRoutingPanel />)
@@ -31,13 +33,13 @@ describe('ModelRoutingPanel', () => {
     expect(screen.getByText('单选题')).toBeTruthy()
     expect(screen.getByText('调试题')).toBeTruthy()
     expect(screen.getByText('可用模型')).toBeTruthy()
-    expect(screen.getByText('图片输入')).toBeTruthy()
+    expect(screen.getByText('提示')).toBeTruthy()
     expect(screen.getAllByRole('option', { name: 'GPT-4o' }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('option', { name: 'Text Only' })).toBeNull()
+    expect(screen.getAllByRole('option', { name: 'Text Only' }).length).toBeGreaterThan(0)
 
     const programmingRow = screen.getByTestId('routing-programming')
     fireEvent.change(programmingRow.querySelector('select')!, { target: { value: 'model-1' } })
-    await waitFor(() => expect(userConfigService.setModelDefault).toHaveBeenCalledWith('programming', 'model-1', 'python'))
+    await waitFor(() => expect(userConfigService.setModelDefault).toHaveBeenCalledWith('programming', 'model-1', 'python', false))
   })
 
   it('marks an invalid existing assignment and does not save an empty choice', async () => {
@@ -50,6 +52,7 @@ describe('ModelRoutingPanel', () => {
     vi.mocked(userConfigService.listDefaults).mockResolvedValue([
       { mode: 'programming', model_id: 'model-1', language: 'python' },
     ])
+    vi.mocked(userConfigService.getTrialModel).mockResolvedValue({ enabled: true, display_name: '内置模型', model_name: 'gpt-6-sol', trial_total: 20, trial_used: 2, trial_remaining: 18 })
     render(<ModelRoutingPanel />)
     expect((await screen.findByTestId('routing-programming')).textContent).toContain('当前模型不可用')
     fireEvent.change(screen.getByRole('combobox', { name: '编程题模型' }), { target: { value: '' } })

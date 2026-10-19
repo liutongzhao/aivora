@@ -1,12 +1,29 @@
 // encoding-fix.ts - 全局UTF-8编码设置
 // 解决控制台中文乱码问题
 
+let streamGuardsInstalled = false
+
+function installStreamErrorGuards() {
+  if (streamGuardsInstalled) return
+  streamGuardsInstalled = true
+  for (const stream of [process.stdout, process.stderr]) {
+    stream?.on('error', (error: NodeJS.ErrnoException) => {
+      // Electron may inherit a console pipe that is closed by the launcher.
+      // An EPIPE from diagnostic output must not terminate the main process.
+      if (error.code !== 'EPIPE') {
+        setImmediate(() => { throw error })
+      }
+    })
+  }
+}
+
 export function setupUTF8Encoding() {
+  installStreamErrorGuards()
   // 设置Node.js进程的标准输出为UTF-8编码
   if (process.stdout && typeof process.stdout.setEncoding === 'function') {
     process.stdout.setEncoding('utf8');
   }
-  
+
   if (process.stderr && typeof process.stderr.setEncoding === 'function') {
     process.stderr.setEncoding('utf8');
   }
@@ -15,7 +32,7 @@ export function setupUTF8Encoding() {
   process.env.LANG = 'en_US.UTF-8';
   process.env.LC_ALL = 'en_US.UTF-8';
   process.env.NODE_OPTIONS = '--max-old-space-size=4096';
-  
+
   // 如果是Windows系统，设置控制台代码页为UTF-8
   if (process.platform === 'win32') {
     try {
@@ -54,39 +71,47 @@ export function patchConsoleForUTF8() {
     return arg;
   };
 
+  const writeSafely = (writer: (...args: any[]) => void, args: any[]) => {
+    try {
+      writer.apply(console, args)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'EPIPE') throw error
+    }
+  }
+
   console.log = (...args: any[]) => {
     try {
       const processedArgs = args.map(processMessage);
-      originalLog.apply(console, processedArgs);
+      writeSafely(originalLog, processedArgs);
     } catch (error) {
-      originalLog.apply(console, args); // 降级处理
+      if ((error as NodeJS.ErrnoException)?.code !== 'EPIPE') writeSafely(originalLog, args)
     }
   };
 
   console.error = (...args: any[]) => {
     try {
       const processedArgs = args.map(processMessage);
-      originalError.apply(console, processedArgs);
+      writeSafely(originalError, processedArgs);
     } catch (error) {
-      originalError.apply(console, args); // 降级处理
+      if ((error as NodeJS.ErrnoException)?.code !== 'EPIPE') writeSafely(originalError, args)
     }
   };
 
   console.warn = (...args: any[]) => {
     try {
       const processedArgs = args.map(processMessage);
-      originalWarn.apply(console, processedArgs);
+      writeSafely(originalWarn, processedArgs);
     } catch (error) {
-      originalWarn.apply(console, args); // 降级处理
+      if ((error as NodeJS.ErrnoException)?.code !== 'EPIPE') writeSafely(originalWarn, args)
     }
   };
 
   console.info = (...args: any[]) => {
     try {
       const processedArgs = args.map(processMessage);
-      originalInfo.apply(console, processedArgs);
+      writeSafely(originalInfo, processedArgs);
     } catch (error) {
-      originalInfo.apply(console, args); // 降级处理
+      if ((error as NodeJS.ErrnoException)?.code !== 'EPIPE') writeSafely(originalInfo, args)
     }
   };
 }

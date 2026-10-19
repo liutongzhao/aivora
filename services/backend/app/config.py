@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     byok_required: bool = True
     task_dispatch_global_limit: int = Field(default=4, ge=1)
     task_dispatch_user_limit: int = Field(default=2, ge=1)
-    trial_searches: int = Field(default=5, ge=0)
+    trial_searches: int = Field(default=20, ge=0)
     license_default_duration_months: int = Field(default=6, ge=1, le=120)
     license_max_duration_months: int = Field(default=24, ge=1, le=120)
 

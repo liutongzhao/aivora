@@ -29,6 +29,7 @@ class ModelCreate(BaseModel):
     connection_id: UUID
     name: str = Field(min_length=1, max_length=160)
     display_name: str = Field(min_length=1, max_length=160)
+    # Kept for older desktop clients; new clients do not ask users to declare this.
     supports_vision: bool = True
 
 
@@ -50,13 +51,27 @@ class ModelResponse(BaseModel):
 
 
 class ModelDefaultUpdate(BaseModel):
-    model_id: UUID
+    model_id: UUID | None = None
+    use_trial_model: bool = False
     language: str = Field(default="python", max_length=40)
 
 
 class ConnectionTestRequest(BaseModel):
     base_url: HttpUrl
     api_key: str = Field(min_length=8, max_length=4096)
+
+
+class ModelSetupRequest(BaseModel):
+    connection_name: str = Field(min_length=1, max_length=120)
+    base_url: HttpUrl
+    api_key: str = Field(min_length=8, max_length=4096)
+    model_name: str = Field(min_length=1, max_length=160)
+    display_name: str | None = Field(default=None, max_length=160)
+
+
+class ModelSetupResponse(BaseModel):
+    connection: ConnectionResponse
+    model: ModelResponse
 
 
 class PromptUpdate(BaseModel):

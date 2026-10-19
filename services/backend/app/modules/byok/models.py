@@ -46,7 +46,8 @@ class QuestionModelDefault(Base):
 
     user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     mode: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("user_models.id"))
+    model_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), ForeignKey("user_models.id"), nullable=True)
+    use_trial_model: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     language: Mapped[str] = mapped_column(String(40), default="python")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

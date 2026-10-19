@@ -28,6 +28,9 @@ export type AdminUserDetail = {
     trialTotal: number;
     trialUsed: number;
     trialRemaining: number;
+    builtinModelTotal?: number;
+    builtinModelUsed?: number;
+    builtinModelRemaining?: number;
     taskCount: number;
   };
   entitlement: {

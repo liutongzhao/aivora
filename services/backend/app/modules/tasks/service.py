@@ -95,7 +95,10 @@ class TaskService:
             if request.client_request_id
             else f"{user_id}:{task_id}"
         )
-        usage = await TrialUsageService().reserve_for_task(self.db, user_id, usage_key)
+        uses_builtin_model = not runtime_config or bool(runtime_config.get("builtin_model"))
+        usage = await TrialUsageService().reserve_for_task(
+            self.db, user_id, usage_key, uses_builtin_model=uses_builtin_model,
+        )
         task = AITask(
             id=task_id,
             user_id=user_id,
@@ -109,6 +112,7 @@ class TaskService:
             user_model_id=runtime_config["model_id"] if runtime_config else None,
             prompt_version_id=runtime_config["prompt_version_id"] if runtime_config else None,
             usage_ledger_id=usage.ledger_id,
+            builtin_model_usage_ledger_id=usage.builtin_ledger_id,
         )
         if request.client_request_id:
             statement = insert(AITask).values(
@@ -121,6 +125,7 @@ class TaskService:
                 user_model_id=runtime_config["model_id"] if runtime_config else None,
                 prompt_version_id=runtime_config["prompt_version_id"] if runtime_config else None,
                 usage_ledger_id=usage.ledger_id,
+                builtin_model_usage_ledger_id=usage.builtin_ledger_id,
             ).on_conflict_do_nothing(
                 index_elements=[AITask.user_id, AITask.client_request_id],
                 index_where=AITask.client_request_id.is_not(None),
@@ -136,6 +141,7 @@ class TaskService:
 
         task_id = task.id
         await TrialUsageService().attach_task(self.db, usage.ledger_id, task_id)
+        await TrialUsageService().attach_task(self.db, usage.builtin_ledger_id, task_id)
         uploaded_keys: list[str] = []
         try:
             async with self.db.begin_nested():
@@ -156,6 +162,7 @@ class TaskService:
         except BaseException:
             _remove_task_objects(user_id, task_id, uploaded_keys)
             await TrialUsageService().reverse(self.db, usage.ledger_id, "task_input_upload_failed")
+            await TrialUsageService().reverse_builtin(self.db, usage.builtin_ledger_id, "task_input_upload_failed")
             task = await self.db.get(AITask, task_id)
             task.status = "failed"
             task.stage = "error"

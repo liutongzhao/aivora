@@ -8,6 +8,8 @@ import type {
   PromptVersion,
   QuestionModelDefault,
   UserModel,
+  ModelSetupResult,
+  TrialModelInfo,
 } from '../types/userConfig'
 
 const userPath = (path: string) => `/api/user${path}`
@@ -43,6 +45,13 @@ export const userConfigService = {
 
   testNewConnection(payload: { base_url: string; api_key: string }): Promise<ConnectionTestResult> {
     return apiFetch<ConnectionTestResult>(userPath('/connections/test'), {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  setupModel(payload: { connection_name: string; base_url: string; api_key: string; model_name: string; display_name?: string }): Promise<ModelSetupResult> {
+    return apiFetch<ModelSetupResult>(userPath('/models/setup'), {
       method: 'POST',
       body: JSON.stringify(payload),
     })
@@ -88,10 +97,21 @@ export const userConfigService = {
     return apiFetch<QuestionModelDefault[]>(userPath('/models/defaults'))
   },
 
-  setModelDefault(mode: PromptMode, modelId: string, language = 'python'): Promise<QuestionModelDefault> {
+  getTrialModel(): Promise<TrialModelInfo> {
+    return apiFetch<TrialModelInfo>(userPath('/trial-model'))
+  },
+
+  testTrialModel(): Promise<{ success: boolean; message?: string }> {
+    return apiFetch<{ success: boolean; message?: string }>(userPath('/trial-model/test'), { method: 'POST' })
+  },
+
+  setModelDefault(mode: PromptMode, modelId: string | null, language = 'python', useTrialModel = false): Promise<QuestionModelDefault> {
+    const payload = useTrialModel
+      ? { use_trial_model: true, language }
+      : { model_id: modelId, use_trial_model: false, language }
     return apiFetch<QuestionModelDefault>(userPath(`/models/defaults/${mode}`), {
       method: 'PUT',
-      body: JSON.stringify({ model_id: modelId, language }),
+      body: JSON.stringify(payload),
     })
   },
 

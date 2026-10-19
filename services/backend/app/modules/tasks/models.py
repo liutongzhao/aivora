@@ -32,6 +32,9 @@ class AITask(Base):
     usage_ledger_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("usage_ledger.id", ondelete="SET NULL")
     )
+    builtin_model_usage_ledger_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("usage_ledger.id", ondelete="SET NULL")
+    )
     stream_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     stream_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(80))

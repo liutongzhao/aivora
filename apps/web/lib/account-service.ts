@@ -48,6 +48,9 @@ const emptyUsage: UsageSummary = {
   trialTotal: 0,
   trialUsed: 0,
   trialRemaining: 0,
+  builtinModelTotal: 0,
+  builtinModelUsed: 0,
+  builtinModelRemaining: 0,
   entitlementActive: false,
   entitlementExpiresAt: null,
   entitlementStatus: null,
@@ -82,6 +85,9 @@ function normalizeUsage(usage: Partial<UsageSummary> | null | undefined): UsageS
     trialTotal: Number(usage?.trialTotal ?? 0),
     trialUsed: Number(usage?.trialUsed ?? 0),
     trialRemaining: Number(usage?.trialRemaining ?? 0),
+    builtinModelTotal: Number(usage?.builtinModelTotal ?? 0),
+    builtinModelUsed: Number(usage?.builtinModelUsed ?? 0),
+    builtinModelRemaining: Number(usage?.builtinModelRemaining ?? 0),
     entitlementActive: usage?.entitlementActive === true,
     entitlementExpiresAt: usage?.entitlementExpiresAt ?? null,
     entitlementStatus: usage?.entitlementStatus ?? null,
@@ -109,14 +115,14 @@ function normalizeUsageRecord(record: ApiUsageRecord): UsageRecord {
   };
 }
 
-function getModelStatus(models: ApiModel[]): ModelStatus {
+function getModelStatus(models: ApiModel[], trialReady = false): ModelStatus {
   const enabledModels = models.filter((model) => model.enabled === true);
   const visionModels = enabledModels.filter((model) => model.supports_vision === true);
   return {
     total: models.length,
     enabled: enabledModels.length,
     visionCapable: visionModels.length,
-    ready: visionModels.length > 0,
+    ready: visionModels.length > 0 || trialReady,
   };
 }
 
@@ -184,12 +190,19 @@ export async function getAccountSnapshot(): Promise<AccountSnapshot> {
     [],
     issues,
   );
+  const trialModel = await getOptional(
+    "models",
+    apiFetch<{ enabled?: boolean }>("/api/user/trial-model"),
+    { enabled: false },
+    issues,
+  );
+  const normalizedUsage = normalizeUsage(usage);
 
   return {
     user,
-    usage: normalizeUsage(usage),
+    usage: normalizedUsage,
     entitlement: entitlements.find((item) => item.status === "active") ?? entitlements[0] ?? null,
-    modelStatus: getModelStatus(models),
+    modelStatus: getModelStatus(models, trialModel.enabled === true && normalizedUsage.trialRemaining > 0),
     desktopStatus: emptyDesktopStatus,
     issues,
   };

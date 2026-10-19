@@ -9,7 +9,12 @@ vi.mock('../../services/userConfigService', () => ({
     listConnections: vi.fn(),
     listModels: vi.fn(),
     listPromptVersions: vi.fn(),
+    getTrialModel: vi.fn(),
   },
+}))
+
+vi.mock('../ConnectionSettings/ConnectionSettings', () => ({
+  ConnectionSettings: () => <div data-testid="connection-settings">连接配置</div>,
 }))
 
 describe('ModelPromptCenter', () => {
@@ -28,13 +33,14 @@ describe('ModelPromptCenter', () => {
         enabled: true,
       },
     ])
+    vi.mocked(userConfigService.getTrialModel).mockResolvedValue({ enabled: true, display_name: '内置模型', model_name: 'gpt-6-sol', trial_total: 20, trial_used: 2, trial_remaining: 18 })
 
     render(<ModelPromptCenter />)
 
     expect(await screen.findByRole('tab', { name: '模型' })).toBeTruthy()
-    expect(screen.getByRole('option', { name: 'OpenAI' })).toBeTruthy()
-    expect(screen.queryByRole('option', { name: '停用连接' })).toBeNull()
-    expect(screen.getAllByText('GPT-4o')).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: '模型' })).toBeTruthy()
+    expect(screen.getAllByText('OpenAI').length).toBeGreaterThan(0)
+    expect(screen.getByText('GPT-4o')).toBeTruthy()
     await waitFor(() => expect(userConfigService.listModels).toHaveBeenCalled())
   })
 
@@ -42,14 +48,15 @@ describe('ModelPromptCenter', () => {
     vi.mocked(userConfigService.listConnections).mockResolvedValueOnce([])
       .mockResolvedValue([{ id: 'new', name: '新连接', base_url: 'https://example.com', enabled: true }])
     vi.mocked(userConfigService.listModels).mockResolvedValue([])
+    vi.mocked(userConfigService.getTrialModel).mockResolvedValue({ enabled: false, display_name: '内置模型', model_name: 'gpt-6-sol', trial_total: 20, trial_used: 20, trial_remaining: 0 })
     vi.mocked(userConfigService.listPromptVersions).mockResolvedValue([])
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const onDirtyChange = vi.fn()
     const { rerender } = render(<ModelPromptCenter visible onDirtyChange={onDirtyChange} />)
-    await screen.findByText('暂无模型')
+    await screen.findByText('还没有模型，请添加一个模型。')
     rerender(<ModelPromptCenter visible={false} onDirtyChange={onDirtyChange} />)
     rerender(<ModelPromptCenter visible onDirtyChange={onDirtyChange} />)
-    expect(await screen.findByRole('option', { name: '新连接' })).toBeTruthy()
+    expect(await screen.findByText('还没有模型，请添加一个模型。')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: '提示词' }))
     const editor = await screen.findByRole('textbox', { name: '提示词内容' })
     fireEvent.change(editor, { target: { value: '草稿' } })
@@ -63,6 +70,7 @@ describe('ModelPromptCenter', () => {
   it('offers login recovery when the session expires', async () => {
     vi.mocked(userConfigService.listConnections).mockRejectedValueOnce(Object.assign(new Error('会话已过期'), { status: 401 }))
     vi.mocked(userConfigService.listModels).mockResolvedValue([])
+    vi.mocked(userConfigService.getTrialModel).mockResolvedValue({ enabled: false, display_name: '内置模型', model_name: 'gpt-6-sol', trial_total: 20, trial_used: 20, trial_remaining: 0 })
     const webAuthLogin = vi.fn().mockResolvedValue({ success: true })
     Object.assign(window, { electronAPI: { webAuthLogin } })
     render(<ModelPromptCenter />)

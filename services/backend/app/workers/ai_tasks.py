@@ -17,6 +17,7 @@ from app.modules.usage.service import TrialUsageService
 from app.modules.tasks.field_stream import FieldProjector
 from app.modules.byok.crypto import decrypt_secret
 from app.modules.byok.models import ProviderConnection, UserModel, UserPromptVersion
+from app.modules.usage.models import TrialModelSettings
 from app.modules.tasks.parser import parse_answer
 from app.providers.openai_compatible import OpenAICompatibleProvider
 from app.workers.celery_app import celery_app
@@ -131,6 +132,7 @@ async def _mark_provider_started(task_id: UUID) -> bool:
             task = await db.get(AITask, task_id)
             if task:
                 await TrialUsageService().commit(db, task.usage_ledger_id)
+                await TrialUsageService().commit(db, task.builtin_model_usage_ledger_id)
         await db.commit()
     return started is not None
 
@@ -189,7 +191,19 @@ async def _load_task_input(task_id: UUID):
 async def _load_runtime_config(task_id: UUID):
     async with session_factory() as db:
         task = await db.get(AITask, task_id)
-        if not task or not task.provider_connection_id or not task.user_model_id:
+        if not task:
+            return None
+        if not task.provider_connection_id or not task.user_model_id:
+            trial = await db.get(TrialModelSettings, True)
+            if trial and trial.enabled:
+                return {
+                    "builtin_model": True,
+                    "base_url": trial.base_url,
+                    "api_key": decrypt_secret(trial.api_key_encrypted),
+                    "model": trial.model_name,
+                    "language": task.language,
+                    "prompt": None,
+                }
             return None
         connection = await db.scalar(select(ProviderConnection).where(
             ProviderConnection.id == task.provider_connection_id,

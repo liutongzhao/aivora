@@ -23,6 +23,8 @@ class User(Base):
     trial_granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     trial_total: Mapped[int] = mapped_column(Integer, default=0)
     trial_used: Mapped[int] = mapped_column(Integer, default=0)
+    builtin_model_total: Mapped[int] = mapped_column(Integer, default=0)
+    builtin_model_used: Mapped[int] = mapped_column(Integer, default=0)
     created_ip: Mapped[str | None] = mapped_column(INET)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

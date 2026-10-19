@@ -39,6 +39,13 @@ class BYOKService:
         )).all())
 
     async def create_connection(self, user_id: UUID, request: ConnectionCreate) -> ProviderConnection:
+        duplicate = await self.db.scalar(select(ProviderConnection.id).where(
+            ProviderConnection.user_id == user_id,
+            ProviderConnection.name == request.name,
+            ProviderConnection.archived.is_(False),
+        ))
+        if duplicate:
+            raise ValueError("连接名称已存在，请使用其他名称")
         item = ProviderConnection(
             user_id=user_id, name=request.name, base_url=validate_endpoint(str(request.base_url)),
             api_key_encrypted=encrypt_secret(request.api_key),
@@ -47,6 +54,52 @@ class BYOKService:
         await self.db.commit()
         await self.db.refresh(item)
         return item
+
+    async def setup_model(self, user_id: UUID, request):
+        """Discover and save one model without changing topic defaults."""
+        models = await probe_connection(str(request.base_url), request.api_key)
+        if request.model_name not in models:
+            raise ValueError("所选模型不在连接返回的可用模型列表中")
+        connection = await self.db.scalar(select(ProviderConnection).where(
+            ProviderConnection.user_id == user_id,
+            ProviderConnection.name == request.connection_name,
+            ProviderConnection.archived.is_(False),
+        ))
+        if connection:
+            if connection.base_url != validate_endpoint(str(request.base_url)):
+                raise ValueError("连接名称已存在，请使用其他名称")
+            connection.api_key_encrypted = encrypt_secret(request.api_key)
+            connection.enabled = True
+        else:
+            connection = ProviderConnection(
+                user_id=user_id,
+                name=request.connection_name,
+                base_url=validate_endpoint(str(request.base_url)),
+                api_key_encrypted=encrypt_secret(request.api_key),
+            )
+            self.db.add(connection)
+            await self.db.flush()
+        existing = await self.db.scalar(select(UserModel).where(
+            UserModel.user_id == user_id,
+            UserModel.connection_id == connection.id,
+            UserModel.name == request.model_name,
+            UserModel.archived.is_(False),
+        ))
+        if existing:
+            return connection, existing
+        model = UserModel(
+            user_id=user_id,
+            connection_id=connection.id,
+            name=request.model_name,
+            display_name=request.display_name or request.model_name,
+            # This is retained for old consumers, not a user assertion.
+            supports_vision=True,
+        )
+        self.db.add(model)
+        await self.db.commit()
+        await self.db.refresh(connection)
+        await self.db.refresh(model)
+        return connection, model
 
     async def update_connection(
         self, user_id: UUID, connection_id: UUID, request: ConnectionUpdate,
@@ -131,7 +184,20 @@ class BYOKService:
             QuestionModelDefault.user_id == user_id, QuestionModelDefault.mode == mode,
         ))
         if not default:
+            # Trial users use the server-owned model configured by Settings.
+            # Returning None keeps its credentials out of task/API payloads.
+            # Usage entitlement is checked separately when the task is reserved;
+            # keep the builtin model selectable for every account, including
+            # licensed users and users whose software trial is exhausted.
+            from app.modules.usage.models import TrialModelSettings
+            trial = await self.db.get(TrialModelSettings, True)
+            if trial and trial.enabled and trial.api_key_encrypted:
+                return {"builtin_model": True, "language": "python"}
             raise ValueError("请先为该题型配置模型")
+        if default.use_trial_model:
+            return {"builtin_model": True, "language": default.language}
+        if not default.model_id:
+            raise ValueError("默认模型不可用")
         model = await self.db.scalar(select(UserModel).where(
             UserModel.id == default.model_id, UserModel.user_id == user_id,
             UserModel.enabled.is_(True),
@@ -283,22 +349,28 @@ class BYOKService:
     ) -> QuestionModelDefault:
         if mode not in MODES:
             raise ValueError("不支持的题型")
-        model = await self.db.scalar(select(UserModel).where(
-            UserModel.id == request.model_id, UserModel.user_id == user_id,
-            UserModel.enabled.is_(True), UserModel.supports_vision.is_(True),
-            UserModel.archived.is_(False),
-        ))
-        if not model:
-            raise ValueError("模型不存在或不支持图片")
+        model = None
+        if not request.use_trial_model:
+            if not request.model_id:
+                raise ValueError("请选择模型")
+            model = await self.db.scalar(select(UserModel).where(
+                UserModel.id == request.model_id, UserModel.user_id == user_id,
+                UserModel.enabled.is_(True), UserModel.supports_vision.is_(True),
+                UserModel.archived.is_(False),
+            ))
+            if not model:
+                raise ValueError("模型不存在或不支持图片")
         item = await self.db.scalar(select(QuestionModelDefault).where(
             QuestionModelDefault.user_id == user_id, QuestionModelDefault.mode == mode,
         ))
         if item:
-            item.model_id = model.id
+            item.model_id = model.id if model else None
+            item.use_trial_model = request.use_trial_model
             item.language = request.language
         else:
             item = QuestionModelDefault(
-                user_id=user_id, mode=mode, model_id=model.id, language=request.language,
+                user_id=user_id, mode=mode, model_id=model.id if model else None,
+                use_trial_model=request.use_trial_model, language=request.language,
             )
             self.db.add(item)
         await self.db.commit()

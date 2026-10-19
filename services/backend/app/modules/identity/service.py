@@ -3,13 +3,14 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.config import get_settings
 from app.modules.identity.models import Session, User
 from app.modules.identity.passwords import hash_password, verify_password
 from app.modules.identity.repository import IdentityRepository
 from app.modules.identity.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest
 from app.modules.identity.verification import RegistrationService
+from app.modules.usage.models import TrialModelSettings
 
 
 class IdentityError(Exception):
@@ -37,6 +38,7 @@ class IdentityService:
         if await self.repository.find_user_by_email(email):
             raise IdentityError("EMAIL_ALREADY_EXISTS", "邮箱已注册", 409)
         now = datetime.now(timezone.utc)
+        trial_settings = await self.db.scalar(select(TrialModelSettings).where(TrialModelSettings.id.is_(True)))
         user = User(
             email=email,
             email_normalized=email,
@@ -45,8 +47,10 @@ class IdentityService:
             status="active",
             email_verified_at=now,
             trial_granted_at=now,
-            trial_total=get_settings().trial_searches,
+            trial_total=trial_settings.trial_total if trial_settings else 0,
             trial_used=0,
+            builtin_model_total=trial_settings.trial_total if trial_settings else 0,
+            builtin_model_used=0,
             created_ip=ip,
         )
         await self.repository.create_user(user)

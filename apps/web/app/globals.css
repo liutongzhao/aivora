@@ -242,6 +242,7 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .form { display: grid; width: 100%; gap: 17px; margin: 22px 0 0; }
 .settings-security { color: var(--green); font-size: 11px; font-weight: 700; }
 .settings-security span { margin-right: 4px; color: #33b982; }
+.settings-warning { margin: 18px 0 0; padding: 12px 14px; border: 1px solid #f2dfb2; border-radius: 8px; color: #8a650e; background: #fffaf0; font-size: 12px; line-height: 1.6; }
 .settings-page { display: grid; gap: 18px; }
 .settings-page .app-page-heading { margin-bottom: 12px; }
 .section-description { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { userConfigService } from '../../services/userConfigService'
-import type { Connection, UserModel } from '../../types/userConfig'
+import type { Connection, UserModel, TrialModelInfo } from '../../types/userConfig'
 import { ModelList } from './ModelList'
 import { ModelRoutingPanel } from './ModelRoutingPanel'
 import { PromptEditor } from './PromptEditor'
@@ -20,6 +20,7 @@ export function ModelPromptCenter({ visible = true, onDirtyChange, onNotify }: {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number][0]>('models')
   const [connections, setConnections] = useState<Connection[]>([])
   const [models, setModels] = useState<UserModel[]>([])
+  const [trialModel, setTrialModel] = useState<TrialModelInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
@@ -28,12 +29,14 @@ export function ModelPromptCenter({ visible = true, onDirtyChange, onNotify }: {
   async function refresh() {
     setLoading(true)
     try {
-      const [nextConnections, nextModels] = await Promise.all([
+      const [nextConnections, nextModels, nextTrialModel] = await Promise.all([
         userConfigService.listConnections(),
         userConfigService.listModels(),
+        userConfigService.getTrialModel(),
       ])
       setConnections(nextConnections)
       setModels(nextModels)
+      setTrialModel(nextTrialModel)
       setError(null)
       setSessionExpired(false)
     } catch (reason) {
@@ -83,7 +86,7 @@ export function ModelPromptCenter({ visible = true, onDirtyChange, onNotify }: {
         {sessionExpired && <button type="button" className="client-button client-button-secondary" onClick={() => void window.electronAPI?.webAuthLogin?.()}>重新登录</button>}
       </div>}
       {!loading && !error && activeTab === 'models' && (
-        <ModelList connections={connections} models={models} onRefresh={refresh} onNotify={onNotify} />
+        <ModelList connections={connections} models={models} trialModel={trialModel} onRefresh={refresh} onNotify={onNotify} />
       )}
       {!loading && !error && activeTab === 'routing' && <ModelRoutingPanel onNotify={onNotify} />}
       {!loading && !error && activeTab === 'prompts' && <PromptEditor onDirtyChange={handlePromptDirty} onNotify={onNotify} />}

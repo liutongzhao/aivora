@@ -11,7 +11,6 @@ import { config } from '../utils/config'
 import { ClientSection, ClientSidebar } from '../components/ClientShell/ClientSidebar'
 import { ClientTitleBar } from '../components/ClientShell/ClientTitleBar'
 import { ModelPromptCenter } from '../components/ModelPromptCenter/ModelPromptCenter'
-import { ConnectionSettings } from '../components/ConnectionSettings/ConnectionSettings'
 import { WindowSettings } from '../components/WindowSettings/WindowSettings'
 import { AccountSettings } from '../components/AccountSettings/AccountSettings'
 import { ClientToast, ClientToastVariant } from '../components/ClientShell/ClientToast'
@@ -50,6 +49,7 @@ export function ConfigPage() {
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null)
   const [recordingHint, setRecordingHint] = useState<string | null>(null)
   const [shortcutConflict, setShortcutConflict] = useState<ShortcutConflict | null>(null)
+  const [activeShortcutGroup, setActiveShortcutGroup] = useState('capture')
   const [testResult, setTestResult] = useState<ShortcutTestResult | null>(null)
   const [isTestingMode, setIsTestingMode] = useState(false)
   const [examClientLaunching, setExamClientLaunching] = useState(false)
@@ -495,7 +495,7 @@ export function ConfigPage() {
                 </p>
                 <p className="mt-1 text-sm opacity-80">
                   {usage && getUsageAvailability(usage).allowed
-                    ? '可以开始使用，系统会在服务端自动记录本次使用。'
+                    ? `软件体验剩余 ${usage.trialRemaining} 次；内置模型剩余 ${usage.builtinModelRemaining ?? 0} 次。`
                     : '没有可用次数或有效授权时，开始使用按钮会保持禁用。'}
                 </p>
               </div>
@@ -531,7 +531,13 @@ export function ConfigPage() {
         )}
 
         <section data-client-page="connection" className="client-placeholder-panel">
-          <ConnectionSettings onNotify={showToast} />
+          <div className="connection-service-panel">
+            <h2>服务连接</h2>
+            <p>模型供应商的 URL、API Key 和模型请在“模型配置”中统一管理。</p>
+            <button type="button" className="client-button client-button-primary" onClick={() => setActiveSection('models')}>
+              前往模型配置
+            </button>
+          </div>
         </section>
 
         <section ref={remoteRef} data-client-page="connection" className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
@@ -607,19 +613,22 @@ export function ConfigPage() {
             <div>
               <h2 className="text-lg font-semibold text-slate-900">快捷键管理</h2>
             </div>
+            <button
+              type="button"
+              onClick={handleRestoreDefaults}
+              className="client-button client-button-secondary"
+            >
+              恢复默认快捷键
+            </button>
           </div>
 
-
-          <button
-            type="button"
-            onClick={handleRestoreDefaults}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-400 hover:text-blue-600"
-          >
-            恢复默认快捷键
-          </button>
-
-          <div className="shortcut-groups">
+          <div className="shortcut-group-tabs" role="tablist" aria-label="快捷键分类">
             {shortcutGroups.map((group) => (
+              <button key={group.key} type="button" role="tab" aria-selected={activeShortcutGroup === group.key} className={activeShortcutGroup === group.key ? 'is-active' : ''} onClick={() => setActiveShortcutGroup(group.key)}>{group.label}</button>
+            ))}
+          </div>
+          <div className="shortcut-groups">
+            {shortcutGroups.filter((group) => group.key === activeShortcutGroup).map((group) => (
               <section className="shortcut-group" key={group.key} aria-labelledby={`shortcut-group-${group.key}`}>
                 <h3 id={`shortcut-group-${group.key}`}>{group.label}</h3>
                 <div className="shortcut-group-list">
@@ -661,13 +670,11 @@ export function ConfigPage() {
           )}
         </section>
 
-        <section ref={testingRef} data-client-page="shortcuts" className="rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
+        <section ref={testingRef} data-client-page="shortcuts" className="shortcut-testing-panel rounded-3xl border border-slate-100 bg-white p-6 space-y-4 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">快捷键生效验证</h2>
-              <p className="text-sm text-slate-500">
-                点击“开始测试”会弹出黑色考试窗口。按下快捷键验证后，点击“结束测试”即可关闭窗口。
-              </p>
+              <p className="text-sm text-slate-500">打开测试窗口，验证快捷键是否生效。</p>
             </div>
             <div className="flex gap-2">
               <button

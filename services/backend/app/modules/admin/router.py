@@ -17,6 +17,11 @@ from app.modules.tasks.models import AITask, Answer, TaskImage
 from app.modules.licenses.models import LicenseBatch, LicenseCode, LicenseSettings, UserEntitlement
 from app.modules.licenses.service import LicenseCodeService, LicenseError
 from app.modules.usage.models import UsageLedger
+from app.modules.usage.models import TrialModelSettings
+from app.modules.byok.crypto import encrypt_secret
+from app.modules.byok.crypto import decrypt_secret
+from app.modules.byok.outbound import probe_model, validate_endpoint
+from app.config import get_settings
 from app.modules.admin.models import AdminAuditLog
 from app.modules.admin.service import AdminAuditService, AdminLicenseService, sanitize_audit_details
 
@@ -45,6 +50,15 @@ class AdminReasonRequest(BaseModel):
 
 class EntitlementExtensionRequest(AdminReasonRequest):
     months: int = Field(ge=1, le=120)
+
+
+class TrialModelSettingsRequest(BaseModel):
+    base_url: str = Field(min_length=1, max_length=2000)
+    api_key: str | None = Field(default=None, min_length=8, max_length=4096)
+    model_name: str = Field(min_length=1, max_length=160)
+    display_name: str = Field(min_length=1, max_length=160)
+    enabled: bool = True
+    trial_total: int = Field(default=20, ge=0, le=100000)
 
 
 async def _audit(db: AsyncSession, admin_id: UUID, action: str, resource_type: str, resource_id: str | None, metadata: dict) -> None:
@@ -147,6 +161,9 @@ async def user_detail(
             "trial_total": user.trial_total,
             "trial_used": user.trial_used,
             "trial_remaining": max(0, user.trial_total - user.trial_used),
+            "builtin_model_total": user.builtin_model_total,
+            "builtin_model_used": user.builtin_model_used,
+            "builtin_model_remaining": max(0, user.builtin_model_total - user.builtin_model_used),
             "task_count": task_count or 0,
         },
         "entitlement": None if not entitlement else {
@@ -181,6 +198,35 @@ async def adjust_trial(
     return {"success": True, "trialTotal": user.trial_total, "trialRemaining": user.trial_total - user.trial_used}
 
 
+@router.post("/users/{user_id}/builtin-model-adjustments")
+async def adjust_builtin_model_usage(
+    user_id: UUID,
+    request: TrialAdjustmentRequest,
+    actor: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    user.builtin_model_total += request.amount
+    db.add(UsageLedger(
+        user_id=user_id,
+        usage_type="admin_builtin_model_grant",
+        amount=request.amount,
+        status="committed",
+        idempotency_key=f"admin-builtin:{actor.id}:{user_id}:{datetime.now(timezone.utc).isoformat()}",
+    ))
+    await _audit(db, actor.id, "builtin_model_adjusted", "user", str(user_id), {
+        "amount": request.amount, "reason": request.reason,
+    })
+    await db.commit()
+    return {
+        "success": True,
+        "builtinModelTotal": user.builtin_model_total,
+        "builtinModelRemaining": user.builtin_model_total - user.builtin_model_used,
+    }
+
+
 @router.get("/license-settings")
 async def get_license_settings(
     _: User = Depends(require_admin),
@@ -191,6 +237,75 @@ async def get_license_settings(
         "defaultDurationMonths": settings.default_duration_months if settings else 6,
         "maxDurationMonths": settings.max_duration_months if settings else 24,
     }
+
+
+@router.get("/trial-model")
+async def get_trial_model(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    item = await db.get(TrialModelSettings, True)
+    return {
+        "baseUrl": item.base_url if item else "",
+        "modelName": item.model_name if item else "",
+        "displayName": item.display_name if item else "",
+        "enabled": item.enabled if item else False,
+        "trialTotal": item.trial_total if item else 20,
+        "keyConfigured": bool(item and item.api_key_encrypted),
+    }
+
+
+@router.post("/trial-model/test")
+async def test_trial_model(
+    request: TrialModelSettingsRequest,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    api_key = request.api_key
+    if not api_key:
+        item = await db.get(TrialModelSettings, True)
+        if item and item.api_key_encrypted:
+            api_key = decrypt_secret(item.api_key_encrypted)
+    if not api_key:
+        raise HTTPException(status_code=400, detail="请先配置 API Key")
+    try:
+        await probe_model(
+            validate_endpoint(request.base_url.strip()),
+            api_key,
+            request.model_name.strip(),
+        )
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    return {"success": True, "message": "内置模型调用测试成功，未消耗次数"}
+
+
+@router.put("/trial-model")
+async def update_trial_model(
+    request: TrialModelSettingsRequest,
+    actor: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    item = await db.get(TrialModelSettings, True)
+    if not item:
+        item = TrialModelSettings(id=True)
+        db.add(item)
+    item.base_url = request.base_url.strip()
+    if request.api_key:
+        item.api_key_encrypted = encrypt_secret(request.api_key)
+    elif not item.api_key_encrypted:
+        raise HTTPException(status_code=400, detail="请填写 API Key")
+    item.model_name = request.model_name.strip()
+    item.display_name = request.display_name.strip()
+    item.enabled = request.enabled
+    item.trial_total = request.trial_total
+    item.updated_by = actor.id
+    await _audit(db, actor.id, "trial_model_updated", "trial_model", "default", {
+        "base_url": item.base_url, "model_name": item.model_name,
+        "display_name": item.display_name, "enabled": item.enabled,
+        "trial_total": item.trial_total,
+    })
+    await db.commit()
+    return {"success": True, "modelName": item.model_name, "displayName": item.display_name, "trialTotal": item.trial_total}
 
 
 @router.patch("/license-settings")

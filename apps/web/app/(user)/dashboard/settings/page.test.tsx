@@ -16,6 +16,7 @@ beforeEach(() => {
     if (path === "/api/user/connections") return connections;
     if (path === "/api/user/models") return [];
     if (path === "/api/user/models/defaults") return [];
+    if (path === "/api/user/trial-model") return { enabled: true, display_name: "Aivora 内置模型", model_name: "gpt-6-sol", trial_total: 20, trial_used: 2, trial_remaining: 18 };
     if (path === "/api/user/connections/connection-a/test") return { models: ["vision-model"] };
     if (path === "/api/user/models" && init?.method === "POST") return {};
     throw new Error(`Unexpected request: ${path}`);
@@ -23,45 +24,36 @@ beforeEach(() => {
 });
 
 describe("模型设置", () => {
-  it("deletes a connection after confirmation", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("discovers and saves one selected model without changing routing", async () => {
+    render(<SettingsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "添加模型" }));
+    fireEvent.change(screen.getByLabelText("连接名称"), { target: { value: "Pixel" } });
+    fireEvent.change(screen.getByLabelText("API 地址"), { target: { value: "https://pixel.example/v1" } });
+    fireEvent.change(screen.getByLabelText("API 密钥"), { target: { value: "secret-api-key" } });
     apiFetch.mockImplementation(async (path: string, init?: RequestInit) => {
       if (path === "/api/user/connections") return connections;
-      if (path === "/api/user/connections/connection-a" && init?.method === "DELETE") return { success: true };
       if (path === "/api/user/models") return [];
       if (path === "/api/user/models/defaults") return [];
-      if (path.endsWith("/test")) return { models: [] };
+      if (path === "/api/user/connections/test") return { models: ["vision-model"] };
+      if (path === "/api/user/models/setup" && init?.method === "POST") return {};
       throw new Error(`Unexpected request: ${path}`);
     });
-    render(<SettingsPage />);
-    await screen.findByRole("button", { name: "删除连接 Pixel" });
-    fireEvent.click(screen.getByRole("button", { name: "删除连接 Pixel" }));
-    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith(
-      "/api/user/connections/connection-a",
-      { method: "DELETE" },
-    ));
-  });
-
-  it("syncs models from a selected connection and adds one without typing its ID", async () => {
-    render(<SettingsPage />);
-    const selector = await screen.findByRole("combobox", { name: "" });
-    fireEvent.change(selector, { target: { value: "connection-a" } });
-    const discovered = await screen.findByText("vision-model");
-    fireEvent.click(within(discovered.parentElement!).getByRole("button", { name: "添加" }));
+    fireEvent.click(screen.getByRole("button", { name: "获取模型" }));
+    await screen.findByRole("option", { name: "vision-model" });
+    fireEvent.click(screen.getByRole("button", { name: "保存模型" }));
 
     await waitFor(() => expect(apiFetch).toHaveBeenCalledWith(
-      "/api/user/models",
+      "/api/user/models/setup",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({
-          connection_id: "connection-a",
-          name: "vision-model",
-          display_name: "vision-model",
-          supports_vision: true,
-        }),
       }),
     ));
-    fireEvent.change(selector, { target: { value: "connection-b" } });
-    expect(screen.queryByText("vision-model")).not.toBeInTheDocument();
+    expect(screen.getByText(/不会自动改变题型默认模型/)).toBeInTheDocument();
+  });
+
+  it("offers the built-in model with its remaining trial count", async () => {
+    render(<SettingsPage />);
+    const select = await screen.findByLabelText("编程题");
+    expect(within(select).getByRole("option", { name: /内置.*18 次/ })).toBeInTheDocument();
   });
 });

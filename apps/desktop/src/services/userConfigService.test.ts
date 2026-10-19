@@ -47,7 +47,18 @@ describe('userConfigService', () => {
     })
     expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/user/models/defaults/programming', {
       method: 'PUT',
-      body: JSON.stringify({ model_id: 'model-1', language: 'typescript' }),
+      body: JSON.stringify({ model_id: 'model-1', use_trial_model: false, language: 'typescript' }),
+    })
+  })
+
+  it('omits model_id when assigning the built-in trial model', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({})
+
+    await userConfigService.setModelDefault('programming', null, 'python', true)
+
+    expect(apiFetch).toHaveBeenCalledWith('/api/user/models/defaults/programming', {
+      method: 'PUT',
+      body: JSON.stringify({ use_trial_model: true, language: 'python' }),
     })
   })
 })

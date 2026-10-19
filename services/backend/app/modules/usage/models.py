@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,3 +21,17 @@ class UsageLedger(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     reversed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reversal_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class TrialModelSettings(Base):
+    __tablename__ = "trial_model_settings"
+
+    id: Mapped[bool] = mapped_column(Boolean, primary_key=True, default=True)
+    base_url: Mapped[str] = mapped_column(Text)
+    api_key_encrypted: Mapped[str] = mapped_column(Text)
+    model_name: Mapped[str] = mapped_column(String(160))
+    display_name: Mapped[str] = mapped_column(String(160))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    trial_total: Mapped[int] = mapped_column(Integer, default=20)
+    updated_by: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

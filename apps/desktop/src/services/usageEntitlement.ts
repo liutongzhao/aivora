@@ -4,6 +4,9 @@ export interface UsageSummary {
   trialTotal: number
   trialUsed: number
   trialRemaining: number
+  builtinModelTotal?: number
+  builtinModelUsed?: number
+  builtinModelRemaining?: number
   entitlementActive: boolean
   entitlementExpiresAt: string | null
   entitlementStatus: string | null

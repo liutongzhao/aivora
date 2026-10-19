@@ -37,7 +37,7 @@ export async function listAdminUsers(filters: AdminUserFilters = {}): Promise<{ 
 export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail> {
   const result = await apiFetch<{
     user: AdminUserDetail["user"] & { created_at: string | null; last_login_at: string | null; email_verified: boolean };
-    usage: { trial_total: number; trial_used: number; trial_remaining: number; task_count: number };
+    usage: { trial_total: number; trial_used: number; trial_remaining: number; builtin_model_total: number; builtin_model_used: number; builtin_model_remaining: number; task_count: number };
     entitlement: { status: string; starts_at: string; expires_at: string } | null;
   }>(`/api/admin/users/${userId}`);
   return {
@@ -54,6 +54,9 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
       trialTotal: result.usage.trial_total,
       trialUsed: result.usage.trial_used,
       trialRemaining: result.usage.trial_remaining,
+      builtinModelTotal: result.usage.builtin_model_total,
+      builtinModelUsed: result.usage.builtin_model_used,
+      builtinModelRemaining: result.usage.builtin_model_remaining,
       taskCount: result.usage.task_count,
     },
     entitlement: result.entitlement ? {

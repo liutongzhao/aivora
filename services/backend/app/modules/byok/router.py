@@ -13,13 +13,48 @@ from app.modules.byok.schemas import (
     ModelDefaultUpdate,
     ModelResponse,
     ModelUpdate,
+    ModelSetupRequest,
+    ModelSetupResponse,
     PromptUpdate,
 )
 from app.modules.byok.service import BYOKService
+from app.modules.byok.crypto import decrypt_secret
+from app.modules.byok.outbound import probe_model
 from app.modules.identity.dependencies import get_current_user
 from app.modules.identity.models import User
+from app.modules.usage.models import TrialModelSettings
+from app.config import get_settings
 
 router = APIRouter(prefix="/api/user", tags=["user-config"])
+
+
+@router.get("/trial-model")
+async def trial_model_info(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db_session),
+):
+    item = await db.get(TrialModelSettings, True)
+    return {
+        "enabled": bool(item and item.enabled and item.api_key_encrypted),
+        "display_name": item.display_name if item else "",
+        "model_name": item.model_name if item else "",
+        "trial_total": user.builtin_model_total if item and item.enabled else 0,
+        "trial_used": user.builtin_model_used,
+        "trial_remaining": max(0, user.builtin_model_total - user.builtin_model_used) if item and item.enabled else 0,
+    }
+
+
+@router.post("/trial-model/test")
+async def test_trial_model(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db_session),
+):
+    item = await db.get(TrialModelSettings, True)
+    if not item or not item.enabled or not item.api_key_encrypted:
+        raise HTTPException(status_code=404, detail="管理员尚未配置可用的内置模型")
+    try:
+        await probe_model(item.base_url, decrypt_secret(item.api_key_encrypted), item.model_name)
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    return {"success": True, "message": "内置模型调用测试成功，未消耗次数"}
 
 
 def connection_response(item) -> ConnectionResponse:
@@ -55,6 +90,29 @@ async def test_new_connection(
     except (ValueError, RuntimeError) as error:
         raise HTTPException(status_code=400, detail=str(error))
     return {"success": True, "models": models, "message": "连接测试成功"}
+
+
+@router.post("/models/setup", response_model=ModelSetupResponse, status_code=201)
+async def setup_model(
+    request: ModelSetupRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    try:
+        connection, model = await BYOKService(db).setup_model(user.id, request)
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    return {
+        "connection": connection_response(connection),
+        "model": {
+            "id": model.id,
+            "connection_id": model.connection_id,
+            "name": model.name,
+            "display_name": model.display_name,
+            "supports_vision": model.supports_vision,
+            "enabled": model.enabled,
+        },
+    }
 
 
 @router.patch("/connections/{connection_id}", response_model=ConnectionResponse)
@@ -163,7 +221,7 @@ async def set_model_default(
         item = await BYOKService(db).set_default(user.id, mode, request)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
-    return {"mode": item.mode, "model_id": item.model_id, "language": item.language}
+    return {"mode": item.mode, "model_id": item.model_id, "use_trial_model": item.use_trial_model, "language": item.language}
 
 
 @router.get("/models/defaults")
@@ -171,7 +229,7 @@ async def list_model_defaults(
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db_session),
 ):
     return [
-        {"mode": item.mode, "model_id": item.model_id, "language": item.language}
+        {"mode": item.mode, "model_id": item.model_id, "use_trial_model": item.use_trial_model, "language": item.language}
         for item in await BYOKService(db).defaults(user.id)
     ]
 

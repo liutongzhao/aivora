@@ -24,7 +24,8 @@ export interface UserModel {
 
 export interface QuestionModelDefault {
   mode: PromptMode
-  model_id: string
+  model_id: string | null
+  use_trial_model?: boolean
   language: string
 }
 
@@ -50,6 +51,20 @@ export interface ModelMutation {
   display_name?: string
   supports_vision?: boolean
   enabled?: boolean
+}
+
+export interface ModelSetupResult {
+  connection: Connection
+  model: UserModel
+}
+
+export interface TrialModelInfo {
+  enabled: boolean
+  display_name: string
+  model_name: string
+  trial_total: number
+  trial_used: number
+  trial_remaining: number
 }
 
 export interface ConnectionMutation {
