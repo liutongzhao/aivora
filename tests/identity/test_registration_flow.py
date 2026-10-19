@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.modules.identity.models import EmailVerificationCode, User
 from app.modules.identity.schemas import RegisterRequest
 from app.modules.identity.service import IdentityService
@@ -47,7 +48,7 @@ async def test_verified_registration_consumes_ticket_and_grants_trial(registrati
             RegisterRequest(registration_ticket=ticket, password="StrongPass123"), registration, "127.0.0.1"
         )
         assert user.email_verified_at is not None
-        assert (user.trial_total, user.trial_used) == (5, 0)
+        assert (user.trial_total, user.trial_used) == (get_settings().trial_searches, 0)
         with pytest.raises(VerificationError):
             await registration.consume_ticket(ticket)
 

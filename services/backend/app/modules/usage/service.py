@@ -41,15 +41,28 @@ class TrialUsageService:
         self, db: AsyncSession, user_id: UUID, idempotency_key: str,
         uses_builtin_model: bool = False,
     ) -> TrialReservation:
-        existing = await db.scalar(
-            select(UsageLedger).where(UsageLedger.idempotency_key == idempotency_key)
-        )
-        if existing:
-            return TrialReservation(existing.id, False)
-
         user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
         if not user or user.status != "active":
             raise UsageError("ACCOUNT_NOT_ELIGIBLE", "账号暂不可使用搜题", 403)
+        # Locking the user before checking ledgers serializes concurrent
+        # reservations for the same account. This matters because the builtin
+        # ledger has its own idempotency key and is created in the same request.
+        existing_software = await db.scalar(
+            select(UsageLedger).where(UsageLedger.idempotency_key == idempotency_key)
+        )
+        existing_builtin = None
+        if uses_builtin_model:
+            existing_builtin = await db.scalar(
+                select(UsageLedger).where(
+                    UsageLedger.idempotency_key == f"{idempotency_key}:builtin-model"
+                )
+            )
+        if existing_software or existing_builtin:
+            return TrialReservation(
+                existing_software.id if existing_software else None,
+                False,
+                existing_builtin.id if existing_builtin else None,
+            )
         entitled = await self.has_active_entitlement(db, user_id)
         software_ledger_id = None
         if not entitled:

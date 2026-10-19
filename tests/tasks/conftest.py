@@ -81,7 +81,7 @@ async def task_db(isolated_infrastructure):
             "INSERT INTO users (id, email, password_hash, builtin_model_total) VALUES "
             "('00000000-0000-0000-0000-000000000001', 'task1a@example.test', 'x', 20), "
             "('00000000-0000-0000-0000-000000000002', 'task1b@example.test', 'x', 20) "
-            "ON CONFLICT (id) DO NOTHING"
+            "ON CONFLICT (id) DO UPDATE SET builtin_model_total = 1000, builtin_model_used = 0"
         ))
     yield factory
     await engine.dispose()

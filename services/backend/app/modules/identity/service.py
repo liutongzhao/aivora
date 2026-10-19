@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.modules.identity.models import Session, User
 from app.modules.identity.passwords import hash_password, verify_password
 from app.modules.identity.repository import IdentityRepository
@@ -47,9 +48,9 @@ class IdentityService:
             status="active",
             email_verified_at=now,
             trial_granted_at=now,
-            trial_total=trial_settings.trial_total if trial_settings else 0,
+            trial_total=get_settings().trial_searches,
             trial_used=0,
-            builtin_model_total=trial_settings.trial_total if trial_settings else 0,
+            builtin_model_total=trial_settings.trial_total if trial_settings else 20,
             builtin_model_used=0,
             created_ip=ip,
         )
