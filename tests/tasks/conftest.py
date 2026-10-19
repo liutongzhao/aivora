@@ -78,9 +78,9 @@ async def task_db(isolated_infrastructure):
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with engine.begin() as connection:
         await connection.execute(text(
-            "INSERT INTO users (id, email, password_hash) VALUES "
-            "('00000000-0000-0000-0000-000000000001', 'task1a@example.test', 'x'), "
-            "('00000000-0000-0000-0000-000000000002', 'task1b@example.test', 'x') "
+            "INSERT INTO users (id, email, password_hash, builtin_model_total) VALUES "
+            "('00000000-0000-0000-0000-000000000001', 'task1a@example.test', 'x', 20), "
+            "('00000000-0000-0000-0000-000000000002', 'task1b@example.test', 'x', 20) "
             "ON CONFLICT (id) DO NOTHING"
         ))
     yield factory
@@ -93,7 +93,7 @@ async def dispatch_users(task_db):
     async with task_db() as db:
         for index, user in enumerate(users):
             await db.execute(
-                text("INSERT INTO users (id, email, password_hash) VALUES (:id, :email, 'x')"),
+                text("INSERT INTO users (id, email, password_hash, builtin_model_total) VALUES (:id, :email, 'x', 20)"),
                 {"id": user, "email": f"dispatch-{user}-{index}@example.test"},
             )
         await db.commit()
