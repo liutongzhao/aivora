@@ -12,22 +12,17 @@ import { getAccountSnapshot } from "../../../lib/account-service";
 import type { AccountSnapshot } from "../../../types/account";
 
 type Task = TaskSummary;
-type Model = { name: string; display_name: string };
-
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [models, setModels] = useState<Model[]>([]);
   const [snapshot, setSnapshot] = useState<AccountSnapshot | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
       apiFetch<{ tasks: Task[] }>("/api/ai/tasks?page=1&page_size=100"),
-      apiFetch<Model[]>("/api/ai/models"),
       getAccountSnapshot(),
-    ]).then(([taskResult, modelResult, accountSnapshot]) => {
+    ]).then(([taskResult, accountSnapshot]) => {
       setTasks(taskResult.tasks);
-      setModels(modelResult);
       setSnapshot(accountSnapshot);
     }).catch((reason) => setError(reason instanceof Error ? reason.message : "数据加载失败"));
   }, []);
@@ -46,7 +41,6 @@ export default function DashboardPage() {
       <div className="panel"><div className="panel-heading"><div><h2>最近任务</h2></div><Link href="/dashboard/history">查看全部 <ArrowUpRight size={14} /></Link></div>{tasks.length ? <RecentTasks tasks={tasks} /> : <div className="empty-inline"><Sparkles size={22} /><p>还没有任务，打开桌面端开始第一次处理。</p></div>}</div>
       <div className="workspace-side">
       <div className={`panel dashboard-access ${canUse ? "" : "is-blocked"}`}><div className="panel-heading"><div><h2>{usage?.entitlementActive ? "期限授权有效" : usage?.entitlementStatus === "active" ? "授权已过期" : usage?.trialRemaining === 0 ? "体验次数已用完" : "免费体验"}</h2></div></div><p className="muted">{usage?.entitlementActive ? `有效期至 ${new Date(usage.entitlementExpiresAt ?? "").toLocaleDateString("zh-CN")}` : usage?.entitlementStatus === "active" ? "当前授权已过期，前往个人中心兑换新的授权码。" : usage?.trialRemaining === 0 ? "当前账号没有可用额度，请先激活授权码。" : `剩余 ${usage?.trialRemaining ?? 0} 次`}</p>{!canUse && <Link className="button secondary" href="/dashboard/profile">前往个人中心 <ArrowUpRight size={14} /></Link>}</div>
-        <div className="panel model-summary"><strong>{models.length ? `${models.length} 个可用模型` : "尚未配置模型"}</strong>{models.length > 0 && <span>{models.map((model) => model.display_name).slice(0, 3).join(" · ")}</span>}<Link href="/dashboard/settings">管理模型 <ArrowUpRight size={14} /></Link></div>
         <DesktopStatusCard />
       </div>
     </section>

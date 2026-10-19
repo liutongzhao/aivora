@@ -72,16 +72,10 @@ describe("工作台状态", () => {
     expect(screen.queryByLabelText("激活授权码")).not.toBeInTheDocument();
   });
 
-  it("points users to model settings when no model is configured", async () => {
-    apiFetch.mockImplementation(async (path: string) => {
-      if (path.startsWith("/api/ai/tasks")) return { tasks: [], total: 0 };
-      if (path === "/api/ai/models") return [];
-      throw new Error(`Unexpected request ${path}`);
-    });
-    getAccountSnapshot.mockResolvedValueOnce({ ...snapshot, modelStatus: { ...snapshot.modelStatus, ready: false } });
+  it("does not show the legacy model summary on the workspace", async () => {
     render(<DashboardPage />);
-    expect(await screen.findByText("尚未配置模型")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /管理模型/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /管理模型/ })).toHaveAttribute("href", "/dashboard/settings");
+    expect(await screen.findByText("免费体验")).toBeInTheDocument();
+    expect(screen.queryByText(/个可用模型|尚未配置模型/)).not.toBeInTheDocument();
+    expect(apiFetch).not.toHaveBeenCalledWith("/api/ai/models");
   });
 });
