@@ -2,7 +2,7 @@
 
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import { LayoutDashboard, ListTodo, History, Settings2, Smartphone, UserRound, Menu, X } from "lucide-react";
+import { LayoutDashboard, ListTodo, History, Settings2, Smartphone, UserRound, Menu, X, BookOpen } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { AccountMenu } from "./AccountMenu";
 
@@ -11,6 +11,7 @@ const items = [
   { href: "/dashboard/tasks", label: "AI 任务", icon: <ListTodo size={17} /> },
   { href: "/dashboard/history", label: "历史记录", icon: <History size={17} /> },
   { href: "/dashboard/settings", label: "模型设置", icon: <Settings2 size={17} /> },
+  { href: "/dashboard/guide", label: "快速上手", icon: <BookOpen size={17} /> },
   { href: "/dashboard/profile", label: "个人中心", icon: <UserRound size={17} /> },
   { href: "/remote", label: "远程控制", icon: <Smartphone size={17} /> },
 ];
